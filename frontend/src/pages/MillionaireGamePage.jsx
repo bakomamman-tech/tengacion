@@ -103,6 +103,7 @@ function GameResult({ game, onHome, onReplay, canReplay }) {
   const attempt = game?.attempt || {};
   const won = Number(attempt.finalPrize || 0);
   const completedAll = attempt.status === "completed";
+  const qaMode = Boolean(game?.access?.qaMode || attempt.qaMode);
   return (
     <section className="millionaire-result" aria-labelledby="millionaire-result-title">
       <div className="millionaire-result__glow" aria-hidden="true" />
@@ -110,10 +111,12 @@ function GameResult({ game, onHome, onReplay, canReplay }) {
         {completedAll ? "♛" : won > 0 ? "★" : "◆"}
       </span>
       <p className="millionaire-game-kicker">
-        {completedAll ? "Summit conquered" : "Challenge complete"}
+        {qaMode ? "QA test complete" : completedAll ? "Apex conquered" : "Challenge complete"}
       </p>
       <h1 id="millionaire-result-title">
-        {completedAll
+        {qaMode
+          ? "Review the difficulty, timing and answer explanations."
+          : completedAll
           ? "You mastered all 15 questions."
           : won > 0
             ? "Your intelligence earned a prize."
@@ -121,7 +124,9 @@ function GameResult({ game, onHome, onReplay, canReplay }) {
       </h1>
       <div className="millionaire-result__amount">{formatNaira(won)}</div>
       <p>
-        {won > 0
+        {qaMode
+          ? "This unrestricted QA account never enters the prize or payout system."
+          : won > 0
           ? `Your award is marked “${String(attempt.payoutStatus || "pending").replace("_", " ")}” for verification by Tengacion administrators.`
           : "No cash prize was banked in this round, but your question review is ready below."}
       </p>
@@ -141,16 +146,28 @@ function GameResult({ game, onHome, onReplay, canReplay }) {
 
       <div className="millionaire-result__stats">
         <div><strong>{attempt.correctAnswers || 0}/15</strong><span>Correct answers</span></div>
-        <div><strong>{formatNaira(attempt.finalPrize)}</strong><span>Prize banked</span></div>
-        <div><strong>6 months</strong><span>Replay interval</span></div>
+        <div>
+          <strong>{qaMode ? "Disabled" : formatNaira(attempt.finalPrize)}</strong>
+          <span>{qaMode ? "QA payouts" : "Prize banked"}</span>
+        </div>
+        <div>
+          <strong>{qaMode ? "Unlimited" : "6 months"}</strong>
+          <span>Replay interval</span>
+        </div>
       </div>
 
       <div className="millionaire-result__actions">
         <button type="button" onClick={canReplay ? onReplay : onHome}>
-          {canReplay ? "Start my new six-month game" : "Return to Tengacion"}
+          {canReplay
+            ? qaMode
+              ? "Start another QA test"
+              : "Start my new six-month game"
+            : "Return to Tengacion"}
         </button>
         <span>
-          {canReplay
+          {qaMode
+            ? "QA attempts are unlimited and payout-disabled."
+            : canReplay
             ? "Your six-month replay window is open."
             : `Next play: ${formatDateTime(game?.cooldown?.nextEligibleAt)}`}
         </span>
@@ -266,7 +283,9 @@ export default function MillionaireGamePage({ user }) {
         showFeedback({
           correct: Boolean(result.correct),
           title: result.correct
-            ? `${formatNaira(result.prizeUnlocked)} unlocked`
+            ? attempt?.qaMode
+              ? "Correct answer"
+              : `${formatNaira(result.prizeUnlocked)} unlocked`
             : result.timedOut
               ? "Time expired"
               : "That answer missed",
@@ -285,7 +304,7 @@ export default function MillionaireGamePage({ user }) {
         setWorking(false);
       }
     },
-    [loadGame, question?.id, showFeedback, working]
+    [attempt?.qaMode, loadGame, question?.id, showFeedback, working]
   );
 
   useEffect(() => {
@@ -359,6 +378,20 @@ export default function MillionaireGamePage({ user }) {
         <p>Checking your registration, profile and play window.</p>
       </section>
     );
+  } else if (game?.access?.adminExcluded) {
+    content = (
+      <section className="millionaire-lobby-card">
+        <p className="millionaire-game-kicker">Administrative account</p>
+        <h1>Admins monitor the game, but do not participate.</h1>
+        <p>
+          This separation keeps daily prize selection, attempts and payout reporting
+          limited to eligible Tengacion members.
+        </p>
+        <button type="button" className="millionaire-lobby-primary" onClick={() => navigate("/admin/millionaire")}>
+          Open Millionaire dashboard
+        </button>
+      </section>
+    );
   } else if (!game?.registration?.registered) {
     content = (
       <section className="millionaire-lobby-card">
@@ -373,14 +406,28 @@ export default function MillionaireGamePage({ user }) {
         </Link>
       </section>
     );
+  } else if (!game?.access?.publicOpen && !game?.access?.qaMode) {
+    content = (
+      <section className="millionaire-lobby-card">
+        <p className="millionaire-game-kicker">Official opening time</p>
+        <h1>Tengacion Millionaire opens at 10:00 AM WAT.</h1>
+        <p>
+          Your registration remains ready. Return at{" "}
+          <strong>{formatDateTime(game?.access?.launchAt)}</strong> to begin.
+        </p>
+        <button type="button" className="millionaire-lobby-primary" onClick={() => navigate("/home")}>
+          Return home
+        </button>
+      </section>
+    );
   } else if (!game?.eligibility?.eligible) {
     content = (
       <section className="millionaire-lobby-card">
         <p className="millionaire-game-kicker">Player profile check</p>
         <h1>Your intelligence is ready. Finish your profile.</h1>
         <p>
-          Tengacion requires complete profile information, a genuine profile
-          picture and a cover photo before any participant can play.
+          Tengacion only requires your basic account identity, a profile picture
+          and a cover photo before you can play.
         </p>
         <GameRequirements eligibility={game?.eligibility} username={user?.username} />
       </section>
@@ -404,6 +451,13 @@ export default function MillionaireGamePage({ user }) {
                 Stage {question.stage} · {question.stageName}
               </p>
               <h1>Question {question.number} of 15</h1>
+              <span className={`millionaire-prize-tier is-${attempt.prizeTier || "standard"}`}>
+                {attempt.qaMode
+                  ? "QA mode · payouts disabled"
+                  : attempt.prizeTier === "daily_premium"
+                    ? "Today’s randomly selected ₦1,000 tier"
+                    : "Standard prize tier · maximum ₦400"}
+              </span>
             </div>
             <div
               className={`millionaire-timer${secondsRemaining <= 8 ? " is-urgent" : ""}`}
@@ -515,16 +569,20 @@ export default function MillionaireGamePage({ user }) {
     content = (
       <section className="millionaire-lobby-card is-ready">
         <div className="millionaire-lobby-orbit" aria-hidden="true"><span>15</span></div>
-        <p className="millionaire-game-kicker">The stage is yours</p>
+        <p className="millionaire-game-kicker">
+          {game?.access?.qaMode ? "Unrestricted QA mode" : "The stage is yours"}
+        </p>
         <h1>Three stages. Fifteen questions. One sharp mind.</h1>
         <p>
-          Winnings begin at ₦100 and climb to ₦5,000. Every correct answer banks
-          the new amount. A wrong answer ends the run but keeps what you already earned.
+          {game?.access?.qaMode
+            ? "Run the full challenge as often as needed. QA attempts are recorded separately and cannot receive a payout."
+            : "Standard winnings begin at ₦100 and stay below ₦500. One eligible account is randomly selected each day for a ladder worth up to ₦1,000."}
         </p>
         <div className="millionaire-lobby-rules">
-          <span>5 foundation questions</span>
-          <span>5 advanced questions</span>
-          <span>5 master questions</span>
+          <span>5 challenging questions</span>
+          <span>5 expert questions</span>
+          <span>5 elite questions</span>
+          <span>20 seconds per question</span>
           <span>One Ask AI lifeline</span>
         </div>
         <button
@@ -533,9 +591,17 @@ export default function MillionaireGamePage({ user }) {
           disabled={working}
           onClick={handleStart}
         >
-          {working ? "Opening question one…" : "Start my Millionaire game"}
+          {working
+            ? "Opening question one…"
+            : game?.access?.qaMode
+              ? "Start unrestricted QA test"
+              : "Start my Millionaire game"}
         </button>
-        <small>Starting now activates your six-month play window.</small>
+        <small>
+          {game?.access?.qaMode
+            ? "No cooldown and no payout apply to this QA account."
+            : "Starting now activates your six-month play window and assigned prize tier."}
+        </small>
         {error ? <div className="millionaire-game-error" role="alert">{error}</div> : null}
       </section>
     );
@@ -563,11 +629,13 @@ export default function MillionaireGamePage({ user }) {
         <aside className="home-right-rail millionaire-right-rail">
           <RightQuickNav />
           <section className="millionaire-side-card">
-            <p>Tonight&apos;s rules</p>
+            <p>Today&apos;s rules</p>
             <strong>Trust your intelligence.</strong>
-            <span>3 stages · 15 questions</span>
+            <span>3 stages · 15 difficult questions</span>
+            <span>20 seconds for every question</span>
             <span>₦100 minimum unlocked prize</span>
-            <span>₦5,000 maximum prize</span>
+            <span>Standard prizes stay below ₦500</span>
+            <span>One random account may reach ₦1,000 daily</span>
             <span>One play every six months</span>
           </section>
         </aside>

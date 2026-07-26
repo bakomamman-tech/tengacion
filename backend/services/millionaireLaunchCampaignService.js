@@ -11,7 +11,11 @@ const { sendBrandedEmail } = require("../utils/sendBrandedEmail");
 const CAMPAIGN_KEY = "millionaire-launch-2026-07-26";
 const CAMPAIGN_TITLE = "Tengacion Millionaire launch";
 const CAMPAIGN_SUBJECT =
-  "Tengacion Millionaire starts tomorrow — Sunday, 26 July at 10:00 AM WAT";
+  "Tengacion Millionaire starts today — Sunday, 26 July at 10:00 AM WAT";
+const REMINDER_CAMPAIGN_KEY = "millionaire-reminder-2026-07-26";
+const REMINDER_CAMPAIGN_TITLE = "Tengacion Millionaire reminder";
+const REMINDER_CAMPAIGN_SUBJECT =
+  "Reminder: Tengacion Millionaire begins today at 10:00 AM WAT";
 const LAUNCH_AT = new Date("2026-07-26T09:00:00.000Z");
 const MAX_DELIVERY_ATTEMPTS = 3;
 const DELIVERY_CONCURRENCY = 4;
@@ -33,7 +37,7 @@ const getCampaignUrls = () => {
   const appUrl = getAppUrl();
   return {
     appUrl,
-    flyerUrl: `${appUrl}/assets/campaigns/tengacion-millionaire-2026.png?v=20260725-prizes`,
+    flyerUrl: `${appUrl}/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes`,
     registrationUrl: `${appUrl}/millionaire/register`,
   };
 };
@@ -54,15 +58,15 @@ const buildMillionaireLaunchEmail = ({ name = "", flyerUrl, registrationUrl } = 
 
   return {
     previewText:
-      "Tengacion Millionaire starts Sunday, 26 July 2026 at 10:00 AM WAT. Participation is free.",
+      "Tengacion Millionaire starts today at 10:00 AM WAT. Review the rules and transparent daily prize tiers.",
     html: `
       <h1 style="margin:10px 0 8px;font-size:26px;line-height:1.25;color:#241044;">
-        Tengacion Millionaire starts tomorrow
+        Tengacion Millionaire starts today
       </h1>
       <p style="margin:0 0 16px;">Hello ${greetingName},</p>
       <p style="margin:0 0 18px;">
         Tengacion Millionaire commences on <strong>Sunday, 26 July 2026 at
-        10:00 AM WAT</strong>. The virtual lobby opens at 9:00 AM WAT and participation is free.
+        10:00 AM WAT</strong>. Participation is free.
       </p>
       <a href="${safeRegistrationUrl}" style="display:block;text-decoration:none;">
         <img
@@ -75,17 +79,19 @@ const buildMillionaireLaunchEmail = ({ name = "", flyerUrl, registrationUrl } = 
       <h2 style="margin:22px 0 8px;font-size:19px;color:#241044;">Guiding rules</h2>
       <ul style="margin:0 0 18px;padding-left:22px;">
         <li>Answer 15 multiple-choice questions across three stages of five questions each.</li>
-        <li>Question time limits are 45 seconds in Stage 1, 35 seconds in Stage 2 and 30 seconds in Stage 3.</li>
+        <li>Every question has a fresh 20-second reading and answer limit.</li>
         <li>One wrong answer or an expired timer ends the attempt and banks the cash already earned.</li>
         <li>Each player receives one Ask AI hint per game.</li>
         <li>Each Tengacion account may play once every six months.</li>
-        <li>A complete standard profile, profile picture and cover photo are required before play.</li>
+        <li>Basic account information, a profile picture and a cover photo are required before play.</li>
+        <li>Admin accounts and payout-disabled QA attempts do not participate in prize selection.</li>
       </ul>
       <h2 style="margin:22px 0 8px;font-size:19px;color:#241044;">Cash prizes</h2>
       <p style="margin:0 0 18px;">
-        Correct answers unlock cash from <strong>₦100</strong>, rising through the prize ladder
-        to a maximum of <strong>₦5,000</strong> for all 15 correct answers. Every award is
-        subject to account and payout verification.
+        Standard prizes unlock from <strong>₦100</strong> and rise to <strong>₦400</strong>.
+        One eligible registered account is selected randomly each day for the premium
+        ladder, which can reach <strong>₦1,000</strong>. All awards are subject to account
+        and payout verification.
       </p>
       <p style="margin:22px 0;">
         <a
@@ -96,26 +102,27 @@ const buildMillionaireLaunchEmail = ({ name = "", flyerUrl, registrationUrl } = 
         </a>
       </p>
       <p style="margin:18px 0 0;">
-        Existing members should use their current Tengacion account. If your standard profile
-        and both photos are complete, you will not be asked to enter that information again.
+        Existing members should use their current Tengacion account. If your basic account
+        information and both photos are present, you will not be asked to enter more profile details.
       </p>
       <p style="margin:18px 0 0;">— Tengacion Admin</p>
     `,
     text: [
       `Hello ${toText(name).split(/\s+/)[0] || "there"},`,
       "",
-      "Tengacion Millionaire starts Sunday, 26 July 2026 at 10:00 AM WAT. The virtual lobby opens at 9:00 AM WAT and participation is free.",
+      "Tengacion Millionaire starts today, Sunday, 26 July 2026 at 10:00 AM WAT. Participation is free.",
       "",
       "RULES",
       "- 15 multiple-choice questions in three stages of five.",
-      "- Time limits: 45 seconds, 35 seconds and 30 seconds by stage.",
+      "- Every question receives a fresh 20-second reading and answer limit.",
       "- One wrong answer or an expired timer ends the attempt and banks cash already earned.",
       "- One Ask AI hint per game.",
       "- One play per Tengacion account every six months.",
-      "- A complete standard profile, profile picture and cover photo are required.",
+      "- Basic account information, a profile picture and a cover photo are required.",
+      "- Admin accounts and payout-disabled QA attempts are excluded from prize selection.",
       "",
       "PRIZES",
-      "Cash prizes rise from ₦100 to ₦5,000 for all 15 correct answers, subject to verification.",
+      "Standard prizes rise from ₦100 to ₦400. One eligible account is selected randomly each day for a premium ladder worth up to ₦1,000. Awards are subject to verification.",
       "",
       `Register or play: ${registrationUrl}`,
       `Flyer: ${flyerUrl}`,
@@ -125,13 +132,139 @@ const buildMillionaireLaunchEmail = ({ name = "", flyerUrl, registrationUrl } = 
   };
 };
 
-const serializeCampaign = (campaign, { configured = getEmailSettings().configured } = {}) => {
+const buildMillionaireReminderEmail = ({
+  name = "",
+  flyerUrl,
+  registrationUrl,
+} = {}) => {
+  const greetingName = escapeHtml(toText(name).split(/\s+/)[0] || "there");
+  const safeFlyerUrl = escapeHtml(flyerUrl);
+  const safeRegistrationUrl = escapeHtml(registrationUrl);
+
+  return {
+    previewText:
+      "Reminder: Tengacion Millionaire begins at 10:00 AM WAT. Check the rules and confirm that your account is eligible.",
+    html: `
+      <h1 style="margin:10px 0 8px;font-size:26px;line-height:1.25;color:#241044;">
+        Your Tengacion Millionaire reminder
+      </h1>
+      <p style="margin:0 0 16px;">Hello ${greetingName},</p>
+      <p style="margin:0 0 18px;">
+        Tengacion Millionaire begins <strong>today, Sunday, 26 July 2026 at
+        10:00 AM WAT</strong>. Participation is free. Please review the rules and
+        eligibility checklist before opening the game.
+      </p>
+      <a href="${safeRegistrationUrl}" style="display:block;text-decoration:none;">
+        <img
+          src="${safeFlyerUrl}"
+          width="592"
+          alt="Tengacion Millionaire reminder flyer"
+          style="display:block;width:100%;max-width:592px;height:auto;border:0;border-radius:16px;"
+        />
+      </a>
+      <h2 style="margin:22px 0 8px;font-size:19px;color:#241044;">Eligibility checklist</h2>
+      <ul style="margin:0 0 18px;padding-left:22px;">
+        <li>Use one active Tengacion account and register it for Tengacion Millionaire.</li>
+        <li>Your name, username and valid email address must be present.</li>
+        <li>Upload both a profile picture and a cover photo.</li>
+        <li>Phone number, country, date of birth, gender and other optional profile fields are not required to unlock the game.</li>
+        <li>Admin, moderator and trust-and-safety accounts cannot participate.</li>
+      </ul>
+      <h2 style="margin:22px 0 8px;font-size:19px;color:#241044;">Game rules</h2>
+      <ul style="margin:0 0 18px;padding-left:22px;">
+        <li>There are 15 difficult multiple-choice questions across three stages.</li>
+        <li>Each question starts its own fresh 20-second reading and answer countdown.</li>
+        <li>A wrong answer or expired timer ends the attempt and banks cash already earned.</li>
+        <li>Each player has one Ask AI hint per game.</li>
+        <li>Ordinary eligible accounts may play once every six months.</li>
+      </ul>
+      <h2 style="margin:22px 0 8px;font-size:19px;color:#241044;">Prize rules</h2>
+      <p style="margin:0 0 18px;">
+        Standard prizes range from <strong>₦100 to ₦400</strong>. One eligible
+        registered account is selected randomly each day for a premium ladder worth
+        up to <strong>₦1,000</strong>. QA attempts are payout-disabled and all cash
+        awards are verified before payment.
+      </p>
+      <p style="margin:22px 0;">
+        <a
+          href="${safeRegistrationUrl}"
+          style="display:inline-block;padding:13px 22px;border-radius:999px;background:#f4c542;color:#241044;text-decoration:none;font-weight:800;"
+        >
+          Check eligibility and enter
+        </a>
+      </p>
+      <p style="margin:18px 0 0;">
+        Existing users who already have the basic information and both photos will
+        not see a profile “Fix” requirement.
+      </p>
+      <p style="margin:18px 0 0;">— Tengacion Admin</p>
+    `,
+    text: [
+      `Hello ${toText(name).split(/\s+/)[0] || "there"},`,
+      "",
+      "REMINDER: Tengacion Millionaire begins today, Sunday, 26 July 2026 at 10:00 AM WAT. Participation is free.",
+      "",
+      "ELIGIBILITY",
+      "- Register one active Tengacion account for the game.",
+      "- Your name, username and valid email address must be present.",
+      "- Upload both a profile picture and a cover photo.",
+      "- Phone, country, date of birth, gender and other optional fields are not required.",
+      "- Admin, moderator and trust-and-safety accounts cannot participate.",
+      "",
+      "GAME RULES",
+      "- 15 difficult multiple-choice questions across three stages.",
+      "- Every question starts a fresh 20-second reading and answer countdown.",
+      "- A wrong answer or expired timer ends the attempt and banks cash already earned.",
+      "- One Ask AI hint per game.",
+      "- One play per ordinary eligible account every six months.",
+      "",
+      "PRIZES",
+      "- Standard prizes: ₦100 to ₦400.",
+      "- One randomly selected eligible account per day may reach ₦1,000.",
+      "- QA attempts do not qualify for payout; all awards are verified.",
+      "",
+      `Check eligibility and enter: ${registrationUrl}`,
+      `Flyer: ${flyerUrl}`,
+      "",
+      "— Tengacion Admin",
+    ].join("\n"),
+  };
+};
+
+const CAMPAIGN_DEFINITIONS = Object.freeze({
+  launch: {
+    key: CAMPAIGN_KEY,
+    title: CAMPAIGN_TITLE,
+    subject: CAMPAIGN_SUBJECT,
+    buildEmail: buildMillionaireLaunchEmail,
+    notificationText:
+      "Tengacion Millionaire starts today at 10:00 AM WAT. Standard prizes reach ₦400 and one randomly selected eligible account can reach ₦1,000.",
+    notificationPreview:
+      "Review the 20-second rules, daily prize tiers and launch flyer.",
+  },
+  reminder: {
+    key: REMINDER_CAMPAIGN_KEY,
+    title: REMINDER_CAMPAIGN_TITLE,
+    subject: REMINDER_CAMPAIGN_SUBJECT,
+    buildEmail: buildMillionaireReminderEmail,
+    notificationText:
+      "Reminder: Tengacion Millionaire begins today at 10:00 AM WAT. Check your eligibility and review the game rules.",
+    notificationPreview:
+      "Basic account information plus profile and cover photos are required. View the flyer and full rules.",
+  },
+});
+
+const serializeCampaign = (
+  campaign,
+  definition,
+  { configured = getEmailSettings().configured } = {}
+) => {
   const value = campaign?.toObject ? campaign.toObject() : campaign || {};
   const { flyerUrl, registrationUrl } = getCampaignUrls();
   return {
-    campaignKey: CAMPAIGN_KEY,
-    title: value.title || CAMPAIGN_TITLE,
-    subject: value.subject || CAMPAIGN_SUBJECT,
+    campaignKey: definition.key,
+    title: value.title || definition.title,
+    subject: value.subject || definition.subject,
     status: value.status || "not_started",
     launchAt: value.launchAt || LAUNCH_AT,
     flyerUrl: value.flyerUrl || flyerUrl,
@@ -149,12 +282,12 @@ const serializeCampaign = (campaign, { configured = getEmailSettings().configure
   };
 };
 
-const getMillionaireLaunchCampaignStatus = async () => {
+const getCampaignStatus = async (definition) => {
   const [campaign, audienceCount] = await Promise.all([
-    AdminEmailCampaign.findOne({ campaignKey: CAMPAIGN_KEY }).lean(),
+    AdminEmailCampaign.findOne({ campaignKey: definition.key }).lean(),
     User.countDocuments(ACTIVE_AUDIENCE_FILTER),
   ]);
-  const serialized = serializeCampaign(campaign);
+  const serialized = serializeCampaign(campaign, definition);
   if (!campaign) {
     serialized.audienceCount = audienceCount;
     serialized.pendingCount = audienceCount;
@@ -162,7 +295,7 @@ const getMillionaireLaunchCampaignStatus = async () => {
   return serialized;
 };
 
-const upsertAudienceDeliveries = async () => {
+const upsertAudienceDeliveries = async (definition) => {
   const cursor = User.find(ACTIVE_AUDIENCE_FILTER)
     .select("_id name username email")
     .lean()
@@ -178,10 +311,10 @@ const upsertAudienceDeliveries = async () => {
   for await (const user of cursor) {
     operations.push({
       updateOne: {
-        filter: { campaignKey: CAMPAIGN_KEY, userId: user._id },
+        filter: { campaignKey: definition.key, userId: user._id },
         update: {
           $setOnInsert: {
-            campaignKey: CAMPAIGN_KEY,
+            campaignKey: definition.key,
             userId: user._id,
             email: toText(user.email).toLowerCase(),
             name: toText(user.name),
@@ -211,12 +344,21 @@ const runWithConcurrency = async (items, limit, worker) => {
   await Promise.all(runners);
 };
 
-const refreshCampaignCounts = async ({ status, lastError = "" } = {}) => {
+const refreshCampaignCounts = async (
+  definition,
+  { status, lastError = "" } = {}
+) => {
   const [sentCount, failedCount, pendingCount] = await Promise.all([
-    AdminEmailDelivery.countDocuments({ campaignKey: CAMPAIGN_KEY, status: "sent" }),
-    AdminEmailDelivery.countDocuments({ campaignKey: CAMPAIGN_KEY, status: "failed" }),
     AdminEmailDelivery.countDocuments({
-      campaignKey: CAMPAIGN_KEY,
+      campaignKey: definition.key,
+      status: "sent",
+    }),
+    AdminEmailDelivery.countDocuments({
+      campaignKey: definition.key,
+      status: "failed",
+    }),
+    AdminEmailDelivery.countDocuments({
+      campaignKey: definition.key,
       status: { $in: ["pending", "sending"] },
     }),
   ]);
@@ -232,13 +374,20 @@ const refreshCampaignCounts = async ({ status, lastError = "" } = {}) => {
     update.status = status;
   }
   return AdminEmailCampaign.findOneAndUpdate(
-    { campaignKey: CAMPAIGN_KEY },
+    { campaignKey: definition.key },
     { $set: update },
     { returnDocument: "after" }
   );
 };
 
-const sendDelivery = async ({ delivery, runId, adminUserId, io, onlineUsers }) => {
+const sendDelivery = async ({
+  definition,
+  delivery,
+  runId,
+  adminUserId,
+  io,
+  onlineUsers,
+}) => {
   const claimed = await AdminEmailDelivery.findOneAndUpdate(
     {
       _id: delivery._id,
@@ -255,7 +404,7 @@ const sendDelivery = async ({ delivery, runId, adminUserId, io, onlineUsers }) =
   if (!claimed) return;
 
   const { flyerUrl, registrationUrl } = getCampaignUrls();
-  const email = buildMillionaireLaunchEmail({
+  const email = definition.buildEmail({
     name: claimed.name,
     flyerUrl,
     registrationUrl,
@@ -264,7 +413,7 @@ const sendDelivery = async ({ delivery, runId, adminUserId, io, onlineUsers }) =
   try {
     await sendBrandedEmail({
       to: claimed.email,
-      subject: CAMPAIGN_SUBJECT,
+      subject: definition.subject,
       previewText: email.previewText,
       html: email.html,
       text: email.text,
@@ -283,12 +432,13 @@ const sendDelivery = async ({ delivery, runId, adminUserId, io, onlineUsers }) =
       recipient: claimed.userId,
       sender: adminUserId,
       type: "system",
-      text: "Tengacion Millionaire starts Sunday, 26 July at 10:00 AM WAT. Participation is free.",
+      text: definition.notificationText,
       metadata: {
-        dedupeKey: CAMPAIGN_KEY,
+        dedupeKey: definition.key,
         link: "/millionaire/register",
         flyerUrl,
-        previewText: "Review the rules, prizes and launch flyer.",
+        previewImage: flyerUrl,
+        previewText: definition.notificationPreview,
       },
       io,
       onlineUsers,
@@ -306,11 +456,14 @@ const sendDelivery = async ({ delivery, runId, adminUserId, io, onlineUsers }) =
   }
 };
 
-const runMillionaireLaunchCampaign = async ({ adminUserId, io, onlineUsers } = {}) => {
+const runCampaign = async (
+  definition,
+  { adminUserId, io, onlineUsers } = {}
+) => {
   const runId = crypto.randomUUID();
   const campaign = await AdminEmailCampaign.findOneAndUpdate(
     {
-      campaignKey: CAMPAIGN_KEY,
+      campaignKey: definition.key,
       status: { $in: ["queued", "partial", "failed"] },
     },
     {
@@ -326,16 +479,16 @@ const runMillionaireLaunchCampaign = async ({ adminUserId, io, onlineUsers } = {
     { returnDocument: "after" }
   );
   if (!campaign) {
-    return getMillionaireLaunchCampaignStatus();
+    return getCampaignStatus(definition);
   }
 
   try {
-    await upsertAudienceDeliveries();
-    await refreshCampaignCounts({ status: "sending" });
+    await upsertAudienceDeliveries(definition);
+    await refreshCampaignCounts(definition, { status: "sending" });
 
     while (true) {
       const deliveries = await AdminEmailDelivery.find({
-        campaignKey: CAMPAIGN_KEY,
+        campaignKey: definition.key,
         status: { $in: ["pending", "failed"] },
         attempts: { $lt: MAX_DELIVERY_ATTEMPTS },
         lastRunId: { $ne: runId },
@@ -346,37 +499,51 @@ const runMillionaireLaunchCampaign = async ({ adminUserId, io, onlineUsers } = {
       if (!deliveries.length) break;
 
       await runWithConcurrency(deliveries, DELIVERY_CONCURRENCY, (delivery) =>
-        sendDelivery({ delivery, runId, adminUserId, io, onlineUsers })
+        sendDelivery({
+          definition,
+          delivery,
+          runId,
+          adminUserId,
+          io,
+          onlineUsers,
+        })
       );
-      await refreshCampaignCounts({ status: "sending" });
+      await refreshCampaignCounts(definition, { status: "sending" });
     }
 
-    const latest = await refreshCampaignCounts();
-    const completed = Number(latest?.pendingCount || 0) === 0 && Number(latest?.failedCount || 0) === 0;
+    const latest = await refreshCampaignCounts(definition);
+    const completed =
+      Number(latest?.pendingCount || 0) === 0 &&
+      Number(latest?.failedCount || 0) === 0;
     const finalStatus = completed ? "completed" : "partial";
     const finalCampaign = await AdminEmailCampaign.findOneAndUpdate(
-      { campaignKey: CAMPAIGN_KEY },
+      { campaignKey: definition.key },
       {
         $set: {
           status: finalStatus,
           completedAt: new Date(),
           lastHeartbeatAt: new Date(),
-          lastError: completed ? "" : "Some recipients could not be reached. Retry the failed deliveries.",
+          lastError: completed
+            ? ""
+            : "Some recipients could not be reached. Retry the failed deliveries.",
         },
       },
       { returnDocument: "after" }
     );
-    return serializeCampaign(finalCampaign);
+    return serializeCampaign(finalCampaign, definition);
   } catch (error) {
-    const failedCampaign = await refreshCampaignCounts({
+    const failedCampaign = await refreshCampaignCounts(definition, {
       status: "failed",
       lastError: error?.message || "Campaign processing failed",
     });
-    return serializeCampaign(failedCampaign);
+    return serializeCampaign(failedCampaign, definition);
   }
 };
 
-const queueMillionaireLaunchCampaign = async ({ adminUserId, io, onlineUsers } = {}) => {
+const queueCampaign = async (
+  definition,
+  { adminUserId, io, onlineUsers } = {}
+) => {
   const settings = getEmailSettings();
   if (!settings.configured) {
     const error = new Error("Email service is not configured.");
@@ -386,20 +553,20 @@ const queueMillionaireLaunchCampaign = async ({ adminUserId, io, onlineUsers } =
   }
 
   const { flyerUrl } = getCampaignUrls();
-  let campaign = await AdminEmailCampaign.findOne({ campaignKey: CAMPAIGN_KEY });
+  let campaign = await AdminEmailCampaign.findOne({ campaignKey: definition.key });
   if (campaign?.status === "completed" || campaign?.status === "sending") {
     return {
       alreadyRunningOrSent: true,
-      campaign: serializeCampaign(campaign, { configured: true }),
+      campaign: serializeCampaign(campaign, definition, { configured: true }),
     };
   }
 
   if (!campaign) {
     try {
       campaign = await AdminEmailCampaign.create({
-        campaignKey: CAMPAIGN_KEY,
-        title: CAMPAIGN_TITLE,
-        subject: CAMPAIGN_SUBJECT,
+        campaignKey: definition.key,
+        title: definition.title,
+        subject: definition.subject,
         status: "queued",
         launchAt: LAUNCH_AT,
         flyerUrl,
@@ -407,7 +574,7 @@ const queueMillionaireLaunchCampaign = async ({ adminUserId, io, onlineUsers } =
       });
     } catch (error) {
       if (error?.code !== 11000) throw error;
-      campaign = await AdminEmailCampaign.findOne({ campaignKey: CAMPAIGN_KEY });
+      campaign = await AdminEmailCampaign.findOne({ campaignKey: definition.key });
     }
   } else {
     campaign.status = "queued";
@@ -417,23 +584,47 @@ const queueMillionaireLaunchCampaign = async ({ adminUserId, io, onlineUsers } =
   }
 
   setImmediate(() => {
-    runMillionaireLaunchCampaign({ adminUserId, io, onlineUsers }).catch((error) => {
-      console.error("Millionaire launch campaign failed:", error);
+    runCampaign(definition, { adminUserId, io, onlineUsers }).catch((error) => {
+      console.error(`${definition.title} campaign failed:`, error);
     });
   });
 
   return {
     alreadyRunningOrSent: false,
-    campaign: serializeCampaign(campaign, { configured: true }),
+    campaign: serializeCampaign(campaign, definition, { configured: true }),
   };
 };
+
+const getMillionaireLaunchCampaignStatus = () =>
+  getCampaignStatus(CAMPAIGN_DEFINITIONS.launch);
+
+const getMillionaireReminderCampaignStatus = () =>
+  getCampaignStatus(CAMPAIGN_DEFINITIONS.reminder);
+
+const runMillionaireLaunchCampaign = (options = {}) =>
+  runCampaign(CAMPAIGN_DEFINITIONS.launch, options);
+
+const runMillionaireReminderCampaign = (options = {}) =>
+  runCampaign(CAMPAIGN_DEFINITIONS.reminder, options);
+
+const queueMillionaireLaunchCampaign = (options = {}) =>
+  queueCampaign(CAMPAIGN_DEFINITIONS.launch, options);
+
+const queueMillionaireReminderCampaign = (options = {}) =>
+  queueCampaign(CAMPAIGN_DEFINITIONS.reminder, options);
 
 module.exports = {
   CAMPAIGN_KEY,
   CAMPAIGN_SUBJECT,
   LAUNCH_AT,
+  REMINDER_CAMPAIGN_KEY,
+  REMINDER_CAMPAIGN_SUBJECT,
   buildMillionaireLaunchEmail,
+  buildMillionaireReminderEmail,
   getMillionaireLaunchCampaignStatus,
+  getMillionaireReminderCampaignStatus,
   queueMillionaireLaunchCampaign,
+  queueMillionaireReminderCampaign,
   runMillionaireLaunchCampaign,
+  runMillionaireReminderCampaign,
 };

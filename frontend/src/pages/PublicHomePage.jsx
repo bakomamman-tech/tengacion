@@ -518,10 +518,10 @@ export default function PublicHomePage() {
         <div className="public-home__bootcamp-media public-home__millionaire-media">
           <span>New · Free virtual quiz</span>
           <b className="public-home__millionaire-cap">
-            ₦5,000 <small>app prize cap</small>
+            ₦1,000 <small>one random daily tier</small>
           </b>
           <img
-            src="/assets/campaigns/tengacion-millionaire-2026.png?v=20260725-prizes"
+            src="/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes"
             width="1024"
             height="1536"
             alt="Tengacion Millionaire quiz challenge flyer"
@@ -538,11 +538,13 @@ export default function PublicHomePage() {
           <p>
             Enter a 15-question knowledge challenge across three increasingly
             difficult stages. Questions span science, arts, technology, history,
-            language, society and more, with cash winnings from ₦100 to ₦5,000.
+            language, society and more. Standard winnings range from ₦100 to ₦400,
+            while one randomly selected eligible account can reach ₦1,000 each day.
           </p>
           <div className="public-home__bootcamp-tracks" aria-label="Millionaire game highlights">
             <span>3 stages</span>
             <span>5 questions each</span>
+            <span>20 seconds each</span>
             <span>One Ask AI lifeline</span>
             <span>Participation is free</span>
           </div>
@@ -555,8 +557,8 @@ export default function PublicHomePage() {
             </Link>
           </div>
           <small>
-            Complete profile information, a profile picture and a cover photo are
-            required · One play every six months · Maximum prize ₦5,000
+            Basic account information, a profile picture and a cover photo are
+            required · One play every six months · Daily random selection applies
           </small>
         </div>
       </section>

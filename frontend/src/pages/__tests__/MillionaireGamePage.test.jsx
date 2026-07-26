@@ -26,10 +26,11 @@ vi.mock("../../components/RightQuickNav", () => ({
 
 const activeGame = {
   campaign: {
-    prizeLadder: [100, 150, 200, 300, 500, 650, 800, 1000, 1250, 1500, 1800, 2200, 3000, 4000, 5000],
+    prizeLadder: [100, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350, 375, 390, 400],
   },
   registration: { registered: true },
   eligibility: { eligible: true, requirements: [] },
+  access: { publicOpen: true, qaMode: false, adminExcluded: false },
   cooldown: { active: false },
   attempt: {
     id: "attempt-1",
@@ -37,18 +38,21 @@ const activeGame = {
     currentPrize: 0,
     correctAnswers: 0,
     lifelineUsed: false,
+    prizeTier: "standard",
+    payoutEligible: true,
+    qaMode: false,
     currentQuestion: {
       id: "question-1",
       number: 1,
       totalQuestions: 15,
       stage: 1,
-      stageName: "The Spark",
-      difficulty: "Foundation",
+      stageName: "The Crucible",
+      difficulty: "Challenging",
       category: "Mathematics",
       prompt: "What is 15% of 200?",
       options: ["15", "20", "30", "35"],
-      timeLimitSeconds: 45,
-      secondsRemaining: 45,
+      timeLimitSeconds: 20,
+      secondsRemaining: 20,
     },
   },
 };
@@ -99,6 +103,45 @@ describe("MillionaireGamePage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Upload a profile picture")).toBeInTheDocument();
     expect(screen.getByText("Upload a cover photo")).toBeInTheDocument();
+    expect(screen.queryByText("What is 15% of 200?")).not.toBeInTheDocument();
+  });
+
+  it("shows payout-disabled unlimited mode for the named QA account", async () => {
+    vi.mocked(getMillionaireStatus).mockResolvedValue({
+      ...activeGame,
+      attempt: null,
+      canStart: true,
+      access: { publicOpen: false, qaMode: true, adminExcluded: false },
+    });
+
+    render(
+      <MemoryRouter>
+        <MillionaireGamePage user={{ _id: "qa-1", username: "pyrexx_singz" }} />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/unrestricted QA mode/i)).toBeInTheDocument();
+    expect(screen.getByText(/cannot receive a payout/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start unrestricted QA test/i })).toBeInTheDocument();
+  });
+
+  it("shows that administrators are excluded instead of rendering the game", async () => {
+    vi.mocked(getMillionaireStatus).mockResolvedValue({
+      ...activeGame,
+      registration: { registered: false },
+      attempt: null,
+      access: { publicOpen: true, qaMode: false, adminExcluded: true },
+    });
+
+    render(
+      <MemoryRouter>
+        <MillionaireGamePage user={{ _id: "admin-1", username: "admin" }} />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /admins monitor the game/i })
+    ).toBeInTheDocument();
     expect(screen.queryByText("What is 15% of 200?")).not.toBeInTheDocument();
   });
 });

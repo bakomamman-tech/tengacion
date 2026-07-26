@@ -26,7 +26,7 @@ const emptyLaunchCampaign = {
   failedCount: 0,
   pendingCount: 0,
   emailConfigured: true,
-  flyerUrl: "/assets/campaigns/tengacion-millionaire-2026.png?v=20260725-prizes",
+  flyerUrl: "/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes",
 };
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
@@ -218,7 +218,7 @@ export default function AdminMillionaireGame({ user }) {
   return (
     <AdminShell
       title="Tengacion Millionaire"
-      subtitle="Monitor registrations, profile readiness, six-month play windows, scores, prizes and verified payouts."
+      subtitle="Monitor basic-profile readiness, QA tests, daily random prize assignment, scores and verified payouts."
       user={user}
       actions={<button type="button" className="adminx-btn" onClick={load}>Refresh</button>}
     >
@@ -230,7 +230,46 @@ export default function AdminMillionaireGame({ user }) {
         <article className="adminx-stat-card"><div className="adminx-kpi-label">Games started</div><div className="adminx-kpi-value">{formatNumber(stats.playCount)}</div></article>
         <article className="adminx-stat-card"><div className="adminx-kpi-label">Prize liability</div><div className="adminx-kpi-value">{formatNaira(stats.pendingAmount)}</div></article>
         <article className="adminx-stat-card"><div className="adminx-kpi-label">Paid to winners</div><div className="adminx-kpi-value">{formatNaira(stats.paidAmount)}</div></article>
+        <article className="adminx-stat-card"><div className="adminx-kpi-label">QA test attempts</div><div className="adminx-kpi-value">{formatNumber(stats.qaTestAttempts)}</div></article>
+        <article className="adminx-stat-card"><div className="adminx-kpi-label">Daily premium attempts</div><div className="adminx-kpi-value">{formatNumber(stats.dailyPremiumAttempts)}</div></article>
       </div>
+
+      <section className="adminx-panel millionaire-prize-policy">
+        <div className="adminx-panel-head">
+          <div>
+            <h2 className="adminx-panel-title">Daily prize policy</h2>
+            <span className="adminx-section-meta">
+              One eligible non-admin, non-QA account is selected randomly per WAT calendar day
+            </span>
+          </div>
+          <span className="adminx-badge">20 seconds per question</span>
+        </div>
+        <div className="millionaire-prize-policy__grid">
+          <article>
+            <span>Standard ladder</span>
+            <strong>₦100–₦400</strong>
+            <small>All other eligible players stay below ₦500.</small>
+          </article>
+          <article>
+            <span>Daily premium ladder</span>
+            <strong>Up to ₦1,000</strong>
+            <small>Limited to one randomly assigned eligible account each day.</small>
+          </article>
+          <article>
+            <span>Today&apos;s selected account</span>
+            <strong>
+              {stats.dailyPrizeSlot?.selectedUser
+                ? `@${stats.dailyPrizeSlot.selectedUser.username || stats.dailyPrizeSlot.selectedUser.name}`
+                : "Not assigned yet"}
+            </strong>
+            <small>
+              {stats.dailyPrizeSlot?.selectedUser
+                ? `${stats.dailyPrizeSlot.selectedUser.email} · pool of ${formatNumber(stats.dailyPrizeSlot.selectionPoolSize)}`
+                : "The slot is locked when today’s first eligible game starts."}
+            </small>
+          </article>
+        </div>
+      </section>
 
       <section className="adminx-panel millionaire-launch-campaign">
         <div className="adminx-panel-head">
@@ -253,13 +292,13 @@ export default function AdminMillionaireGame({ user }) {
           <div className="millionaire-launch-campaign__copy">
             <p>
               <strong>Sunday, 26 July 2026 · 10:00 AM WAT</strong><br />
-              Lobby opens at 9:00 AM · Virtual game · Free participation
+              Virtual game · Free participation
             </p>
             <ul>
-              <li>15 questions across three stages, with one Ask AI hint.</li>
+              <li>15 difficult questions, 20 seconds each, with one Ask AI hint.</li>
               <li>One wrong answer or timeout ends the attempt and banks earned cash.</li>
-              <li>Cash prizes rise from ₦100 to a verified maximum of ₦5,000.</li>
-              <li>Existing complete profiles and photos are reused without re-entry.</li>
+              <li>Standard prizes are ₦100–₦400; one random daily tier reaches ₦1,000.</li>
+              <li>Existing basic information and both photos are reused without re-entry.</li>
             </ul>
             <div className="millionaire-launch-campaign__counts" aria-label="Email delivery counts">
               <span><strong>{formatNumber(launchCampaign.audienceCount)}</strong> audience</span>
@@ -395,7 +434,8 @@ export default function AdminMillionaireGame({ user }) {
                           {participant.profileComplete ? "Complete" : "Incomplete"}
                         </span>
                         <small className="millionaire-admin-subline">
-                          {participant.user?.country || "Country missing"} · {participant.user?.phone || "Phone missing"}
+                          Basic identity · {participant.user?.avatarUrl ? "profile photo" : "photo missing"} ·{" "}
+                          {participant.user?.coverUrl ? "cover photo" : "cover missing"}
                         </small>
                       </td>
                       <td>
@@ -409,6 +449,13 @@ export default function AdminMillionaireGame({ user }) {
                             <small className="millionaire-admin-subline">
                               {String(attempt.status || "").replace("_", " ")} · {formatDate(attempt.startedAt)}
                             </small>
+                            <span className={`adminx-badge tier-${attempt.prizeTier || "standard"}`}>
+                              {attempt.prizeTier === "daily_premium"
+                                ? "daily premium"
+                                : attempt.prizeTier === "qa"
+                                  ? "QA · no payout"
+                                  : "standard"}
+                            </span>
                           </>
                         ) : (
                           "Not played"
@@ -422,7 +469,7 @@ export default function AdminMillionaireGame({ user }) {
                       </td>
                       <td>
                         <div className="millionaire-admin-actions">
-                          {Number(attempt?.finalPrize || 0) > 0 ? (
+                          {attempt?.payoutEligible !== false && Number(attempt?.finalPrize || 0) > 0 ? (
                             <button type="button" disabled={saving} onClick={() => openPayout(participant)}>
                               Process prize
                             </button>

@@ -50,10 +50,11 @@ describe("MillionaireRegisterPage", () => {
       screen.getByRole("img", { name: "Tengacion Millionaire quiz challenge flyer" })
     ).toHaveAttribute(
       "src",
-      "/assets/campaigns/tengacion-millionaire-2026.png?v=20260725-prizes"
+      "/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes"
     );
     expect(screen.getByText(/3 stages/i)).toBeInTheDocument();
     expect(screen.getByText(/5 questions each/i)).toBeInTheDocument();
+    expect(screen.getByText(/₦100–₦400 standard/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Tengacion username/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Profile picture/i)).toHaveAttribute("type", "file");
     expect(screen.getByLabelText(/Cover photo/i)).toHaveAttribute("type", "file");

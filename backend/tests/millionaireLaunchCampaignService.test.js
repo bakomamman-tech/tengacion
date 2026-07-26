@@ -12,22 +12,24 @@ describe("Millionaire launch campaign email", () => {
     const email = buildMillionaireLaunchEmail({
       name: "Ada Lovelace",
       flyerUrl:
-        "https://tengacion.com/assets/campaigns/tengacion-millionaire-2026.png?v=20260725-prizes",
+        "https://tengacion.com/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes",
       registrationUrl: "https://tengacion.com/millionaire/register",
     });
 
     expect(CAMPAIGN_KEY).toBe("millionaire-launch-2026-07-26");
-    expect(CAMPAIGN_SUBJECT).toContain("starts tomorrow");
+    expect(CAMPAIGN_SUBJECT).toContain("starts today");
     expect(email.html).toContain(
-      'src="https://tengacion.com/assets/campaigns/tengacion-millionaire-2026.png?v=20260725-prizes"'
+      'src="https://tengacion.com/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes"'
     );
     expect(email.html).toContain("Sunday, 26 July 2026");
     expect(email.html).toContain("15 multiple-choice questions");
     expect(email.html).toContain("one Ask AI hint");
     expect(email.html).toContain("₦100");
-    expect(email.html).toContain("₦5,000");
+    expect(email.html).toContain("₦400");
+    expect(email.html).toContain("₦1,000");
+    expect(email.html).toContain("20-second");
     expect(email.html).toContain("https://tengacion.com/millionaire/register");
-    expect(email.html).toContain("will not be asked to enter that information again");
+    expect(email.html).toContain("will not be asked to enter more profile details");
     expect(email.text).toContain("Flyer:");
   });
 

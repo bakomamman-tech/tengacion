@@ -22,7 +22,7 @@ import {
 import "./millionaire-register.css";
 
 const FLYER_PATH =
-  "/assets/campaigns/tengacion-millionaire-2026.png?v=20260725-prizes";
+  "/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes";
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 const formatDate = (value) => {
@@ -141,7 +141,10 @@ function RegisteredAccountPanel({ game, user, loading, onRegister, registering }
             checked={prizeTermsAccepted}
             onChange={(event) => setPrizeTermsAccepted(event.target.checked)}
           />
-          <span>I accept prize verification and the maximum ₦5,000 award.</span>
+          <span>
+            I accept prize verification: standard prizes stay below ₦500 and one
+            randomly selected eligible account may win up to ₦1,000 per day.
+          </span>
         </label>
         <button
           type="button"
@@ -162,8 +165,8 @@ function RegisteredAccountPanel({ game, user, loading, onRegister, registering }
       <h2>{eligible ? "Your seat is ready." : "One final setup before you play."}</h2>
       <p>
         {eligible
-          ? "Your account, profile information, profile picture and cover photo are complete."
-          : "Every player must have complete profile information plus a profile picture and cover photo."}
+          ? "Your basic account information, profile picture and cover photo are ready."
+          : "Every player only needs basic account information plus a profile picture and cover photo."}
       </p>
       <RegistrationRequirements game={game} username={user?.username} />
       <div className="millionaire-account-actions">
@@ -380,7 +383,7 @@ export default function MillionaireRegisterPage() {
     <div className="millionaire-reg-page">
       <SeoHead
         title="Tengacion Millionaire Registration | Quiz Challenge"
-        description="Register for Tengacion Millionaire, a three-stage general knowledge challenge with 15 questions and prizes from ₦100 to ₦5,000."
+        description="Register for Tengacion Millionaire, a difficult 15-question challenge with standard prizes below ₦500 and one daily prize tier worth up to ₦1,000."
         canonical="/millionaire/register"
         ogImage={FLYER_PATH}
         ogImageAlt="Tengacion Millionaire quiz challenge flyer"
@@ -404,7 +407,8 @@ export default function MillionaireRegisterPage() {
             <div className="millionaire-reg-badges">
               <span>3 stages</span>
               <span>5 questions each</span>
-              <span>₦100–₦5,000</span>
+              <span>20 seconds each</span>
+              <span>₦100–₦400 standard</span>
               <span>One Ask AI lifeline</span>
             </div>
             <a href="#millionaire-registration">Claim your seat <span aria-hidden="true">↓</span></a>
@@ -412,7 +416,7 @@ export default function MillionaireRegisterPage() {
           <figure className="millionaire-reg-flyer">
             <span>2026 app edition</span>
             <b className="millionaire-reg-flyer__cap">
-              ₦5,000 <small>maximum prize</small>
+              ₦1,000 <small>one random daily tier</small>
             </b>
             <img
               src={FLYER_PATH}
@@ -424,9 +428,9 @@ export default function MillionaireRegisterPage() {
         </section>
 
         <section className="millionaire-stage-strip" aria-label="Game stages">
-          <article><span>01</span><strong>The Spark</strong><small>Foundation · 45 seconds</small></article>
-          <article><span>02</span><strong>The Climb</strong><small>Advanced · 35 seconds</small></article>
-          <article><span>03</span><strong>The Summit</strong><small>Master · 30 seconds</small></article>
+          <article><span>01</span><strong>The Crucible</strong><small>Challenging · 20 seconds</small></article>
+          <article><span>02</span><strong>The Gauntlet</strong><small>Expert · 20 seconds</small></article>
+          <article><span>03</span><strong>The Apex</strong><small>Elite · 20 seconds</small></article>
         </section>
 
         <section id="millionaire-registration" className="millionaire-reg-workspace">
@@ -434,8 +438,8 @@ export default function MillionaireRegisterPage() {
             <p className="millionaire-kicker">Participation is free</p>
             <h2>{user ? "Use your existing account." : "Create your game identity."}</h2>
             <p>
-              A complete Tengacion profile, profile picture and cover photo are
-              mandatory. Every account can play once in a six-month period.
+              Basic Tengacion account information, a profile picture and a cover
+              photo are required. Every eligible account can play once in a six-month period.
             </p>
           </div>
 
@@ -509,7 +513,10 @@ export default function MillionaireRegisterPage() {
                 </label>
                 <label className="millionaire-check">
                   <input type="checkbox" checked={form.prizeTermsAccepted} onChange={(event) => setValue("prizeTermsAccepted", event.target.checked)} />
-                  <span>I accept winner verification, Tengacion&apos;s rules and the maximum cash award of ₦5,000.</span>
+                  <span>
+                    I accept winner verification, standard prizes below ₦500 and
+                    the randomly assigned daily prize tier worth up to ₦1,000.
+                  </span>
                 </label>
                 <p className="millionaire-legal">By registering, you also accept Tengacion&apos;s <Link to="/terms">Terms</Link>, <Link to="/privacy">Privacy Policy</Link> and <Link to="/community-guidelines">Community Guidelines</Link>.</p>
               </fieldset>

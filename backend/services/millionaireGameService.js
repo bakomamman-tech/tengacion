@@ -1,10 +1,12 @@
 const mongoose = require("mongoose");
 
 const MillionaireAttempt = require("../models/MillionaireAttempt");
+const MillionaireDailyPrizeSlot = require("../models/MillionaireDailyPrizeSlot");
 const MillionaireParticipant = require("../models/MillionaireParticipant");
 const User = require("../models/User");
 const {
-  PRIZE_LADDER,
+  DAILY_PREMIUM_PRIZE_LADDER,
+  STANDARD_PRIZE_LADDER,
   STAGES,
   getQuestionById,
   getStageByNumber,
@@ -21,6 +23,23 @@ const CAMPAIGN_SLUG = "tengacion-millionaire-2026";
 const QUESTIONS_PER_STAGE = 5;
 const TOTAL_QUESTIONS = 15;
 const ANSWER_GRACE_MS = 3_000;
+const PUBLIC_LAUNCH_AT = new Date("2026-07-26T09:00:00.000Z");
+const STANDARD_MAXIMUM_PRIZE = 400;
+const DAILY_PREMIUM_MAXIMUM_PRIZE = 1_000;
+const EXCLUDED_GAME_ROLES = new Set([
+  "admin",
+  "super_admin",
+  "moderator",
+  "trust_safety_admin",
+]);
+const QA_EMAILS = new Set(
+  [
+    "tmintldo4_life@yahoo.com",
+    ...String(process.env.MILLIONAIRE_QA_EMAILS || "").split(","),
+  ]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean)
+);
 const REGISTRATION_SOURCES = new Set([
   "landing_page",
   "right_sidebar",
@@ -71,15 +90,23 @@ const isActiveAccount = (user = {}) =>
   user.isBanned !== true &&
   user.isSuspended !== true;
 
+const isQaAccount = (user = {}) =>
+  isActiveAccount(user) && QA_EMAILS.has(String(user?.email || "").trim().toLowerCase());
+
+const isGameAdmin = (user = {}) =>
+  EXCLUDED_GAME_ROLES.has(String(user?.role || "").trim().toLowerCase());
+
+const getWatDateKey = (value = new Date()) =>
+  new Date(new Date(value).getTime() + 60 * 60 * 1000).toISOString().slice(0, 10);
+
+const isPublicLaunchOpen = (now = new Date()) =>
+  new Date(now).getTime() >= PUBLIC_LAUNCH_AT.getTime();
+
 const buildProfileEligibility = (user = {}, participant = null) => {
   const details = {
     name: Boolean(String(user?.name || "").trim()),
     username: Boolean(String(user?.username || "").trim()),
     email: Boolean(String(user?.email || "").trim()),
-    phone: Boolean(sanitizePhoneValue(user?.phone)),
-    country: Boolean(sanitizeCountryValue(user?.country)),
-    dateOfBirth: Boolean(toDate(user?.dob)),
-    gender: Boolean(String(user?.gender || "").trim()),
   };
   const profileDetailsComplete = Object.values(details).every(Boolean);
   const profilePhotoComplete = Boolean(mediaToUrl(user?.avatar));
@@ -96,7 +123,7 @@ const buildProfileEligibility = (user = {}, participant = null) => {
     },
     {
       id: "profile",
-      label: "Complete your profile information",
+      label: "Basic profile information",
       complete: profileDetailsComplete,
       path: user?.username ? `/profile/${user.username}` : "/home",
       missingFields: Object.entries(details)
@@ -145,13 +172,69 @@ const buildProfileEligibility = (user = {}, participant = null) => {
 const getUserForGame = async (userId) => {
   const user = await User.findById(userId)
     .select(
-      "_id name username email phone country stateOfOrigin dob gender avatar cover onboarding isActive isDeleted isBanned isSuspended"
+      "_id name username email phone country stateOfOrigin dob gender avatar cover onboarding role isActive isDeleted isBanned isSuspended"
     )
     .lean();
   if (!user) {
     throw new MillionaireGameError("User not found.", 404, "user_not_found");
   }
   return user;
+};
+
+const getOrCreateDailyPrizeSlot = async ({ now = new Date(), random = Math.random } = {}) => {
+  const dateKey = getWatDateKey(now);
+  const existing = await MillionaireDailyPrizeSlot.findOne({ dateKey });
+  if (existing) return existing;
+
+  const registered = await MillionaireParticipant.find({ status: "registered" })
+    .select("_id userId")
+    .lean();
+  if (!registered.length) return null;
+
+  const participantByUser = new Map(
+    registered.map((entry) => [toId(entry.userId), entry])
+  );
+  const users = await User.find({
+    _id: { $in: registered.map((entry) => entry.userId) },
+    isActive: { $ne: false },
+    isDeleted: { $ne: true },
+    isBanned: { $ne: true },
+    isSuspended: { $ne: true },
+    role: { $nin: [...EXCLUDED_GAME_ROLES] },
+  })
+    .select("_id name username email avatar cover role isActive isDeleted isBanned isSuspended")
+    .lean();
+  const candidates = users.filter((user) => {
+    if (isQaAccount(user)) return false;
+    const participant = participantByUser.get(toId(user._id));
+    return buildProfileEligibility(user, { ...participant, status: "registered" }).eligible;
+  });
+  if (!candidates.length) return null;
+
+  const randomValue = Math.max(0, Math.min(0.999999999, Number(random()) || 0));
+  const selectedUser = candidates[Math.floor(randomValue * candidates.length)];
+  const selectedParticipant = participantByUser.get(toId(selectedUser._id));
+  try {
+    return await MillionaireDailyPrizeSlot.create({
+      dateKey,
+      selectedUserId: selectedUser._id,
+      selectedParticipantId: selectedParticipant._id,
+      selectionPoolSize: candidates.length,
+      maximumPrize: DAILY_PREMIUM_MAXIMUM_PRIZE,
+      selectedAt: now,
+    });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return MillionaireDailyPrizeSlot.findOne({ dateKey });
+    }
+    throw error;
+  }
+};
+
+const getPrizeLadderForTier = (prizeTier = "standard") => {
+  if (prizeTier === "daily_premium") return DAILY_PREMIUM_PRIZE_LADDER;
+  if (prizeTier === "qa") return Object.freeze(Array(TOTAL_QUESTIONS).fill(0));
+  return STANDARD_PRIZE_LADDER;
 };
 
 const getQuestionTimeLimit = (question) =>
@@ -245,6 +328,10 @@ const serializeAttempt = (attempt, now = new Date()) => {
     correctAnswers: Number(attempt.correctAnswers || 0),
     currentPrize: Number(attempt.currentPrize || 0),
     finalPrize: Number(attempt.finalPrize || 0),
+    prizeTier: attempt.prizeTier || "standard",
+    dailyPrizeDateKey: attempt.dailyPrizeDateKey || "",
+    payoutEligible: attempt.payoutEligible !== false,
+    qaMode: attempt.prizeTier === "qa",
     lifelineUsed: Boolean(attempt.lifelineUsed),
     startedAt: attempt.startedAt,
     completedAt: attempt.completedAt,
@@ -265,6 +352,7 @@ const settleExpiredAttempt = async (attempt, now = new Date()) => {
     return attempt;
   }
   const finalPrize = Number(attempt.currentPrize || 0);
+  const payoutEligible = attempt.payoutEligible !== false && attempt.prizeTier !== "qa";
   const updated = await MillionaireAttempt.findOneAndUpdate(
     {
       _id: attempt._id,
@@ -281,7 +369,7 @@ const settleExpiredAttempt = async (attempt, now = new Date()) => {
         outcomeReason: "time_expired",
         finalPrize,
         completedAt: now,
-        payoutStatus: finalPrize > 0 ? "pending" : "not_applicable",
+        payoutStatus: payoutEligible && finalPrize > 0 ? "pending" : "not_applicable",
       },
     },
     { returnDocument: "after" }
@@ -304,11 +392,33 @@ const getMillionaireStatus = async (userId, { now = new Date() } = {}) => {
   let attempt = await getLatestAttempt(participant);
   attempt = await settleExpiredAttempt(attempt, now);
 
-  const eligibility = buildProfileEligibility(user, participant);
+  const qaMode = isQaAccount(user);
+  const adminExcluded = isGameAdmin(user);
+  const publicOpen = isPublicLaunchOpen(now);
+  const baseEligibility = buildProfileEligibility(user, participant);
+  const eligibility = qaMode
+    ? {
+        ...baseEligibility,
+        eligible: baseEligibility.registered && baseEligibility.activeAccount,
+        profileDetailsComplete: true,
+        profilePhotoComplete: true,
+        coverPhotoComplete: true,
+        requirements: baseEligibility.requirements.map((requirement) =>
+          requirement.id === "registration"
+            ? requirement
+            : { ...requirement, complete: true, bypassedForQa: true, missingFields: [] }
+        ),
+        missingFields: baseEligibility.registered ? [] : ["registration"],
+      }
+    : baseEligibility;
   const nextEligibleAt = toDate(participant?.nextEligibleAt || attempt?.nextEligibleAt);
   const activeAttempt = attempt?.status === "in_progress";
   const cooldownActive =
-    Boolean(nextEligibleAt && nextEligibleAt.getTime() > now.getTime()) && !activeAttempt;
+    !qaMode &&
+    Boolean(nextEligibleAt && nextEligibleAt.getTime() > now.getTime()) &&
+    !activeAttempt;
+  const prizeTier = attempt?.prizeTier || "standard";
+  const prizeLadder = getPrizeLadderForTier(prizeTier);
   const registration = participant
     ? {
         registered: true,
@@ -332,14 +442,41 @@ const getMillionaireStatus = async (userId, { now = new Date() } = {}) => {
       stages: STAGES,
       questionsPerStage: QUESTIONS_PER_STAGE,
       totalQuestions: TOTAL_QUESTIONS,
-      prizeLadder: PRIZE_LADDER,
-      minimumPrize: PRIZE_LADDER[0],
-      maximumPrize: PRIZE_LADDER[PRIZE_LADDER.length - 1],
+      prizeLadder,
+      standardPrizeLadder: STANDARD_PRIZE_LADDER,
+      dailyPremiumPrizeLadder: DAILY_PREMIUM_PRIZE_LADDER,
+      minimumPrize: STANDARD_PRIZE_LADDER[0],
+      maximumPrize: DAILY_PREMIUM_MAXIMUM_PRIZE,
+      standardMaximumPrize: STANDARD_MAXIMUM_PRIZE,
+      dailyPremiumMaximumPrize: DAILY_PREMIUM_MAXIMUM_PRIZE,
+      dailyPremiumSlots: 1,
       replayWindowMonths: 6,
       lifelines: 1,
+      questionTimeLimitSeconds: 20,
     },
     registration,
     eligibility,
+    access: {
+      qaMode,
+      adminExcluded,
+      publicOpen,
+      launchAt: PUBLIC_LAUNCH_AT,
+      message: adminExcluded
+        ? "Admin accounts cannot participate in Tengacion Millionaire."
+        : qaMode
+          ? "QA mode is active. Test attempts are unlimited and never qualify for payout."
+          : publicOpen
+            ? "Tengacion Millionaire is open."
+            : "Tengacion Millionaire opens to all eligible users at 10:00 AM WAT.",
+    },
+    prizePolicy: {
+      dateKey: getWatDateKey(now),
+      standardMaximumPrize: STANDARD_MAXIMUM_PRIZE,
+      dailyPremiumMaximumPrize: DAILY_PREMIUM_MAXIMUM_PRIZE,
+      dailyPremiumSlots: 1,
+      selection: "One eligible registered account is selected randomly each day.",
+      qaPayoutsDisabled: true,
+    },
     cooldown: {
       active: cooldownActive,
       nextEligibleAt,
@@ -349,10 +486,12 @@ const getMillionaireStatus = async (userId, { now = new Date() } = {}) => {
     },
     attempt: serializeAttempt(attempt, now),
     canStart:
+      !adminExcluded &&
+      (publicOpen || qaMode) &&
       eligibility.eligible &&
       !cooldownActive &&
       (!attempt || attempt.status !== "in_progress"),
-    canResume: Boolean(activeAttempt),
+    canResume: Boolean(activeAttempt && !adminExcluded),
   };
 };
 
@@ -363,6 +502,13 @@ const registerMillionaireParticipant = async ({
   source,
 } = {}) => {
   const user = await getUserForGame(userId);
+  if (isGameAdmin(user)) {
+    throw new MillionaireGameError(
+      "Admin accounts are excluded from Tengacion Millionaire.",
+      403,
+      "admin_excluded"
+    );
+  }
   const existing = await MillionaireParticipant.findOne({ userId });
   if (existing) {
     return {
@@ -441,6 +587,22 @@ const buildAttemptQuestions = (questionIds, now) =>
 
 const startMillionaireAttempt = async (userId, { now = new Date(), random = Math.random } = {}) => {
   const user = await getUserForGame(userId);
+  const qaMode = isQaAccount(user);
+  if (isGameAdmin(user)) {
+    throw new MillionaireGameError(
+      "Admin accounts are excluded from Tengacion Millionaire.",
+      403,
+      "admin_excluded"
+    );
+  }
+  if (!qaMode && !isPublicLaunchOpen(now)) {
+    throw new MillionaireGameError(
+      "Tengacion Millionaire opens to all eligible users at 10:00 AM WAT.",
+      403,
+      "game_not_open",
+      { launchAt: PUBLIC_LAUNCH_AT }
+    );
+  }
   let participant = await MillionaireParticipant.findOne({ userId });
   if (!participant) {
     throw new MillionaireGameError(
@@ -459,9 +621,9 @@ const startMillionaireAttempt = async (userId, { now = new Date(), random = Math
   }
 
   const eligibility = buildProfileEligibility(user, participant);
-  if (!eligibility.eligible) {
+  if (!qaMode && !eligibility.eligible) {
     throw new MillionaireGameError(
-      "Complete your profile information, profile picture and cover photo before playing.",
+      "Add basic profile information, a profile picture and a cover photo before playing.",
       403,
       "profile_incomplete",
       { eligibility }
@@ -469,7 +631,7 @@ const startMillionaireAttempt = async (userId, { now = new Date(), random = Math
   }
 
   const nextEligibleAt = toDate(participant.nextEligibleAt);
-  if (nextEligibleAt && nextEligibleAt.getTime() > now.getTime()) {
+  if (!qaMode && nextEligibleAt && nextEligibleAt.getTime() > now.getTime()) {
     throw new MillionaireGameError(
       "You can play Tengacion Millionaire only once every six months.",
       409,
@@ -481,17 +643,26 @@ const startMillionaireAttempt = async (userId, { now = new Date(), random = Math
   const attemptId = new mongoose.Types.ObjectId();
   const previousNextEligibleAt = participant.nextEligibleAt || null;
   const previousLastAttemptId = participant.lastAttemptId || null;
-  const nextWindow = addSixMonths(now);
+  const nextWindow = qaMode ? now : addSixMonths(now);
+  const dailySlot = qaMode ? null : await getOrCreateDailyPrizeSlot({ now, random });
+  const prizeTier = qaMode
+    ? "qa"
+    : toId(dailySlot?.selectedUserId) === toId(userId)
+      ? "daily_premium"
+      : "standard";
+  const participantQuery = qaMode
+    ? { _id: participant._id, status: "registered" }
+    : {
+        _id: participant._id,
+        status: "registered",
+        $or: [
+          { nextEligibleAt: null },
+          { nextEligibleAt: { $exists: false } },
+          { nextEligibleAt: { $lte: now } },
+        ],
+      };
   participant = await MillionaireParticipant.findOneAndUpdate(
-    {
-      _id: participant._id,
-      status: "registered",
-      $or: [
-        { nextEligibleAt: null },
-        { nextEligibleAt: { $exists: false } },
-        { nextEligibleAt: { $lte: now } },
-      ],
-    },
+    participantQuery,
     {
       $set: {
         nextEligibleAt: nextWindow,
@@ -524,6 +695,9 @@ const startMillionaireAttempt = async (userId, { now = new Date(), random = Math
       correctAnswers: 0,
       currentPrize: 0,
       finalPrize: 0,
+      prizeTier,
+      dailyPrizeDateKey: getWatDateKey(now),
+      payoutEligible: !qaMode,
       lifelineUsed: false,
       startedAt: now,
       nextEligibleAt: nextWindow,
@@ -594,9 +768,13 @@ const answerMillionaireQuestion = async ({
     [`questions.${index}.timedOut`]: timedOut,
   };
   let prizeUnlocked = Number(attempt.currentPrize || 0);
+  const prizeLadder = getPrizeLadderForTier(attempt.prizeTier);
+  const payoutEligible = attempt.payoutEligible !== false && attempt.prizeTier !== "qa";
 
   if (correct) {
-    prizeUnlocked = Number(PRIZE_LADDER[index] || PRIZE_LADDER[PRIZE_LADDER.length - 1]);
+    prizeUnlocked = Number(
+      prizeLadder[index] || prizeLadder[prizeLadder.length - 1] || 0
+    );
     update.correctAnswers = Number(attempt.correctAnswers || 0) + 1;
     update.currentPrize = prizeUnlocked;
     if (index >= TOTAL_QUESTIONS - 1) {
@@ -604,7 +782,8 @@ const answerMillionaireQuestion = async ({
       update.outcomeReason = "all_questions_correct";
       update.finalPrize = prizeUnlocked;
       update.completedAt = now;
-      update.payoutStatus = "pending";
+      update.payoutStatus =
+        payoutEligible && prizeUnlocked > 0 ? "pending" : "not_applicable";
     } else {
       update.currentQuestionIndex = index + 1;
       update[`questions.${index + 1}.presentedAt`] = now;
@@ -615,7 +794,8 @@ const answerMillionaireQuestion = async ({
     update.outcomeReason = timedOut ? "time_expired" : "wrong_answer";
     update.finalPrize = finalPrize;
     update.completedAt = now;
-    update.payoutStatus = finalPrize > 0 ? "pending" : "not_applicable";
+    update.payoutStatus =
+      payoutEligible && finalPrize > 0 ? "pending" : "not_applicable";
   }
 
   const updated = await MillionaireAttempt.findOneAndUpdate(
@@ -719,10 +899,22 @@ const askMillionaireAi = async ({ userId, questionId, now = new Date() } = {}) =
 
 const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const buildAdminStats = async () => {
-  const [registrations, playCount, inProgress, completed, totals] = await Promise.all([
+const buildAdminStats = async ({ now = new Date() } = {}) => {
+  const dateKey = getWatDateKey(now);
+  const [
+    registrations,
+    playCount,
+    qaTestAttempts,
+    dailyPremiumAttempts,
+    inProgress,
+    completed,
+    totals,
+    dailyPrizeSlot,
+  ] = await Promise.all([
     MillionaireParticipant.countDocuments({}),
-    MillionaireAttempt.countDocuments({}),
+    MillionaireAttempt.countDocuments({ prizeTier: { $ne: "qa" } }),
+    MillionaireAttempt.countDocuments({ prizeTier: "qa" }),
+    MillionaireAttempt.countDocuments({ prizeTier: "daily_premium", dailyPrizeDateKey: dateKey }),
     MillionaireAttempt.countDocuments({ status: "in_progress" }),
     MillionaireAttempt.countDocuments({ status: { $in: ["completed", "lost", "expired"] } }),
     MillionaireAttempt.aggregate([
@@ -746,17 +938,43 @@ const buildAdminStats = async () => {
         },
       },
     ]),
+    MillionaireDailyPrizeSlot.findOne({ dateKey })
+      .populate("selectedUserId", "name username email")
+      .lean(),
   ]);
   const money = totals[0] || {};
   return {
     registrations,
     playCount,
+    qaTestAttempts,
+    dailyPremiumAttempts,
     inProgress,
     completed,
     totalAwarded: Number(money.totalAwarded || 0),
     pendingAmount: Number(money.pendingAmount || 0),
     paidAmount: Number(money.paidAmount || 0),
     pendingCount: Number(money.pendingCount || 0),
+    prizePolicy: {
+      dateKey,
+      standardMaximumPrize: STANDARD_MAXIMUM_PRIZE,
+      dailyPremiumMaximumPrize: DAILY_PREMIUM_MAXIMUM_PRIZE,
+      dailyPremiumSlots: 1,
+    },
+    dailyPrizeSlot: dailyPrizeSlot
+      ? {
+          dateKey: dailyPrizeSlot.dateKey,
+          selectionPoolSize: Number(dailyPrizeSlot.selectionPoolSize || 0),
+          selectedAt: dailyPrizeSlot.selectedAt,
+          selectedUser: dailyPrizeSlot.selectedUserId
+            ? {
+                id: toId(dailyPrizeSlot.selectedUserId._id),
+                name: dailyPrizeSlot.selectedUserId.name || "",
+                username: dailyPrizeSlot.selectedUserId.username || "",
+                email: dailyPrizeSlot.selectedUserId.email || "",
+              }
+            : null,
+        }
+      : null,
   };
 };
 
@@ -856,6 +1074,9 @@ const listMillionaireParticipantsForAdmin = async ({
               status: latestAttempt.status,
               correctAnswers: Number(latestAttempt.correctAnswers || 0),
               finalPrize: Number(latestAttempt.finalPrize || 0),
+              prizeTier: latestAttempt.prizeTier || "standard",
+              payoutEligible: latestAttempt.payoutEligible !== false,
+              dailyPrizeDateKey: latestAttempt.dailyPrizeDateKey || "",
               payoutStatus: latestAttempt.payoutStatus,
               payoutReference: latestAttempt.payoutReference || "",
               startedAt: latestAttempt.startedAt,
@@ -888,7 +1109,12 @@ const updateMillionairePayout = async ({
   if (!attempt) {
     throw new MillionaireGameError("Game attempt not found.", 404, "attempt_not_found");
   }
-  if (attempt.status === "in_progress" || Number(attempt.finalPrize || 0) <= 0) {
+  if (
+    attempt.status === "in_progress" ||
+    Number(attempt.finalPrize || 0) <= 0 ||
+    attempt.payoutEligible === false ||
+    attempt.prizeTier === "qa"
+  ) {
     throw new MillionaireGameError(
       "Only completed attempts with a cash prize can be processed.",
       409,
@@ -941,12 +1167,17 @@ const updateMillionaireParticipantStatus = async ({
 
 module.exports = {
   CAMPAIGN_SLUG,
+  PUBLIC_LAUNCH_AT,
   MillionaireGameError,
   addSixMonths,
   answerMillionaireQuestion,
   askMillionaireAi,
   buildProfileEligibility,
+  getOrCreateDailyPrizeSlot,
+  getPrizeLadderForTier,
   getMillionaireStatus,
+  getWatDateKey,
+  isQaAccount,
   listMillionaireParticipantsForAdmin,
   registerMillionaireParticipant,
   startMillionaireAttempt,

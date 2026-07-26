@@ -12,10 +12,17 @@ process.env.JWT_SECRET =
 const app = require("../app");
 const { getQuestionById } = require("../data/millionaireQuestionBank");
 const MillionaireAttempt = require("../models/MillionaireAttempt");
+const MillionaireDailyPrizeSlot = require("../models/MillionaireDailyPrizeSlot");
 const MillionaireParticipant = require("../models/MillionaireParticipant");
 const User = require("../models/User");
+const {
+  answerMillionaireQuestion,
+  getMillionaireStatus,
+  startMillionaireAttempt,
+} = require("../services/millionaireGameService");
 
 let mongod;
+const LIVE_NOW = new Date("2026-07-26T10:15:00.000Z");
 
 const issueSessionToken = async (userId) => {
   const sessionId = new mongoose.Types.ObjectId().toString();
@@ -43,6 +50,7 @@ const createUser = async ({
   email = "millionaire@example.com",
   username = "millionaire",
   completeProfile = false,
+  profilePhotos = false,
 } = {}) =>
   User.create({
     name: "Millionaire Player",
@@ -52,13 +60,17 @@ const createUser = async ({
     role,
     isVerified: true,
     emailVerified: true,
-    ...(completeProfile
+    ...(completeProfile || profilePhotos
       ? {
-          phone: "+2348012345678",
-          country: "Nigeria",
-          stateOfOrigin: "Kaduna",
-          dob: new Date("1994-06-18"),
-          gender: "female",
+          ...(completeProfile
+            ? {
+                phone: "+2348012345678",
+                country: "Nigeria",
+                stateOfOrigin: "Kaduna",
+                dob: new Date("1994-06-18"),
+                gender: "female",
+              }
+            : {}),
           avatar: {
             url: "https://res.cloudinary.com/demo/image/upload/player-avatar.jpg",
             secureUrl: "https://res.cloudinary.com/demo/image/upload/player-avatar.jpg",
@@ -107,7 +119,7 @@ describe("Tengacion Millionaire game", () => {
     }
   });
 
-  test("registers an account for the game but blocks play until profile details and both photos are complete", async () => {
+  test("accepts basic account information but blocks play until both profile photos exist", async () => {
     const user = await createUser();
     const token = await issueSessionToken(user._id);
 
@@ -116,18 +128,15 @@ describe("Tengacion Millionaire game", () => {
     expect(registration.body.game.eligibility.eligible).toBe(false);
     expect(registration.body.game.eligibility.requirements).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: "profile", complete: false }),
+        expect.objectContaining({ id: "profile", complete: true }),
         expect.objectContaining({ id: "avatar", complete: false }),
         expect.objectContaining({ id: "cover", complete: false }),
       ])
     );
 
-    const start = await request(app)
-      .post("/api/millionaire/start")
-      .set("Authorization", `Bearer ${token}`)
-      .send({})
-      .expect(403);
-    expect(start.body.code).toBe("profile_incomplete");
+    await expect(
+      startMillionaireAttempt(user._id, { now: LIVE_NOW, random: () => 0 })
+    ).rejects.toMatchObject({ code: "profile_incomplete", status: 403 });
     expect(await MillionaireAttempt.countDocuments({})).toBe(0);
   });
 
@@ -136,16 +145,18 @@ describe("Tengacion Millionaire game", () => {
     const token = await issueSessionToken(user._id);
     await registerPlayer(token).expect(201);
 
-    const started = await request(app)
-      .post("/api/millionaire/start")
-      .set("Authorization", `Bearer ${token}`)
-      .send({})
-      .expect(201);
+    const started = {
+      body: await startMillionaireAttempt(user._id, {
+        now: LIVE_NOW,
+        random: () => 0,
+      }),
+    };
     expect(started.body.attempt.status).toBe("in_progress");
     expect(started.body.attempt.currentQuestion).toMatchObject({
       number: 1,
       stage: 1,
-      difficulty: "Foundation",
+      difficulty: "Challenging",
+      timeLimitSeconds: 20,
     });
     expect(started.body.attempt.currentQuestion).not.toHaveProperty("correctIndex");
 
@@ -158,14 +169,19 @@ describe("Tengacion Millionaire game", () => {
     expect(advice.body.advice.suggestedIndex).not.toBe(question.correctIndex);
     expect(advice.body.game.attempt.lifelineUsed).toBe(true);
 
-    const answer = await request(app)
-      .post("/api/millionaire/answer")
-      .set("Authorization", `Bearer ${token}`)
-      .send({ questionId: question.id, selectedIndex: question.correctIndex })
-      .expect(200);
+    const answer = {
+      body: await answerMillionaireQuestion({
+        userId: user._id,
+        questionId: question.id,
+        selectedIndex: question.correctIndex,
+        now: new Date(LIVE_NOW.getTime() + 5000),
+      }),
+    };
     expect(answer.body.answerResult.correct).toBe(true);
     expect(answer.body.answerResult.prizeUnlocked).toBe(100);
     expect(answer.body.game.attempt.currentQuestion.number).toBe(2);
+    expect(answer.body.game.attempt.currentQuestion.timeLimitSeconds).toBe(20);
+    expect(answer.body.game.attempt.currentQuestion.secondsRemaining).toBe(20);
 
     const secondAdvice = await request(app)
       .post("/api/millionaire/ask-ai")
@@ -175,14 +191,12 @@ describe("Tengacion Millionaire game", () => {
     expect(secondAdvice.body.code).toBe("lifeline_used");
   });
 
-  test("reuses a complete existing Tengacion profile without requiring state of origin", async () => {
+  test("reuses an existing account with basic information and both photos without asking for optional details", async () => {
     const user = await createUser({
-      completeProfile: true,
+      profilePhotos: true,
       email: "existing-profile@example.com",
       username: "existingprofile",
     });
-    user.stateOfOrigin = "";
-    await user.save();
 
     const token = await issueSessionToken(user._id);
     const registration = await registerPlayer(token).expect(201);
@@ -197,24 +211,121 @@ describe("Tengacion Millionaire game", () => {
       registration.body.game.eligibility.requirements.find(
         (requirement) => requirement.id === "profile"
       )?.missingFields
-    ).not.toContain("stateOfOrigin");
+    ).toEqual([]);
 
-    await request(app)
-      .post("/api/millionaire/start")
-      .set("Authorization", `Bearer ${token}`)
-      .send({})
-      .expect(201);
+    await expect(
+      startMillionaireAttempt(user._id, { now: LIVE_NOW, random: () => 0 })
+    ).resolves.toMatchObject({ attempt: { status: "in_progress" } });
+  });
+
+  test("assigns only one random eligible account to the ₦1,000 daily tier and keeps others at ₦400", async () => {
+    const first = await createUser({
+      profilePhotos: true,
+      email: "daily-one@example.com",
+      username: "dailyone",
+    });
+    const second = await createUser({
+      profilePhotos: true,
+      email: "daily-two@example.com",
+      username: "dailytwo",
+    });
+    await registerPlayer(await issueSessionToken(first._id)).expect(201);
+    await registerPlayer(await issueSessionToken(second._id)).expect(201);
+
+    const now = LIVE_NOW;
+    const firstGame = await startMillionaireAttempt(first._id, { now, random: () => 0 });
+    const secondGame = await startMillionaireAttempt(second._id, {
+      now: new Date(now.getTime() + 1000),
+      random: () => 0.75,
+    });
+    const tiers = [firstGame.attempt.prizeTier, secondGame.attempt.prizeTier].sort();
+
+    expect(tiers).toEqual(["daily_premium", "standard"]);
+    expect(firstGame.campaign.standardPrizeLadder.at(-1)).toBe(400);
+    expect(firstGame.campaign.dailyPremiumPrizeLadder.at(-1)).toBe(1000);
+    expect(await MillionaireDailyPrizeSlot.countDocuments({ dateKey: "2026-07-26" })).toBe(1);
+  });
+
+  test("gives the Stephen Daniel Kurah QA account unlimited payout-disabled access before launch", async () => {
+    const qaUser = await createUser({
+      email: "tmintldo4_life@yahoo.com",
+      username: "pyrexx_singz",
+    });
+    await registerPlayer(await issueSessionToken(qaUser._id)).expect(201);
+    const beforeLaunch = new Date("2026-07-26T08:00:00.000Z");
+
+    const started = await startMillionaireAttempt(qaUser._id, {
+      now: beforeLaunch,
+      random: () => 0,
+    });
+    expect(started.access).toMatchObject({ qaMode: true, publicOpen: false });
+    expect(started.attempt).toMatchObject({
+      prizeTier: "qa",
+      payoutEligible: false,
+      qaMode: true,
+    });
+    const firstQuestion = getQuestionById(started.attempt.currentQuestion.id);
+    const finished = await answerMillionaireQuestion({
+      userId: qaUser._id,
+      questionId: firstQuestion.id,
+      selectedIndex: (firstQuestion.correctIndex + 1) % firstQuestion.options.length,
+      now: new Date(beforeLaunch.getTime() + 1000),
+    });
+    expect(finished.game.attempt).toMatchObject({
+      status: "lost",
+      finalPrize: 0,
+      payoutStatus: "not_applicable",
+    });
+
+    const replay = await startMillionaireAttempt(qaUser._id, {
+      now: new Date(beforeLaunch.getTime() + 2000),
+      random: () => 0.5,
+    });
+    expect(replay.attempt.status).toBe("in_progress");
+    expect(await MillionaireAttempt.countDocuments({ userId: qaUser._id })).toBe(2);
+  });
+
+  test("blocks admin accounts from registration and game participation", async () => {
+    const admin = await createUser({
+      role: "admin",
+      email: "excluded-admin@example.com",
+      username: "excludedadmin",
+    });
+    const adminToken = await issueSessionToken(admin._id);
+    const status = await getMillionaireStatus(admin._id);
+    expect(status.access.adminExcluded).toBe(true);
+    expect(status.canStart).toBe(false);
+
+    const registration = await registerPlayer(adminToken).expect(403);
+    expect(registration.body.code).toBe("admin_excluded");
+  });
+
+  test("keeps ordinary eligible accounts closed until the 10:00 AM WAT launch", async () => {
+    const user = await createUser({
+      profilePhotos: true,
+      email: "waiting-player@example.com",
+      username: "waitingplayer",
+    });
+    await registerPlayer(await issueSessionToken(user._id)).expect(201);
+
+    await expect(
+      startMillionaireAttempt(user._id, {
+        now: new Date("2026-07-26T08:59:59.000Z"),
+        random: () => 0,
+      })
+    ).rejects.toMatchObject({ code: "game_not_open", status: 403 });
   });
 
   test("banks earned winnings after a wrong answer and enforces the six-month replay window", async () => {
     const user = await createUser({ completeProfile: true });
     const token = await issueSessionToken(user._id);
     await registerPlayer(token).expect(201);
-    const started = await request(app)
-      .post("/api/millionaire/start")
-      .set("Authorization", `Bearer ${token}`)
-      .send({})
-      .expect(201);
+    const started = {
+      body: await startMillionaireAttempt(user._id, {
+        now: LIVE_NOW,
+        random: () => 0,
+      }),
+    };
 
     const firstQuestion = getQuestionById(started.body.attempt.currentQuestion.id);
     const firstAnswer = await request(app)
@@ -241,12 +352,12 @@ describe("Tengacion Millionaire game", () => {
     });
     expect(loss.body.game.cooldown.active).toBe(true);
 
-    const replay = await request(app)
-      .post("/api/millionaire/start")
-      .set("Authorization", `Bearer ${token}`)
-      .send({})
-      .expect(409);
-    expect(replay.body.code).toBe("six_month_cooldown");
+    await expect(
+      startMillionaireAttempt(user._id, {
+        now: new Date(LIVE_NOW.getTime() + 10_000),
+        random: () => 0,
+      })
+    ).rejects.toMatchObject({ code: "six_month_cooldown", status: 409 });
     expect(await MillionaireAttempt.countDocuments({ userId: user._id })).toBe(1);
   });
 

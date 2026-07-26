@@ -107,6 +107,24 @@ const MillionaireAttemptSchema = new mongoose.Schema(
       min: 0,
       max: 5000,
     },
+    prizeTier: {
+      type: String,
+      enum: ["standard", "daily_premium", "qa"],
+      default: "standard",
+      index: true,
+    },
+    dailyPrizeDateKey: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 10,
+      index: true,
+    },
+    payoutEligible: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
     lifelineUsed: {
       type: Boolean,
       default: false,
@@ -169,6 +187,7 @@ const MillionaireAttemptSchema = new mongoose.Schema(
 MillionaireAttemptSchema.index({ userId: 1, startedAt: -1 });
 MillionaireAttemptSchema.index({ participantId: 1, startedAt: -1 });
 MillionaireAttemptSchema.index({ payoutStatus: 1, finalPrize: -1, completedAt: -1 });
+MillionaireAttemptSchema.index({ dailyPrizeDateKey: 1, prizeTier: 1, startedAt: -1 });
 
 MillionaireAttemptSchema.methods.toJSON = function toJSON() {
   const obj = this.toObject();

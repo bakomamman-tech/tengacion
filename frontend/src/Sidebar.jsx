@@ -143,13 +143,14 @@ function MillionaireGameCard({ isExpanded, onToggle, onEnter }) {
         <div className="sidebar-millionaire-expanded">
           <span className="sidebar-millionaire-orbit" aria-hidden="true">15</span>
           <p>
-            Climb three stages of knowledge. Winnings start at ₦100 and stop at ₦5,000.
+            Face three difficult stages at 20 seconds each. Standard prizes run from
+            ₦100 to ₦400; one random account may reach ₦1,000 daily.
           </p>
         </div>
       ) : (
         <div className="sidebar-millionaire-compact">
-          <span aria-hidden="true">₦5K</span>
-          <p>15 questions · 3 stages · one Ask AI lifeline.</p>
+          <span aria-hidden="true">₦1K</span>
+          <p>15 difficult questions · 20 seconds each · one daily premium tier.</p>
         </div>
       )}
 

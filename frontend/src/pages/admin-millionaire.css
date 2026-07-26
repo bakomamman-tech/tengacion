@@ -22,6 +22,45 @@
   margin-top: 18px;
 }
 
+.millionaire-prize-policy {
+  margin-top: 18px;
+}
+
+.millionaire-prize-policy__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.millionaire-prize-policy__grid article {
+  display: grid;
+  gap: 7px;
+  padding: 18px;
+  border: 1px solid #dfe7e2;
+  border-radius: 16px;
+  background: #f6faf7;
+}
+
+.millionaire-prize-policy__grid article > span,
+.millionaire-prize-policy__grid article > small {
+  color: #607066;
+}
+
+.millionaire-prize-policy__grid article > strong {
+  font-size: 1.15rem;
+}
+
+.adminx-badge.tier-daily_premium {
+  background: #fff3b8;
+  color: #6a4a00;
+}
+
+.adminx-badge.tier-qa {
+  background: #dff7e8;
+  color: #175f3a;
+}
+
 .millionaire-launch-campaign__grid {
   display: grid;
   grid-template-columns: minmax(190px, 300px) minmax(0, 1fr);
@@ -288,6 +327,10 @@
 }
 
 @media (max-width: 680px) {
+  .millionaire-prize-policy__grid {
+    grid-template-columns: 1fr;
+  }
+
   .millionaire-launch-campaign__grid {
     grid-template-columns: 1fr;
   }

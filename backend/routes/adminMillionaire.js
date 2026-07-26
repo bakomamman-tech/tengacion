@@ -9,7 +9,9 @@ const {
 } = require("../services/millionaireGameService");
 const {
   getMillionaireLaunchCampaignStatus,
+  getMillionaireReminderCampaignStatus,
   queueMillionaireLaunchCampaign,
+  queueMillionaireReminderCampaign,
 } = require("../services/millionaireLaunchCampaignService");
 const { writeAuditLog } = require("../services/auditLogService");
 
@@ -61,6 +63,46 @@ router.post("/launch-campaign", requireStepUp({ adminOnly: true }), async (req, 
       targetType: "AdminEmailCampaign",
       targetId: result.campaign?.campaignKey,
       reason: "Tengacion Millionaire commencement announcement",
+      metadata: {
+        status: result.campaign?.status,
+        audienceCount: result.campaign?.audienceCount,
+        alreadyRunningOrSent: result.alreadyRunningOrSent,
+      },
+    }).catch(() => null);
+    return res.status(result.alreadyRunningOrSent ? 200 : 202).json(result);
+  } catch (error) {
+    return handleError(res, error);
+  }
+});
+
+router.get("/reminder-campaign", async (_req, res) => {
+  try {
+    return res.json({ campaign: await getMillionaireReminderCampaignStatus() });
+  } catch (error) {
+    return handleError(res, error);
+  }
+});
+
+router.post("/reminder-campaign", requireStepUp({ adminOnly: true }), async (req, res) => {
+  try {
+    if (req.body?.confirmCampaignKey !== "millionaire-reminder-2026-07-26") {
+      return res.status(400).json({
+        error: "Confirm the exact Millionaire reminder campaign before sending.",
+        code: "campaign_confirmation_required",
+      });
+    }
+    const result = await queueMillionaireReminderCampaign({
+      adminUserId: req.user.id,
+      io: req.app.get("io"),
+      onlineUsers: req.app.get("onlineUsers"),
+    });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "millionaire.reminder_email_queued",
+      targetType: "AdminEmailCampaign",
+      targetId: result.campaign?.campaignKey,
+      reason: "Tengacion Millionaire rules and eligibility reminder",
       metadata: {
         status: result.campaign?.status,
         audienceCount: result.campaign?.audienceCount,

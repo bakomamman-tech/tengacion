@@ -4,7 +4,9 @@ import AdminShell from "../components/AdminShell";
 import {
   adminGetMillionaireLaunchCampaign,
   adminGetMillionaireParticipants,
+  adminGetMillionaireReminderCampaign,
   adminSendMillionaireLaunchCampaign,
+  adminSendMillionaireReminderCampaign,
   adminUpdateMillionaireParticipantStatus,
   adminUpdateMillionairePayout,
 } from "../api";
@@ -71,6 +73,9 @@ export default function AdminMillionaireGame({ user }) {
   const [launchCampaign, setLaunchCampaign] = useState(emptyLaunchCampaign);
   const [launchLoading, setLaunchLoading] = useState(true);
   const [launchSending, setLaunchSending] = useState(false);
+  const [reminderCampaign, setReminderCampaign] = useState(emptyLaunchCampaign);
+  const [reminderLoading, setReminderLoading] = useState(true);
+  const [reminderSending, setReminderSending] = useState(false);
   const [payoutTarget, setPayoutTarget] = useState(null);
   const [payoutForm, setPayoutForm] = useState({
     status: "approved",
@@ -131,6 +136,38 @@ export default function AdminMillionaireGame({ user }) {
     return () => window.clearInterval(interval);
   }, [launchCampaign.status, loadLaunchCampaign]);
 
+  const loadReminderCampaign = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) {
+      setReminderLoading(true);
+    }
+    try {
+      const response = await adminGetMillionaireReminderCampaign();
+      setReminderCampaign(response?.campaign || emptyLaunchCampaign);
+    } catch (requestError) {
+      if (!quiet) {
+        setError(requestError?.message || "Failed to load the reminder email campaign.");
+      }
+    } finally {
+      if (!quiet) {
+        setReminderLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    loadReminderCampaign();
+  }, [loadReminderCampaign]);
+
+  useEffect(() => {
+    if (!["queued", "sending"].includes(reminderCampaign.status)) {
+      return undefined;
+    }
+    const interval = window.setInterval(() => {
+      loadReminderCampaign({ quiet: true });
+    }, 4000);
+    return () => window.clearInterval(interval);
+  }, [loadReminderCampaign, reminderCampaign.status]);
+
   const sendLaunchCampaign = async () => {
     const retrying = ["partial", "failed"].includes(launchCampaign.status);
     const message = retrying
@@ -155,6 +192,33 @@ export default function AdminMillionaireGame({ user }) {
       setError(requestError?.message || "The Millionaire launch email could not be started.");
     } finally {
       setLaunchSending(false);
+    }
+  };
+
+  const sendReminderCampaign = async () => {
+    const retrying = ["partial", "failed"].includes(reminderCampaign.status);
+    const message = retrying
+      ? `Retry the ${formatNumber(reminderCampaign.failedCount)} failed Millionaire reminder emails? Successful recipients will not receive a duplicate.`
+      : `Send the Millionaire reminder, corrected flyer, rules and eligibility requirements to ${formatNumber(reminderCampaign.audienceCount)} active users now?`;
+    if (!window.confirm(message)) {
+      return;
+    }
+
+    setReminderSending(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await adminSendMillionaireReminderCampaign();
+      setReminderCampaign(response?.campaign || reminderCampaign);
+      setNotice(
+        response?.alreadyRunningOrSent
+          ? "The Millionaire reminder is already running or completed."
+          : "The Millionaire reminder campaign has started. Delivery counts will update here."
+      );
+    } catch (requestError) {
+      setError(requestError?.message || "The Millionaire reminder could not be started.");
+    } finally {
+      setReminderSending(false);
     }
   };
 
@@ -335,6 +399,76 @@ export default function AdminMillionaireGame({ user }) {
             </button>
             {launchCampaign.completedAt ? (
               <small>Last completed {formatDate(launchCampaign.completedAt)}</small>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <section className="adminx-panel millionaire-launch-campaign millionaire-reminder-campaign">
+        <div className="adminx-panel-head">
+          <div>
+            <h2 className="adminx-panel-title">All-user rules & eligibility reminder</h2>
+            <span className="adminx-section-meta">
+              Separate delivery with the corrected flyer, fresh 20-second rule and eligibility checklist
+            </span>
+          </div>
+          <span className={`adminx-badge millionaire-campaign-status is-${reminderCampaign.status}`}>
+            {String(reminderCampaign.status || "not_started").replace("_", " ")}
+          </span>
+        </div>
+
+        <div className="millionaire-launch-campaign__grid">
+          <img
+            src={reminderCampaign.flyerUrl || emptyLaunchCampaign.flyerUrl}
+            alt="Tengacion Millionaire reminder flyer"
+          />
+          <div className="millionaire-launch-campaign__copy">
+            <p>
+              <strong>Reminder email and in-app notification</strong><br />
+              Sent once per active user · Retry-safe · Duplicate protected
+            </p>
+            <ul>
+              <li>Each of the 15 questions starts a fresh 20-second countdown.</li>
+              <li>Eligibility requires name, username, email, profile photo and cover photo.</li>
+              <li>Optional phone, country, date-of-birth and gender fields are not required.</li>
+              <li>Includes ₦100–₦400 standard prizes and the random daily ₦1,000 tier.</li>
+              <li>Admin and QA payout exclusions are stated clearly.</li>
+            </ul>
+            <div className="millionaire-launch-campaign__counts" aria-label="Reminder email delivery counts">
+              <span><strong>{formatNumber(reminderCampaign.audienceCount)}</strong> audience</span>
+              <span><strong>{formatNumber(reminderCampaign.sentCount)}</strong> sent</span>
+              <span><strong>{formatNumber(reminderCampaign.failedCount)}</strong> failed</span>
+              <span><strong>{formatNumber(reminderCampaign.pendingCount)}</strong> pending</span>
+            </div>
+            {!reminderCampaign.emailConfigured ? (
+              <div className="adminx-error" role="alert">
+                Configure Tengacion SMTP before sending this reminder.
+              </div>
+            ) : null}
+            {reminderCampaign.lastError ? (
+              <p className="millionaire-launch-campaign__error">{reminderCampaign.lastError}</p>
+            ) : null}
+            <button
+              type="button"
+              className="adminx-btn adminx-btn--primary"
+              onClick={sendReminderCampaign}
+              disabled={
+                reminderLoading ||
+                reminderSending ||
+                !reminderCampaign.emailConfigured ||
+                ["queued", "sending", "completed"].includes(reminderCampaign.status)
+              }
+            >
+              {reminderSending || ["queued", "sending"].includes(reminderCampaign.status)
+                ? "Sending reminder emails…"
+                : reminderCampaign.status === "completed"
+                  ? "Reminder sent"
+                  : ["partial", "failed"].includes(reminderCampaign.status)
+                    ? "Retry failed reminders"
+                    : "Send reminder to all users"}
+            </button>
+            {reminderCampaign.completedAt ? (
+              <small>Last completed {formatDate(reminderCampaign.completedAt)}</small>
             ) : null}
           </div>
         </div>

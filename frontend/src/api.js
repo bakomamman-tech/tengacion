@@ -2634,6 +2634,24 @@ export const adminSendMillionaireLaunchCampaign = () =>
     timeoutMs: 45000,
   });
 
+export const adminGetMillionaireReminderCampaign = () =>
+  request(`${API_BASE}/admin/millionaire/reminder-campaign`, {
+    headers: getAuthHeaders(),
+  });
+
+export const adminSendMillionaireReminderCampaign = () =>
+  request(`${API_BASE}/admin/millionaire/reminder-campaign`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({
+      confirmCampaignKey: "millionaire-reminder-2026-07-26",
+    }),
+    timeoutMs: 45000,
+  });
+
 export const adminUpdateMillionairePayout = (attemptId, payload = {}) =>
   request(
     `${API_BASE}/admin/millionaire/attempts/${encodeURIComponent(attemptId || "")}/payout`,

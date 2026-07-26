@@ -15,6 +15,22 @@ import {
 import "./millionaire-game.css";
 
 const OPTION_LABELS = ["A", "B", "C", "D", "E"];
+const BLOCKED_QUESTION_SHORTCUTS = new Set(["a", "c", "p", "s", "u", "x"]);
+
+const preventQuestionContentAction = (event) => {
+  event.preventDefault();
+};
+
+const preventQuestionCopyShortcut = (event) => {
+  const key = String(event.key || "").toLocaleLowerCase("en");
+  const modifierPressed = event.ctrlKey || event.metaKey;
+  if (
+    (modifierPressed && (BLOCKED_QUESTION_SHORTCUTS.has(key) || key === "insert")) ||
+    (event.shiftKey && key === "insert")
+  ) {
+    event.preventDefault();
+  }
+};
 
 const formatNaira = (value) =>
   new Intl.NumberFormat("en-NG", {
@@ -445,9 +461,20 @@ export default function MillionaireGamePage({ user }) {
       />
     );
   } else if (attempt?.status === "in_progress" && question) {
+    const playerWatermark = `Tengacion @${user?.username || "player"} ${String(
+      attempt.id || "active"
+    ).slice(-8)}`;
     content = (
       <section className="millionaire-game-stage">
-        <div className="millionaire-question-panel">
+        <div
+          className="millionaire-question-panel"
+          data-player-watermark={playerWatermark}
+          onContextMenu={preventQuestionContentAction}
+          onCopy={preventQuestionContentAction}
+          onCut={preventQuestionContentAction}
+          onDragStart={preventQuestionContentAction}
+          onKeyDown={preventQuestionCopyShortcut}
+        >
           <header className="millionaire-question-head">
             <div>
               <p className="millionaire-game-kicker">
@@ -491,6 +518,7 @@ export default function MillionaireGamePage({ user }) {
             <span>{question.category}</span>
             <span>{question.difficulty}</span>
             <span>{formatNaira(game?.campaign?.prizeLadder?.[question.number - 1])}</span>
+            <span className="millionaire-copy-protection">Copy protection active</span>
           </div>
 
           <h2>{question.prompt}</h2>

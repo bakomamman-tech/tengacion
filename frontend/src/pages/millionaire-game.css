@@ -280,6 +280,7 @@
 
 .millionaire-question-panel {
   position: relative;
+  overflow: hidden;
   min-width: 0;
   min-height: 720px;
   padding: clamp(22px, 4vw, 48px);
@@ -290,6 +291,34 @@
     radial-gradient(circle at 4% 85%, rgba(216, 27, 140, 0.14), transparent 28%),
     rgba(5, 5, 31, 0.92);
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.42);
+}
+
+.millionaire-question-panel::after {
+  content: attr(data-player-watermark);
+  position: absolute;
+  top: 52%;
+  left: 50%;
+  z-index: 3;
+  max-width: 90%;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  color: rgba(255, 255, 255, 0.055);
+  font-size: clamp(1.4rem, 5vw, 4.5rem);
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+.millionaire-question-panel > h2,
+.millionaire-question-meta,
+.millionaire-options {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .millionaire-question-head {
@@ -382,6 +411,11 @@
   font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.millionaire-question-meta .millionaire-copy-protection {
+  border-color: rgba(110, 231, 165, 0.3);
+  color: #9df5bf;
 }
 
 .millionaire-question-panel > h2 {

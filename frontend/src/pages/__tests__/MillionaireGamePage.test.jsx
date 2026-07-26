@@ -79,7 +79,7 @@ describe("MillionaireGamePage", () => {
     expect(screen.getByLabelText("Prize ladder")).toBeInTheDocument();
   });
 
-  it("renders five enabled answer buttons and submits the fifth choice", async () => {
+  it("blocks copying while keeping all five answer buttons clickable", async () => {
     vi.mocked(getMillionaireStatus).mockResolvedValue(activeGame);
     vi.mocked(answerMillionaireQuestion).mockResolvedValue({
       answerResult: {
@@ -106,9 +106,26 @@ describe("MillionaireGamePage", () => {
 
     const choices = within(await screen.findByRole("group", { name: "Answer choices" }))
       .getAllByRole("button");
+    const questionPanel = choices[0].closest(".millionaire-question-panel");
     expect(choices).toHaveLength(5);
+    expect(questionPanel).toHaveAttribute(
+      "data-player-watermark",
+      expect.stringContaining("@ada")
+    );
     await waitFor(() => choices.forEach((choice) => expect(choice).toBeEnabled()));
     expect(answerMillionaireQuestion).not.toHaveBeenCalled();
+
+    const copyEvent = new Event("copy", { bubbles: true, cancelable: true });
+    const contextMenuEvent = new Event("contextmenu", { bubbles: true, cancelable: true });
+    const copyShortcutEvent = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: true,
+      key: "c",
+    });
+    expect(questionPanel.dispatchEvent(copyEvent)).toBe(false);
+    expect(questionPanel.dispatchEvent(contextMenuEvent)).toBe(false);
+    expect(choices[0].dispatchEvent(copyShortcutEvent)).toBe(false);
 
     fireEvent.click(choices[4]);
 

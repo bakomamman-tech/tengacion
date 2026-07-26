@@ -4,7 +4,10 @@ process.env.APP_URL = "https://tengacion.com";
 const {
   CAMPAIGN_KEY,
   CAMPAIGN_SUBJECT,
+  REMINDER_CAMPAIGN_KEY,
+  REMINDER_CAMPAIGN_SUBJECT,
   buildMillionaireLaunchEmail,
+  buildMillionaireReminderEmail,
 } = require("../services/millionaireLaunchCampaignService");
 
 describe("Millionaire launch campaign email", () => {
@@ -42,5 +45,29 @@ describe("Millionaire launch campaign email", () => {
 
     expect(email.html).not.toContain("<script>");
     expect(email.html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+  });
+
+  test("builds a separate reminder containing the flyer, rules and relaxed eligibility requirements", () => {
+    const flyerUrl =
+      "https://tengacion.com/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes";
+    const email = buildMillionaireReminderEmail({
+      name: "Stephen Daniel Kurah",
+      flyerUrl,
+      registrationUrl: "https://tengacion.com/millionaire/register",
+    });
+
+    expect(REMINDER_CAMPAIGN_KEY).toBe("millionaire-reminder-2026-07-26");
+    expect(REMINDER_CAMPAIGN_KEY).not.toBe(CAMPAIGN_KEY);
+    expect(REMINDER_CAMPAIGN_SUBJECT).toContain("Reminder:");
+    expect(email.html).toContain(`src="${flyerUrl}"`);
+    expect(email.html).toContain("Eligibility checklist");
+    expect(email.html).toContain("name, username and valid email address");
+    expect(email.html).toContain("profile picture and a cover photo");
+    expect(email.html).toContain("optional profile fields are not required");
+    expect(email.html).toContain("fresh 20-second");
+    expect(email.html).toContain("₦100 to ₦400");
+    expect(email.html).toContain("₦1,000");
+    expect(email.text).toContain("Phone, country, date of birth, gender");
+    expect(email.text).toContain(`Flyer: ${flyerUrl}`);
   });
 });

@@ -10,7 +10,11 @@ process.env.JWT_SECRET =
   process.env.JWT_SECRET || "millionaire_game_test_secret_123456789012345";
 
 const app = require("../app");
-const { getQuestionById } = require("../data/millionaireQuestionBank");
+const {
+  OPTIONS_PER_QUESTION,
+  QUESTIONS,
+  getQuestionById,
+} = require("../data/millionaireQuestionBank");
 const MillionaireAttempt = require("../models/MillionaireAttempt");
 const MillionaireDailyPrizeSlot = require("../models/MillionaireDailyPrizeSlot");
 const MillionaireParticipant = require("../models/MillionaireParticipant");
@@ -119,6 +123,21 @@ describe("Tengacion Millionaire game", () => {
     }
   });
 
+  test("keeps every question to five distinct options with one valid correct answer", () => {
+    expect(OPTIONS_PER_QUESTION).toBe(5);
+    QUESTIONS.forEach((question) => {
+      expect(question.options).toHaveLength(OPTIONS_PER_QUESTION);
+      expect(new Set(question.options.map((option) => option.toLocaleLowerCase("en"))).size).toBe(
+        OPTIONS_PER_QUESTION
+      );
+      expect(Number.isInteger(question.correctIndex)).toBe(true);
+      expect(question.correctIndex).toBeGreaterThanOrEqual(0);
+      expect(question.correctIndex).toBeLessThan(OPTIONS_PER_QUESTION);
+      expect(question.options[question.correctIndex]).toEqual(expect.any(String));
+    });
+    expect(QUESTIONS.some((question) => question.correctIndex === 4)).toBe(true);
+  });
+
   test("accepts basic account information but blocks play until both profile photos exist", async () => {
     const user = await createUser();
     const token = await issueSessionToken(user._id);
@@ -189,6 +208,40 @@ describe("Tengacion Millionaire game", () => {
       .send({ questionId: answer.body.game.attempt.currentQuestion.id })
       .expect(409);
     expect(secondAdvice.body.code).toBe("lifeline_used");
+  });
+
+  test("accepts the fifth answer button and rejects choices outside the five options", async () => {
+    const user = await createUser({
+      completeProfile: true,
+      email: "five-options@example.com",
+      username: "fiveoptions",
+    });
+    await registerPlayer(await issueSessionToken(user._id)).expect(201);
+    const started = await startMillionaireAttempt(user._id, {
+      now: LIVE_NOW,
+      random: () => 0,
+    });
+    const question = getQuestionById(started.attempt.currentQuestion.id);
+
+    await expect(
+      answerMillionaireQuestion({
+        userId: user._id,
+        questionId: question.id,
+        selectedIndex: 5,
+        now: new Date(LIVE_NOW.getTime() + 1_000),
+      })
+    ).rejects.toMatchObject({ code: "invalid_answer", status: 400 });
+
+    await expect(
+      answerMillionaireQuestion({
+        userId: user._id,
+        questionId: question.id,
+        selectedIndex: 4,
+        now: new Date(LIVE_NOW.getTime() + 2_000),
+      })
+    ).resolves.toMatchObject({
+      answerResult: { selectedIndex: 4 },
+    });
   });
 
   test("reuses an existing account with basic information and both photos without asking for optional details", async () => {

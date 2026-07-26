@@ -6,6 +6,7 @@ const MillionaireParticipant = require("../models/MillionaireParticipant");
 const User = require("../models/User");
 const {
   DAILY_PREMIUM_PRIZE_LADDER,
+  OPTIONS_PER_QUESTION,
   STANDARD_PRIZE_LADDER,
   STAGES,
   getQuestionById,
@@ -249,7 +250,9 @@ const getQuestionDeadline = (attempt, questionIndex) => {
 };
 
 const chooseWrongLifelineIndex = (question, attempt) => {
-  const optionCount = Array.isArray(question?.options) ? question.options.length : 4;
+  const optionCount = Array.isArray(question?.options)
+    ? question.options.length
+    : OPTIONS_PER_QUESTION;
   const seed =
     Number(attempt?.currentQuestionIndex || 0) +
     Number(attempt?.correctAnswers || 0) +
@@ -751,8 +754,17 @@ const answerMillionaireQuestion = async ({
     selectedIndex === null || selectedIndex === undefined || selectedIndex === ""
       ? null
       : Number(selectedIndex);
-  if (parsedIndex !== null && (!Number.isInteger(parsedIndex) || parsedIndex < 0 || parsedIndex > 3)) {
-    throw new MillionaireGameError("Choose one of the four answers.", 400, "invalid_answer");
+  if (
+    parsedIndex !== null &&
+    (!Number.isInteger(parsedIndex) ||
+      parsedIndex < 0 ||
+      parsedIndex >= question.options.length)
+  ) {
+    throw new MillionaireGameError(
+      `Choose one of the ${OPTIONS_PER_QUESTION} answers.`,
+      400,
+      "invalid_answer"
+    );
   }
 
   const deadline = getQuestionDeadline(attempt, index);

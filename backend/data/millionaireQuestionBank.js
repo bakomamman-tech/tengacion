@@ -58,6 +58,8 @@ const DAILY_PREMIUM_PRIZE_LADDER = Object.freeze([
   1_000,
 ]);
 
+const OPTIONS_PER_QUESTION = 5;
+
 const QUESTIONS = Object.freeze([
   {
     id: "spark-math-percent-01",
@@ -65,8 +67,8 @@ const QUESTIONS = Object.freeze([
     category: "Number Theory",
     prompt:
       "Without expanding every power, what remainder is obtained when 3⁷ + 2⁵ is divided by 7?",
-    options: ["1", "2", "5", "0"],
-    correctIndex: 3,
+    options: ["1", "2", "5", "6", "0"],
+    correctIndex: 4,
     explanation:
       "Fermat's theorem gives 3⁶ ≡ 1 (mod 7), so 3⁷ ≡ 3; 2⁵ = 32 ≡ 4. Their sum is 7 ≡ 0.",
   },
@@ -76,7 +78,7 @@ const QUESTIONS = Object.freeze([
     category: "Cell Biology",
     prompt:
       "During which substage of meiotic prophase I is crossing-over between homologous chromosomes chiefly completed?",
-    options: ["Leptotene", "Pachytene", "Diplotene", "Diakinesis"],
+    options: ["Leptotene", "Pachytene", "Diplotene", "Diakinesis", "Zygotene"],
     correctIndex: 1,
     explanation:
       "Synapsis is complete and crossing-over chiefly occurs during pachytene; chiasmata become visible later in diplotene.",
@@ -87,7 +89,7 @@ const QUESTIONS = Object.freeze([
     category: "Political Geography",
     prompt:
       "The oil-producing exclave of Cabinda is separated from the rest of which African country by a narrow strip of the Democratic Republic of the Congo?",
-    options: ["Republic of the Congo", "Gabon", "Angola", "Namibia"],
+    options: ["Republic of the Congo", "Gabon", "Angola", "Namibia", "Equatorial Guinea"],
     correctIndex: 2,
     explanation:
       "Cabinda is an Angolan exclave separated from mainland Angola by the DRC's short Atlantic corridor.",
@@ -98,7 +100,7 @@ const QUESTIONS = Object.freeze([
     category: "Rhetoric",
     prompt:
       "In the sentence “She broke his car and his heart,” one verb governs two objects in different senses. Which figure of speech is this?",
-    options: ["Zeugma", "Anaphora", "Litotes", "Chiasmus"],
+    options: ["Zeugma", "Anaphora", "Litotes", "Chiasmus", "Metonymy"],
     correctIndex: 0,
     explanation:
       "Zeugma uses one word, usually a verb, with two others in grammatically parallel but semantically different ways.",
@@ -109,8 +111,14 @@ const QUESTIONS = Object.freeze([
     category: "Databases",
     prompt:
       "Which ACID isolation level requires concurrent transactions to produce a result equivalent to some serial ordering of those transactions?",
-    options: ["Read uncommitted", "Read committed", "Repeatable read", "Serializable"],
-    correctIndex: 3,
+    options: [
+      "Read uncommitted",
+      "Read committed",
+      "Repeatable read",
+      "Snapshot isolation",
+      "Serializable",
+    ],
+    correctIndex: 4,
     explanation:
       "Serializable is the strongest standard isolation level and requires an outcome equivalent to serial execution.",
   },
@@ -120,7 +128,13 @@ const QUESTIONS = Object.freeze([
     category: "Chemistry",
     prompt:
       "For a weak-acid buffer at 25°C, what is true when the molar concentrations of the acid and its conjugate base are equal?",
-    options: ["pH = 7 in every case", "pH = pKa", "pOH = pKa", "The buffer capacity is zero"],
+    options: [
+      "pH = 7 in every case",
+      "pH = pKa",
+      "pOH = pKa",
+      "The buffer capacity is zero",
+      "pH = pKa + 1",
+    ],
     correctIndex: 1,
     explanation:
       "The Henderson–Hasselbalch equation becomes pH = pKa + log(1), so pH equals pKa.",
@@ -131,7 +145,13 @@ const QUESTIONS = Object.freeze([
     category: "Government",
     prompt:
       "When two chambers of a bicameral legislature pass different versions of the same bill, which temporary body commonly reconciles the texts?",
-    options: ["Electoral commission", "Judicial council", "Conference committee", "Cabinet secretariat"],
+    options: [
+      "Electoral commission",
+      "Judicial council",
+      "Conference committee",
+      "Cabinet secretariat",
+      "Public accounts committee",
+    ],
     correctIndex: 2,
     explanation:
       "A conference committee is commonly formed from members of both chambers to negotiate one agreed text.",
@@ -142,7 +162,7 @@ const QUESTIONS = Object.freeze([
     category: "Music Theory",
     prompt:
       "A composition is written in E-flat major. Which key is its relative minor, sharing the same three-flat key signature?",
-    options: ["E-flat minor", "C minor", "G minor", "B-flat minor"],
+    options: ["E-flat minor", "C minor", "G minor", "B-flat minor", "F minor"],
     correctIndex: 1,
     explanation:
       "The relative minor begins on the sixth degree of the major scale; the sixth degree of E-flat major is C.",
@@ -153,7 +173,13 @@ const QUESTIONS = Object.freeze([
     category: "Economics",
     prompt:
       "Country A sacrifices two tonnes of cocoa to produce one machine; Country B sacrifices five. Who has the comparative advantage in machines?",
-    options: ["Country A", "Country B", "Both equally", "Neither without wage data"],
+    options: [
+      "Country A",
+      "Country B",
+      "Both equally",
+      "Neither without wage data",
+      "Whichever country has the higher output per worker",
+    ],
     correctIndex: 0,
     explanation:
       "Comparative advantage belongs to the producer with the lower opportunity cost, which is Country A.",
@@ -164,7 +190,7 @@ const QUESTIONS = Object.freeze([
     category: "Agricultural Science",
     prompt:
       "Which bacterial genus forms root nodules on many legumes and converts atmospheric nitrogen into biologically useful compounds?",
-    options: ["Lactobacillus", "Nitrosomonas", "Rhizobium", "Streptococcus"],
+    options: ["Lactobacillus", "Nitrosomonas", "Rhizobium", "Streptococcus", "Azotobacter"],
     correctIndex: 2,
     explanation:
       "Rhizobium species live symbiotically in legume root nodules and fix atmospheric nitrogen.",
@@ -180,6 +206,7 @@ const QUESTIONS = Object.freeze([
       "The rate of change of flux linkage",
       "The loop's absolute temperature only",
       "The magnetic field's direction only",
+      "The loop's electrical resistance alone",
     ],
     correctIndex: 1,
     explanation:
@@ -191,8 +218,8 @@ const QUESTIONS = Object.freeze([
     category: "African History",
     prompt:
       "Which Ethiopian emperor led the forces that defeated Italy at the Battle of Adwa in 1896, preserving Ethiopian sovereignty?",
-    options: ["Tewodros II", "Haile Selassie", "Menelik II", "Yohannes IV"],
-    correctIndex: 2,
+    options: ["Tewodros II", "Haile Selassie", "Zewditu", "Yohannes IV", "Menelik II"],
+    correctIndex: 4,
     explanation:
       "Emperor Menelik II led Ethiopia during the decisive victory over Italy at Adwa.",
   },
@@ -202,7 +229,7 @@ const QUESTIONS = Object.freeze([
     category: "Astrophysics",
     prompt:
       "If a non-rotating black hole's mass is doubled while all else is idealised, how does its Schwarzschild radius change?",
-    options: ["It doubles", "It quadruples", "It halves", "It is unchanged"],
+    options: ["It doubles", "It quadruples", "It halves", "It is unchanged", "It increases eightfold"],
     correctIndex: 0,
     explanation:
       "The Schwarzschild radius is 2GM/c² and therefore scales linearly with mass.",
@@ -213,7 +240,7 @@ const QUESTIONS = Object.freeze([
     category: "Criminal Law",
     prompt:
       "Which Latin term describes the culpable mental element that usually accompanies a prohibited act for criminal liability?",
-    options: ["Stare decisis", "Actus reus", "Ultra vires", "Mens rea"],
+    options: ["Stare decisis", "Actus reus", "Ultra vires", "Mens rea", "Habeas corpus"],
     correctIndex: 3,
     explanation:
       "Mens rea is the guilty or culpable mental state; actus reus is the prohibited conduct.",
@@ -224,7 +251,7 @@ const QUESTIONS = Object.freeze([
     category: "Bayesian Statistics",
     prompt:
       "A condition affects 1% of people. A test is 99% sensitive and 95% specific. Approximately what is P(condition | positive)?",
-    options: ["1%", "5%", "16.7%", "95%"],
+    options: ["1%", "5%", "16.7%", "95%", "50%"],
     correctIndex: 2,
     explanation:
       "Among 10,000 people, about 99 true positives and 495 false positives occur; 99/(99+495) is about 16.7%.",
@@ -235,7 +262,7 @@ const QUESTIONS = Object.freeze([
     category: "Art History",
     prompt:
       "Which Renaissance technique creates soft, smoky transitions between colours and tones without sharp outlines, as seen in Leonardo's work?",
-    options: ["Impasto", "Sfumato", "Frottage", "Pointillism"],
+    options: ["Impasto", "Sfumato", "Frottage", "Pointillism", "Tenebrism"],
     correctIndex: 1,
     explanation:
       "Sfumato blends tones into one another with extremely soft edges and atmospheric transitions.",
@@ -251,6 +278,7 @@ const QUESTIONS = Object.freeze([
       "Active sodium pumping with high water permeability",
       "Secretion of insulin into the filtrate",
       "Complete impermeability to water and ions",
+      "Equal water and sodium permeability throughout",
     ],
     correctIndex: 0,
     explanation:
@@ -267,6 +295,7 @@ const QUESTIONS = Object.freeze([
       "Predators immediately disappear",
       "One will eventually exclude the other",
       "Both populations become unlimited",
+      "Both species necessarily merge into one",
     ],
     correctIndex: 2,
     explanation:
@@ -278,8 +307,14 @@ const QUESTIONS = Object.freeze([
     category: "Finance",
     prompt:
       "For an existing fixed-coupon bond with unchanged credit risk, what normally happens to its market price when prevailing interest rates rise?",
-    options: ["It rises", "It becomes exactly par", "It is unaffected", "It falls"],
-    correctIndex: 3,
+    options: [
+      "It rises",
+      "It becomes exactly par",
+      "It is unaffected",
+      "Its coupon rate automatically rises",
+      "It falls",
+    ],
+    correctIndex: 4,
     explanation:
       "Bond prices and market yields move inversely because older fixed coupons become less attractive when rates rise.",
   },
@@ -294,6 +329,7 @@ const QUESTIONS = Object.freeze([
       "Do not create a contrast in meaning",
       "Occur only in written form",
       "Belong to unrelated languages",
+      "Are interchangeable in every phonetic environment",
     ],
     correctIndex: 1,
     explanation:
@@ -305,7 +341,7 @@ const QUESTIONS = Object.freeze([
     category: "Linear Algebra",
     prompt:
       "A symmetric matrix has rows [2, 1] and [1, 2]. Which pair gives its two eigenvalues?",
-    options: ["2 and 2", "4 and 0", "3 and 1", "√3 and −√3"],
+    options: ["2 and 2", "4 and 0", "3 and 1", "√3 and −√3", "5 and -1"],
     correctIndex: 2,
     explanation:
       "The characteristic polynomial is (2−λ)²−1, whose roots are 3 and 1.",
@@ -321,6 +357,7 @@ const QUESTIONS = Object.freeze([
       "Its priority queue cannot store zero",
       "Negative edges always create negative cycles",
       "It searches breadth-first rather than by distance",
+      "It requires an adjacency matrix",
     ],
     correctIndex: 0,
     explanation:
@@ -332,7 +369,7 @@ const QUESTIONS = Object.freeze([
     category: "Population Genetics",
     prompt:
       "Under Hardy–Weinberg equilibrium, a recessive phenotype occurs in 9% of a population. What proportion is expected to be heterozygous?",
-    options: ["0.09", "0.18", "0.30", "0.42"],
+    options: ["0.09", "0.18", "0.30", "0.42", "0.49"],
     correctIndex: 3,
     explanation:
       "q² = 0.09 gives q = 0.3 and p = 0.7; the heterozygous proportion 2pq is 0.42.",
@@ -343,8 +380,8 @@ const QUESTIONS = Object.freeze([
     category: "Political Philosophy",
     prompt:
       "The “veil of ignorance,” used to derive principles of justice without knowledge of one's social position, is associated with whom?",
-    options: ["Robert Nozick", "John Rawls", "David Hume", "Thomas Hobbes"],
-    correctIndex: 1,
+    options: ["Robert Nozick", "Immanuel Kant", "David Hume", "Thomas Hobbes", "John Rawls"],
+    correctIndex: 4,
     explanation:
       "John Rawls uses the veil of ignorance in the original position to reason impartially about justice.",
   },
@@ -354,7 +391,7 @@ const QUESTIONS = Object.freeze([
     category: "Epidemiology",
     prompt:
       "Incidence is 30 per 1,000 among an exposed group and 10 per 1,000 among an unexposed group. What is the attributable risk?",
-    options: ["3 per 1,000", "10 per 1,000", "20 per 1,000", "40 per 1,000"],
+    options: ["3 per 1,000", "10 per 1,000", "20 per 1,000", "40 per 1,000", "30 per 1,000"],
     correctIndex: 2,
     explanation:
       "Attributable risk is the risk difference: 30 per 1,000 minus 10 per 1,000 equals 20 per 1,000.",
@@ -370,6 +407,7 @@ const QUESTIONS = Object.freeze([
       "France and England",
       "Venice and the Ottoman Empire",
       "Austria and Prussia",
+      "The Netherlands and Belgium",
     ],
     correctIndex: 0,
     explanation:
@@ -381,7 +419,13 @@ const QUESTIONS = Object.freeze([
     category: "Signal Processing",
     prompt:
       "An ideal band-limited signal contains frequencies up to 8 kHz. Which sampling rate satisfies the strict Nyquist condition?",
-    options: ["Exactly 8 kHz", "Any rate greater than 16 kHz", "Exactly 12 kHz", "Any rate below 16 kHz"],
+    options: [
+      "Exactly 8 kHz",
+      "Any rate greater than 16 kHz",
+      "Exactly 12 kHz",
+      "Any rate below 16 kHz",
+      "Exactly 16 kHz",
+    ],
     correctIndex: 1,
     explanation:
       "The sampling rate must be strictly greater than twice the highest frequency, so it must exceed 16 kHz.",
@@ -397,6 +441,7 @@ const QUESTIONS = Object.freeze([
       "Dialogue presented only as a stage direction",
       "An omniscient narrator who never reflects character language",
       "Third-person narration coloured by a character's idiom and perceptions",
+      "Second-person narration using only commands",
     ],
     correctIndex: 3,
     explanation:
@@ -413,6 +458,7 @@ const QUESTIONS = Object.freeze([
       "Less responsive to price",
       "More elastic",
       "Identical in quantity at every price",
+      "Perfectly unit elastic only",
     ],
     correctIndex: 2,
     explanation:
@@ -424,12 +470,40 @@ const QUESTIONS = Object.freeze([
     category: "Cosmology",
     prompt:
       "The cosmic microwave background last scattered near recombination. Approximately what cosmological redshift corresponds to that epoch?",
-    options: ["z ≈ 11", "z ≈ 1,100", "z ≈ 110,000", "z ≈ 0.11"],
-    correctIndex: 1,
+    options: ["z ≈ 11", "z ≈ 110", "z ≈ 110,000", "z ≈ 0.11", "z ≈ 1,100"],
+    correctIndex: 4,
     explanation:
       "Recombination and photon decoupling occurred at a redshift of roughly 1,100.",
   },
 ]);
+
+QUESTIONS.forEach((question) => {
+  if (!Array.isArray(question.options) || question.options.length !== OPTIONS_PER_QUESTION) {
+    throw new Error(
+      `Millionaire question "${question.id}" must have exactly ${OPTIONS_PER_QUESTION} options.`
+    );
+  }
+
+  const normalizedOptions = question.options.map((option) =>
+    String(option || "").trim().toLocaleLowerCase("en")
+  );
+  if (
+    normalizedOptions.some((option) => !option) ||
+    new Set(normalizedOptions).size !== OPTIONS_PER_QUESTION
+  ) {
+    throw new Error(`Millionaire question "${question.id}" must have five distinct options.`);
+  }
+
+  if (
+    !Number.isInteger(question.correctIndex) ||
+    question.correctIndex < 0 ||
+    question.correctIndex >= OPTIONS_PER_QUESTION
+  ) {
+    throw new Error(
+      `Millionaire question "${question.id}" must identify exactly one correct option.`
+    );
+  }
+});
 
 const QUESTION_BY_ID = new Map(QUESTIONS.map((question) => [question.id, question]));
 
@@ -460,6 +534,7 @@ const getStageByNumber = (stageNumber) =>
 
 module.exports = {
   DAILY_PREMIUM_PRIZE_LADDER,
+  OPTIONS_PER_QUESTION,
   QUESTIONS,
   STANDARD_PRIZE_LADDER,
   STAGES,

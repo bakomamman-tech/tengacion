@@ -14,7 +14,7 @@ import {
 
 import "./millionaire-game.css";
 
-const OPTION_LABELS = ["A", "B", "C", "D"];
+const OPTION_LABELS = ["A", "B", "C", "D", "E"];
 
 const formatNaira = (value) =>
   new Intl.NumberFormat("en-NG", {
@@ -210,6 +210,7 @@ export default function MillionaireGamePage({ user }) {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const [timerQuestionId, setTimerQuestionId] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [aiAdvice, setAiAdvice] = useState(null);
@@ -243,6 +244,7 @@ export default function MillionaireGamePage({ user }) {
   useEffect(() => {
     timeoutSentRef.current = false;
     setSecondsRemaining(Number(question?.secondsRemaining || 0));
+    setTimerQuestionId(question?.id || "");
     setSelectedIndex(null);
     setAiAdvice(null);
   }, [question?.id, question?.secondsRemaining]);
@@ -310,6 +312,7 @@ export default function MillionaireGamePage({ user }) {
   useEffect(() => {
     if (
       question?.id &&
+      timerQuestionId === question.id &&
       secondsRemaining <= 0 &&
       !working &&
       !timeoutSentRef.current
@@ -317,7 +320,7 @@ export default function MillionaireGamePage({ user }) {
       timeoutSentRef.current = true;
       handleAnswer(null);
     }
-  }, [handleAnswer, question?.id, secondsRemaining, working]);
+  }, [handleAnswer, question?.id, secondsRemaining, timerQuestionId, working]);
 
   const handleStart = async () => {
     setWorking(true);

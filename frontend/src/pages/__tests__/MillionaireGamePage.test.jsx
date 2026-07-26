@@ -1,9 +1,9 @@
 import { MemoryRouter } from "react-router-dom";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import MillionaireGamePage from "../MillionaireGamePage";
-import { getMillionaireStatus } from "../../api";
+import { answerMillionaireQuestion, getMillionaireStatus } from "../../api";
 
 vi.mock("../../api", () => ({
   answerMillionaireQuestion: vi.fn(),
@@ -50,7 +50,7 @@ const activeGame = {
       difficulty: "Challenging",
       category: "Mathematics",
       prompt: "What is 15% of 200?",
-      options: ["15", "20", "30", "35"],
+      options: ["15", "20", "30", "35", "40"],
       timeLimitSeconds: 20,
       secondsRemaining: 20,
     },
@@ -60,6 +60,7 @@ const activeGame = {
 describe("MillionaireGamePage", () => {
   beforeEach(() => {
     vi.mocked(getMillionaireStatus).mockReset();
+    vi.mocked(answerMillionaireQuestion).mockReset();
   });
 
   it("renders the protected question console, prize ladder and single AI lifeline", async () => {
@@ -76,6 +77,47 @@ describe("MillionaireGamePage", () => {
     expect(screen.getByRole("button", { name: /Ask AI · one lifeline/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /30/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Prize ladder")).toBeInTheDocument();
+  });
+
+  it("renders five enabled answer buttons and submits the fifth choice", async () => {
+    vi.mocked(getMillionaireStatus).mockResolvedValue(activeGame);
+    vi.mocked(answerMillionaireQuestion).mockResolvedValue({
+      answerResult: {
+        correct: false,
+        correctAnswer: "30",
+        explanation: "15% of 200 is 30.",
+      },
+      game: {
+        ...activeGame,
+        attempt: {
+          ...activeGame.attempt,
+          status: "lost",
+          currentQuestion: null,
+          review: [],
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <MillionaireGamePage user={{ _id: "user-1", username: "ada" }} />
+      </MemoryRouter>
+    );
+
+    const choices = within(await screen.findByRole("group", { name: "Answer choices" }))
+      .getAllByRole("button");
+    expect(choices).toHaveLength(5);
+    await waitFor(() => choices.forEach((choice) => expect(choice).toBeEnabled()));
+    expect(answerMillionaireQuestion).not.toHaveBeenCalled();
+
+    fireEvent.click(choices[4]);
+
+    await waitFor(() =>
+      expect(answerMillionaireQuestion).toHaveBeenCalledWith({
+        questionId: "question-1",
+        selectedIndex: 4,
+      })
+    );
   });
 
   it("gates an incomplete profile before any question is shown", async () => {

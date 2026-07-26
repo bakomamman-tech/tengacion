@@ -442,6 +442,12 @@
 .millionaire-options button:nth-child(2) > span { background: linear-gradient(135deg, #0a83df, #20bad4); }
 .millionaire-options button:nth-child(3) > span { background: linear-gradient(135deg, #f39a14, #ffcf3a); color: #2c1600; }
 .millionaire-options button:nth-child(4) > span { background: linear-gradient(135deg, #1f9c59, #5bd47e); }
+.millionaire-options button:nth-child(5) {
+  grid-column: 1 / -1;
+}
+.millionaire-options button:nth-child(5) > span {
+  background: linear-gradient(135deg, #e33f51, #ff7c53);
+}
 
 .millionaire-options strong {
   overflow-wrap: anywhere;

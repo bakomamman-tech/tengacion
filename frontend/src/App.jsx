@@ -159,6 +159,7 @@ export default function App() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   usePageTracking();
+  const isFocusedGameRoute = pathname === "/millionaire";
 
   // The public landing page must remain useful while a slow mobile connection
   // checks for an existing session. Authenticated visitors are redirected as
@@ -983,7 +984,7 @@ export default function App() {
           />
         </Routes>
       </Suspense>
-      {user ? (
+      {user && !isFocusedGameRoute ? (
         <TopUpPromoDiscovery
           user={user}
           onExploreTip={(tip) => {
@@ -1001,8 +1002,8 @@ export default function App() {
           }}
         />
       ) : null}
-      <InstallPrompt />
-      <TengacionAssistantDock />
+      {!isFocusedGameRoute ? <InstallPrompt /> : null}
+      {!isFocusedGameRoute ? <TengacionAssistantDock /> : null}
     </>
   );
 }

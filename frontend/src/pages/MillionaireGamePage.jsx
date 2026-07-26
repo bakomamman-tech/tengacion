@@ -263,6 +263,19 @@ export default function MillionaireGamePage({ user }) {
     setTimerQuestionId(question?.id || "");
     setSelectedIndex(null);
     setAiAdvice(null);
+
+    if (
+      question?.id &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(max-width: 780px)").matches
+    ) {
+      window.requestAnimationFrame(() => {
+        const questionPanel = document.querySelector(".millionaire-question-panel");
+        if (typeof questionPanel?.scrollIntoView === "function") {
+          questionPanel.scrollIntoView({ block: "start", behavior: "auto" });
+        }
+      });
+    }
   }, [question?.id, question?.secondsRemaining]);
 
   useEffect(() => {
@@ -385,6 +398,7 @@ export default function MillionaireGamePage({ user }) {
   const timerProgress = question?.timeLimitSeconds
     ? Math.max(0, Math.min(1, secondsRemaining / question.timeLimitSeconds))
     : 0;
+  const isActiveQuestion = attempt?.status === "in_progress" && Boolean(question);
 
   const goProfile = () => navigate(`/profile/${user?.username || ""}`);
 
@@ -639,13 +653,33 @@ export default function MillionaireGamePage({ user }) {
   }
 
   return (
-    <>
-      <Navbar
-        user={user}
-        onLogout={() => navigate("/")}
-        onOpenMessenger={() => navigate("/messages")}
-        onOpenCreatePost={() => navigate("/home", { state: { openComposer: true } })}
-      />
+    <div
+      className={`millionaire-game-experience${isActiveQuestion ? " is-playing" : ""}`}
+    >
+      <div className="millionaire-desktop-nav">
+        <Navbar
+          user={user}
+          onLogout={() => navigate("/")}
+          onOpenMessenger={() => navigate("/messages")}
+          onOpenCreatePost={() => navigate("/home", { state: { openComposer: true } })}
+        />
+      </div>
+      <header className="millionaire-mobile-bar">
+        <span className="millionaire-mobile-bar__mark" aria-hidden="true">T</span>
+        <span className="millionaire-mobile-bar__copy">
+          <strong>Tengacion Millionaire</strong>
+          <small>
+            {isActiveQuestion
+              ? `Question ${question.number} of 15 · ${secondsRemaining} seconds`
+              : "Think · Answer · Win"}
+          </small>
+        </span>
+        {isActiveQuestion ? (
+          <span className="millionaire-mobile-bar__live">Live</span>
+        ) : (
+          <Link className="millionaire-mobile-bar__home" to="/home">Home</Link>
+        )}
+      </header>
       <div className="millionaire-app-shell">
         <aside className="sidebar">
           <Sidebar
@@ -671,6 +705,6 @@ export default function MillionaireGamePage({ user }) {
           </section>
         </aside>
       </div>
-    </>
+    </div>
   );
 }

@@ -77,6 +77,17 @@ describe("MillionaireGamePage", () => {
     expect(screen.getByRole("button", { name: /Ask AI · one lifeline/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /30/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Prize ladder")).toBeInTheDocument();
+    expect(screen.getByText("Tengacion Millionaire")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector(".millionaire-mobile-bar__copy small")).toHaveTextContent(
+        /Question 1 of 15 · \d+ seconds/i
+      );
+      expect(document.querySelector(".millionaire-mobile-bar__copy small")).not.toHaveTextContent(
+        /· 0 seconds$/i
+      );
+    });
+    expect(document.querySelector(".millionaire-game-experience")).toHaveClass("is-playing");
+    expect(document.querySelector(".millionaire-mobile-bar__live")).toHaveTextContent("Live");
   });
 
   it("blocks copying while keeping all five answer buttons clickable", async () => {

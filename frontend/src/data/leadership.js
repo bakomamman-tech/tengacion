@@ -33,6 +33,16 @@ export const TEAM_LEADS = [
       "Vincent Bilat Danjuma leads Tengacion's customer support team, helping customers and creators receive timely assistance and dependable issue resolution.",
   },
   {
+    id: "victory-ali",
+    name: "Victory Ali",
+    role: "Customer Care Support Lead",
+    location: "Kaduna Metropolis, Nigeria",
+    image: "/assets/leadership/victory-ali.webp",
+    imageAlt: "Victory Ali, Customer Care Support Lead for Kaduna Metropolis at Tengacion",
+    bio:
+      "Victory Ali leads Tengacion's customer care support across Kaduna Metropolis, helping customers access responsive assistance and dependable issue resolution.",
+  },
+  {
     id: "christopher-ebere-chibuzor",
     name: "Christopher Ebere Chibuzor",
     role: "Abuja Creators Support Lead",

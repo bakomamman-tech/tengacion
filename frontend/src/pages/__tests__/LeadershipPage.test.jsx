@@ -60,6 +60,16 @@ describe("LeadershipPage", () => {
         "Vincent Bilat Danjuma, Customer Support Team Lead at Tengacion"
       )
     ).toHaveAttribute("src", "/assets/leadership/vincent-bilat-danjuma.png");
+    expect(
+      screen.getByRole("heading", { name: "Victory Ali" })
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Customer Care Support Lead")).toHaveLength(2);
+    expect(screen.getByText("Kaduna Metropolis, Nigeria")).toBeInTheDocument();
+    expect(
+      screen.getByAltText(
+        "Victory Ali, Customer Care Support Lead for Kaduna Metropolis at Tengacion"
+      )
+    ).toHaveAttribute("src", "/assets/leadership/victory-ali.webp");
     expect(screen.getByText("Abuja Creators Support Lead")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Christopher Ebere Chibuzor" })
@@ -83,7 +93,6 @@ describe("LeadershipPage", () => {
         "Charles Nomzi, Customer Care Lead in Zamfara State at Tengacion"
       )
     ).toHaveAttribute("src", "/assets/leadership/charles-nomzi.png");
-    expect(screen.getByText("Customer Care Support Lead")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Mrs. Rebecca S. Magaji" })
     ).toBeInTheDocument();

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { getCreatorDiscovery, getCreatorSummaryFeed, getPublicActivity, resolveImage } from "../api";
+import MillionaireFlyerPicture from "../components/campaigns/MillionaireFlyerPicture";
 import PublicNav from "../components/PublicNav";
 import SeoHead from "../components/seo/SeoHead";
 import {
@@ -20,6 +21,39 @@ const PAGE_DESCRIPTION =
 const HOME_RELEASE_LIMIT = 6;
 const HOME_ACTIVITY_LIMIT = 6;
 const HOME_CREATOR_LIMIT = 4;
+
+const useNearViewport = (rootMargin = "240px 0px") => {
+  const targetRef = useRef(null);
+  const [isNearViewport, setIsNearViewport] = useState(
+    () => typeof IntersectionObserver !== "function"
+  );
+
+  useEffect(() => {
+    if (isNearViewport || typeof IntersectionObserver !== "function") {
+      return undefined;
+    }
+
+    const target = targetRef.current;
+    if (!target) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsNearViewport(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [isNearViewport, rootMargin]);
+
+  return [targetRef, isNearViewport];
+};
 
 const TRUST_LINKS = [
   { path: "/about", label: "About" },
@@ -246,8 +280,15 @@ export default function PublicHomePage() {
   const [activityItems, setActivityItems] = useState([]);
   const [loadingProof, setLoadingProof] = useState(true);
   const [proofError, setProofError] = useState("");
+  const [millionaireSectionRef, showMillionaireMedia] = useNearViewport("200px 0px");
+  const [bootcampSectionRef, showBootcampMedia] = useNearViewport("200px 0px");
+  const [proofSectionRef, shouldLoadProof] = useNearViewport("500px 0px");
 
   useEffect(() => {
+    if (!shouldLoadProof) {
+      return undefined;
+    }
+
     let isMounted = true;
 
     const loadPublicProof = async () => {
@@ -310,7 +351,7 @@ export default function PublicHomePage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [shouldLoadProof]);
 
   const proofStats = useMemo(() => {
     const creatorKeys = new Set();
@@ -452,7 +493,7 @@ export default function PublicHomePage() {
                   <span className="public-home__orbit public-home__orbit--outer" />
                   <span className="public-home__orbit public-home__orbit--inner" />
                   <div className="public-home__brand-mark">
-                    <img src="/tengacion_logo_512.png" width="512" height="512" alt="" />
+                    <img src="/tengacion_logo_256.png" width="256" height="256" alt="" />
                   </div>
                 </div>
 
@@ -512,6 +553,7 @@ export default function PublicHomePage() {
       </section>
 
       <section
+        ref={millionaireSectionRef}
         className="public-home__bootcamp public-home__millionaire"
         aria-labelledby="public-home-millionaire-title"
       >
@@ -520,15 +562,11 @@ export default function PublicHomePage() {
           <b className="public-home__millionaire-cap">
             ₦1,000 <small>one random daily tier</small>
           </b>
-          <img
-            src="/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes"
-            width="1024"
-            height="1536"
-            alt="Tengacion Millionaire quiz challenge flyer"
-            loading="lazy"
-            decoding="async"
-            fetchPriority="low"
-          />
+          {showMillionaireMedia ? (
+            <MillionaireFlyerPicture />
+          ) : (
+            <div className="public-home__deferred-media" aria-hidden="true" />
+          )}
         </div>
         <div className="public-home__bootcamp-copy public-home__millionaire-copy">
           <p className="public-home__eyebrow">Sunday, 26 July 2026 · 10:00 AM</p>
@@ -564,27 +602,32 @@ export default function PublicHomePage() {
       </section>
 
       <section
+        ref={bootcampSectionRef}
         className="public-home__bootcamp"
         aria-labelledby="public-home-bootcamp-title"
       >
         <div className="public-home__bootcamp-media">
           <span>New · Family learning</span>
-          <picture>
-            <source
-              type="image/webp"
-              srcSet="/assets/campaigns/summer-bootcamp-2026-480.webp 480w, /assets/campaigns/summer-bootcamp-2026-768.webp 768w, /assets/campaigns/summer-bootcamp-2026-1024.webp 1024w"
-              sizes="(max-width: 430px) calc(100vw - 36px), (max-width: 880px) min(580px, calc(100vw - 96px)), 470px"
-            />
-            <img
-              src="/assets/campaigns/summer-bootcamp-2026-768.webp"
-              width="768"
-              height="1152"
-              alt="Tengacion Virtual Summer Bootcamp flyer"
-              loading="lazy"
-              decoding="async"
-              fetchPriority="low"
-            />
-          </picture>
+          {showBootcampMedia ? (
+            <picture>
+              <source
+                type="image/webp"
+                srcSet="/assets/campaigns/summer-bootcamp-2026-480.webp 480w, /assets/campaigns/summer-bootcamp-2026-768.webp 768w, /assets/campaigns/summer-bootcamp-2026-1024.webp 1024w"
+                sizes="(max-width: 430px) calc(100vw - 36px), (max-width: 880px) min(580px, calc(100vw - 96px)), 470px"
+              />
+              <img
+                src="/assets/campaigns/summer-bootcamp-2026-768.webp"
+                width="768"
+                height="1152"
+                alt="Tengacion Virtual Summer Bootcamp flyer"
+                loading="lazy"
+                decoding="async"
+                fetchPriority="low"
+              />
+            </picture>
+          ) : (
+            <div className="public-home__deferred-media" aria-hidden="true" />
+          )}
         </div>
         <div className="public-home__bootcamp-copy">
           <p className="public-home__eyebrow">This summer on Tengacion</p>
@@ -616,6 +659,7 @@ export default function PublicHomePage() {
       </section>
 
       <section
+        ref={proofSectionRef}
         className="public-home__proof"
         aria-label="Live Tengacion proof"
         aria-busy={loadingProof}

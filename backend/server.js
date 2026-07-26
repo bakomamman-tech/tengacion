@@ -14,6 +14,7 @@ const { buildConversationId, toIdString } = require("./utils/messagePayload");
 const Message = require("./models/Message");
 const { config, redactSecretsForLog } = require("./config/env");
 const { registerGracefulShutdown } = require("./services/gracefulShutdownService");
+const { setStaticCacheHeaders } = require("./utils/staticAssetCache");
 const app = require("./app");
 const server = http.createServer(app);
 const allowedOriginSet = new Set(config.allowedOrigins);
@@ -121,13 +122,21 @@ if (frontendBuilt) {
       return res.status(500).type("text/plain").send("Failed to generate sitemap section");
     }
   });
-  app.use(express.static(frontendPath, { index: false }));
+  app.use(
+    express.static(frontendPath, {
+      index: false,
+      setHeaders: (response, filePath) => {
+        setStaticCacheHeaders(response, filePath, frontendPath);
+      },
+    })
+  );
   app.get("*", async (req, res, next) => {
     if (req.path.startsWith("/api")) {
       return next();
     }
 
     try {
+      res.set("Cache-Control", "no-cache");
       const seo = await resolvePageSeo({ path: req.path });
       if (seo?.xRobotsTag) {
         res.set("X-Robots-Tag", seo.xRobotsTag);

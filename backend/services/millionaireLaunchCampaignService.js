@@ -37,7 +37,7 @@ const getCampaignUrls = () => {
   const appUrl = getAppUrl();
   return {
     appUrl,
-    flyerUrl: `${appUrl}/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes`,
+    flyerUrl: `${appUrl}/assets/campaigns/tengacion-millionaire-2026-768.jpg`,
     registrationUrl: `${appUrl}/millionaire/register`,
   };
 };

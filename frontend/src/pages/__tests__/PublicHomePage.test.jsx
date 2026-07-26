@@ -1,5 +1,5 @@
 import { MemoryRouter } from "react-router-dom";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -24,6 +24,8 @@ vi.mock("../../lib/seo", () => ({
 }));
 
 describe("PublicHomePage", () => {
+  const originalIntersectionObserver = globalThis.IntersectionObserver;
+
   beforeEach(() => {
     vi.mocked(getCreatorSummaryFeed).mockResolvedValue({
       total: 20,
@@ -92,6 +94,11 @@ describe("PublicHomePage", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    if (originalIntersectionObserver) {
+      globalThis.IntersectionObserver = originalIntersectionObserver;
+    } else {
+      delete globalThis.IntersectionObserver;
+    }
   });
 
   it("shows live public releases, activity, and conversion actions", async () => {
@@ -142,7 +149,19 @@ describe("PublicHomePage", () => {
       screen.getByRole("img", { name: "Tengacion Millionaire quiz challenge flyer" })
     ).toHaveAttribute(
       "src",
-      "/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes"
+      "/assets/campaigns/tengacion-millionaire-2026-768.jpg"
+    );
+    expect(
+      screen
+        .getByRole("img", { name: "Tengacion Millionaire quiz challenge flyer" })
+        .parentElement?.querySelector('source[type="image/avif"]')
+    ).toHaveAttribute(
+      "srcset",
+      expect.stringContaining("tengacion-millionaire-2026-480.avif 480w")
+    );
+    expect(document.querySelector(".public-home__brand-mark img")).toHaveAttribute(
+      "src",
+      "/tengacion_logo_256.png"
     );
     expect(screen.getByRole("link", { name: /register to play/i })).toHaveAttribute(
       "href",
@@ -209,5 +228,47 @@ describe("PublicHomePage", () => {
     expect(screen.getByText("Studio update from the rehearsal room.")).toBeInTheDocument();
     expect(screen.getByText("Public releases")).toBeInTheDocument();
     expect(screen.getByText("20")).toBeInTheDocument();
+  });
+
+  it("defers campaign media and public API requests until below-fold content is near", async () => {
+    const observers = [];
+
+    globalThis.IntersectionObserver = class MockIntersectionObserver {
+      constructor(callback) {
+        this.callback = callback;
+        observers.push(this);
+      }
+
+      observe() {}
+
+      disconnect() {}
+    };
+
+    render(
+      <MemoryRouter>
+        <PublicHomePage />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.queryByRole("img", { name: "Tengacion Millionaire quiz challenge flyer" })
+    ).not.toBeInTheDocument();
+    expect(getCreatorSummaryFeed).not.toHaveBeenCalled();
+    expect(getCreatorDiscovery).not.toHaveBeenCalled();
+    expect(getPublicActivity).not.toHaveBeenCalled();
+    expect(observers).toHaveLength(3);
+
+    act(() => {
+      observers.forEach((observer) => observer.callback([{ isIntersecting: true }]));
+    });
+
+    expect(
+      await screen.findByRole("img", { name: "Tengacion Millionaire quiz challenge flyer" })
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(getCreatorSummaryFeed).toHaveBeenCalledTimes(1);
+      expect(getCreatorDiscovery).toHaveBeenCalledTimes(1);
+      expect(getPublicActivity).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -28,7 +28,7 @@ const emptyLaunchCampaign = {
   failedCount: 0,
   pendingCount: 0,
   emailConfigured: true,
-  flyerUrl: "/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes",
+  flyerUrl: "/assets/campaigns/tengacion-millionaire-2026-768.jpg",
 };
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();

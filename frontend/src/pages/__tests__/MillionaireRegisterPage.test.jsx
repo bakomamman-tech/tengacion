@@ -50,7 +50,15 @@ describe("MillionaireRegisterPage", () => {
       screen.getByRole("img", { name: "Tengacion Millionaire quiz challenge flyer" })
     ).toHaveAttribute(
       "src",
-      "/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes"
+      "/assets/campaigns/tengacion-millionaire-2026-768.jpg"
+    );
+    expect(
+      screen
+        .getByRole("img", { name: "Tengacion Millionaire quiz challenge flyer" })
+        .parentElement?.querySelector('source[type="image/webp"]')
+    ).toHaveAttribute(
+      "srcset",
+      expect.stringContaining("tengacion-millionaire-2026-480.webp 480w")
     );
     expect(screen.getByText(/3 stages/i)).toBeInTheDocument();
     expect(screen.getByText(/5 questions each/i)).toBeInTheDocument();

@@ -1967,6 +1967,27 @@
   border-radius: 16px;
 }
 
+.public-home.public-home--nature-green .public-home__deferred-media {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 16px;
+  background:
+    linear-gradient(110deg, transparent 32%, rgba(255, 255, 255, 0.08) 48%, transparent 64%),
+    linear-gradient(145deg, rgba(35, 40, 106, 0.9), rgba(27, 6, 69, 0.95));
+  background-size: 220% 100%, 100% 100%;
+  animation: public-home-media-placeholder 1.8s ease-in-out infinite;
+}
+
+@keyframes public-home-media-placeholder {
+  0% {
+    background-position: 120% 0, 0 0;
+  }
+
+  100% {
+    background-position: -120% 0, 0 0;
+  }
+}
+
 .public-home.public-home--nature-green .public-home__bootcamp-copy {
   padding-right: clamp(10px, 3vw, 44px);
 }

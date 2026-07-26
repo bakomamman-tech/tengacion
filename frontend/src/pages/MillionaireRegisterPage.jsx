@@ -10,6 +10,9 @@ import {
   uploadCover,
 } from "../api";
 import AuthPasswordField from "../components/AuthPasswordField";
+import MillionaireFlyerPicture, {
+  MILLIONAIRE_FLYER_FALLBACK,
+} from "../components/campaigns/MillionaireFlyerPicture";
 import PublicNav from "../components/PublicNav";
 import SeoHead from "../components/seo/SeoHead";
 import { COUNTRY_OPTIONS, getRegionsForCountry } from "../constants/countries";
@@ -21,8 +24,7 @@ import {
 
 import "./millionaire-register.css";
 
-const FLYER_PATH =
-  "/assets/campaigns/tengacion-millionaire-2026.png?v=20260726-daily-prizes";
+const FLYER_PATH = MILLIONAIRE_FLYER_FALLBACK;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 const formatDate = (value) => {
@@ -418,11 +420,10 @@ export default function MillionaireRegisterPage() {
             <b className="millionaire-reg-flyer__cap">
               ₦1,000 <small>one random daily tier</small>
             </b>
-            <img
-              src={FLYER_PATH}
-              alt="Tengacion Millionaire quiz challenge flyer"
-              width="1024"
-              height="1536"
+            <MillionaireFlyerPicture
+              loading="eager"
+              fetchPriority="high"
+              sizes="(max-width: 700px) calc(100vw - 64px), (max-width: 980px) 520px, 430px"
             />
           </figure>
         </section>

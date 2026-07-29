@@ -26,6 +26,7 @@ const PublicInfoPage = lazy(() => import("./pages/PublicInfoPage"));
 const LeadershipPage = lazy(() => import("./pages/LeadershipPage"));
 const InvestorPitchPage = lazy(() => import("./pages/InvestorPitchPage"));
 const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
+const NehezeFarmsPage = lazy(() => import("./pages/NehezeFarmsPage"));
 const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
 const Register = lazy(() => import("./pages/Register"));
 const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRegisterPage"));
@@ -187,6 +188,9 @@ export default function App() {
           <Route path="/pyrexx_singz" element={<PyrexxSingzPage />} />
           <Route path="/artist/pyrexx-singz" element={<PyrexxSingzPage />} />
           <Route path="/artist/pyrexx_singz" element={<PyrexxSingzPage />} />
+          <Route path="/neheze-farms" element={<NehezeFarmsPage />} />
+          <Route path="/neheze_farms" element={<NehezeFarmsPage />} />
+          <Route path="/farms/neheze-farms" element={<NehezeFarmsPage />} />
           <Route
             path="/schools/kurahtechandartsacademy"
             element={<Navigate to="/kurahtechandartsacademy" replace />}

@@ -26,6 +26,7 @@ const PublicInfoPage = lazy(() => import("./pages/PublicInfoPage"));
 const LeadershipPage = lazy(() => import("./pages/LeadershipPage"));
 const InvestorPitchPage = lazy(() => import("./pages/InvestorPitchPage"));
 const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
+const TovidoAnthonyFoundationPage = lazy(() => import("./pages/TovidoAnthonyFoundationPage"));
 const NehezeFarmsPage = lazy(() => import("./pages/NehezeFarmsPage"));
 const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
 const TeacherTrainingPage = lazy(() => import("./pages/TeacherTrainingPage"));
@@ -189,6 +190,9 @@ export default function App() {
           <Route path="/pyrexx_singz" element={<PyrexxSingzPage />} />
           <Route path="/artist/pyrexx-singz" element={<PyrexxSingzPage />} />
           <Route path="/artist/pyrexx_singz" element={<PyrexxSingzPage />} />
+          <Route path="/tovido-anthony-foundation" element={<TovidoAnthonyFoundationPage />} />
+          <Route path="/tovido_anthony_foundation" element={<TovidoAnthonyFoundationPage />} />
+          <Route path="/foundation/tovido-anthony" element={<TovidoAnthonyFoundationPage />} />
           <Route path="/neheze-farms" element={<NehezeFarmsPage />} />
           <Route path="/neheze_farms" element={<NehezeFarmsPage />} />
           <Route path="/farms/neheze-farms" element={<NehezeFarmsPage />} />

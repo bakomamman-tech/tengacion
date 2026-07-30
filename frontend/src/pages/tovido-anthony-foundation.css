@@ -1,0 +1,1528 @@
+.tovido-site {
+  --tovido-navy: #061d39;
+  --tovido-navy-soft: #0d2d53;
+  --tovido-green: #19733b;
+  --tovido-green-dark: #0e5128;
+  --tovido-gold: #e4ad2a;
+  --tovido-cream: #f4f0e6;
+  --tovido-paper: #fffdf8;
+  --tovido-ink: #11263a;
+  --tovido-muted: #61707b;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--tovido-cream);
+  color: var(--tovido-ink);
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  scroll-behavior: smooth;
+}
+
+.tovido-site *,
+.tovido-site *::before,
+.tovido-site *::after {
+  box-sizing: border-box;
+}
+
+.tovido-site img {
+  display: block;
+  max-width: 100%;
+}
+
+.tovido-site a,
+.tovido-site button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tovido-site a:focus-visible,
+.tovido-site button:focus-visible {
+  outline: 3px solid var(--tovido-gold);
+  outline-offset: 4px;
+}
+
+.tovido-site h1,
+.tovido-site h2,
+.tovido-site h3,
+.tovido-site p {
+  margin-top: 0;
+}
+
+.tovido-site h1,
+.tovido-site h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+
+.tovido-site section[id],
+.tovido-site div[id="main-content"] {
+  scroll-margin-top: 92px;
+}
+
+.tovido-skip-link {
+  position: fixed;
+  z-index: 100;
+  top: 12px;
+  left: 12px;
+  padding: 12px 16px;
+  transform: translateY(-180%);
+  background: #ffffff;
+  color: var(--tovido-navy);
+  font-weight: 800;
+  text-decoration: none;
+  transition: transform 160ms ease;
+}
+
+.tovido-skip-link:focus {
+  transform: translateY(0);
+}
+
+.tovido-header {
+  position: absolute;
+  z-index: 20;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 98px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 18px clamp(22px, 4.5vw, 76px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.24);
+}
+
+.tovido-brand {
+  min-width: max-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.tovido-brand img {
+  width: 62px;
+  height: 62px;
+  border: 4px solid rgba(255, 255, 255, 0.88);
+  border-radius: 50%;
+  background: #ffffff;
+  object-fit: cover;
+  object-position: center 25%;
+}
+
+.tovido-brand span,
+.tovido-brand strong,
+.tovido-brand small {
+  display: block;
+}
+
+.tovido-brand strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.tovido-brand small {
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.tovido-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: clamp(14px, 2vw, 30px);
+}
+
+.tovido-nav a {
+  position: relative;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tovido-nav > a:not(.tovido-nav__cta)::after {
+  position: absolute;
+  right: 0;
+  bottom: -9px;
+  left: 0;
+  height: 2px;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+  background: var(--tovido-gold);
+  transition: transform 180ms ease;
+}
+
+.tovido-nav > a:not(.tovido-nav__cta):hover::after,
+.tovido-nav > a:not(.tovido-nav__cta):focus-visible::after {
+  transform: scaleX(1);
+}
+
+.tovido-nav .tovido-nav__tengacion {
+  padding-left: clamp(12px, 1.5vw, 24px);
+  border-left: 1px solid rgba(255, 255, 255, 0.32);
+  color: var(--tovido-gold);
+}
+
+.tovido-nav .tovido-nav__cta {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 18px;
+  border: 1px solid var(--tovido-gold);
+  background: var(--tovido-gold);
+  color: var(--tovido-navy);
+  transition:
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.tovido-nav .tovido-nav__cta:hover {
+  background: transparent;
+  color: #ffffff;
+}
+
+.tovido-menu-button {
+  display: none;
+}
+
+.tovido-hero {
+  position: relative;
+  min-height: min(920px, 100svh);
+  display: flex;
+  align-items: center;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--tovido-navy);
+}
+
+.tovido-hero__image,
+.tovido-hero__overlay {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.tovido-hero__image {
+  object-fit: cover;
+  object-position: center;
+  animation: tovido-hero-settle 1.2s ease-out both;
+}
+
+.tovido-hero__overlay {
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(3, 19, 38, 0.98) 0%, rgba(3, 19, 38, 0.86) 36%, rgba(3, 19, 38, 0.24) 68%, rgba(3, 19, 38, 0.12) 100%),
+    linear-gradient(0deg, rgba(3, 19, 38, 0.72) 0%, transparent 38%);
+}
+
+@keyframes tovido-hero-settle {
+  from {
+    transform: scale(1.035);
+    opacity: 0.78;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.tovido-hero__copy {
+  width: min(760px, 58vw);
+  margin-left: clamp(24px, 8vw, 148px);
+  padding: 130px 0 120px;
+  color: #ffffff;
+}
+
+.tovido-eyebrow {
+  margin-bottom: 20px;
+  color: var(--tovido-green);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.tovido-hero .tovido-eyebrow,
+.tovido-programs .tovido-eyebrow,
+.tovido-contact .tovido-eyebrow {
+  color: var(--tovido-gold);
+}
+
+.tovido-hero h1 {
+  max-width: 780px;
+  margin-bottom: 26px;
+  font-size: clamp(55px, 7.2vw, 112px);
+  line-height: 0.9;
+}
+
+.tovido-hero h1 span {
+  display: block;
+  color: #a7d9b2;
+}
+
+.tovido-hero__copy > p:not(.tovido-eyebrow) {
+  max-width: 640px;
+  margin-bottom: 0;
+  color: rgba(255, 255, 255, 0.79);
+  font-size: clamp(16px, 1.4vw, 20px);
+  line-height: 1.7;
+}
+
+.tovido-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 34px;
+}
+
+.tovido-button {
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 0 22px;
+  border: 1px solid transparent;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    transform 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.tovido-button:hover {
+  transform: translateY(-2px);
+}
+
+.tovido-button svg,
+.tovido-text-link svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.tovido-button--primary {
+  background: var(--tovido-gold);
+  color: var(--tovido-navy);
+}
+
+.tovido-button--primary:hover,
+.tovido-button--gold:hover {
+  background: #f2c553;
+}
+
+.tovido-button--ghost {
+  border-color: rgba(255, 255, 255, 0.56);
+  color: #ffffff;
+}
+
+.tovido-button--ghost:hover,
+.tovido-button--ghost-light:hover {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: var(--tovido-navy);
+}
+
+.tovido-hero__facts {
+  position: absolute;
+  right: clamp(20px, 4vw, 72px);
+  bottom: 0;
+  left: clamp(20px, 4vw, 72px);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.tovido-hero__facts div {
+  min-height: 94px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 18px clamp(18px, 2.4vw, 36px);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tovido-hero__facts div:last-child {
+  border-right: 0;
+}
+
+.tovido-hero__facts span {
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.tovido-hero__facts strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(16px, 1.45vw, 22px);
+  font-weight: 500;
+}
+
+.tovido-section {
+  width: min(1320px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
+.tovido-intro {
+  padding-top: clamp(88px, 10vw, 154px);
+  padding-bottom: clamp(88px, 10vw, 154px);
+}
+
+.tovido-section__heading {
+  max-width: 970px;
+}
+
+.tovido-section__heading h2,
+.tovido-program-story h2,
+.tovido-registration h2,
+.tovido-contact h2 {
+  margin-bottom: 0;
+  font-size: clamp(40px, 5.6vw, 78px);
+  line-height: 1.03;
+}
+
+.tovido-intro__body {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(440px, 1.15fr);
+  gap: clamp(52px, 9vw, 144px);
+  align-items: end;
+  margin-top: clamp(50px, 7vw, 96px);
+}
+
+.tovido-intro__copy {
+  padding-bottom: 24px;
+}
+
+.tovido-intro__copy p {
+  color: var(--tovido-muted);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.tovido-intro__copy .tovido-lead {
+  margin-bottom: 28px;
+  color: var(--tovido-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(25px, 2.6vw, 38px);
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+}
+
+.tovido-audience {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 34px;
+}
+
+.tovido-audience span {
+  padding: 9px 12px;
+  border: 1px solid rgba(17, 38, 58, 0.18);
+  color: var(--tovido-navy);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tovido-intro__photo {
+  position: relative;
+  margin: 0;
+}
+
+.tovido-intro__photo::before {
+  position: absolute;
+  z-index: -1;
+  top: -22px;
+  right: -22px;
+  width: 48%;
+  height: 58%;
+  content: "";
+  background: var(--tovido-green);
+}
+
+.tovido-intro__photo img {
+  width: 100%;
+  height: min(660px, 68vw);
+  max-height: 660px;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+.tovido-intro__photo figcaption {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: min(360px, 74%);
+  padding: 22px 26px;
+  background: var(--tovido-paper);
+}
+
+.tovido-intro__photo figcaption span,
+.tovido-intro__photo figcaption strong {
+  display: block;
+}
+
+.tovido-intro__photo figcaption span {
+  margin-bottom: 8px;
+  color: var(--tovido-green);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.tovido-intro__photo figcaption strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.tovido-programs {
+  position: relative;
+  background:
+    radial-gradient(circle at 92% 4%, rgba(25, 115, 59, 0.32), transparent 29%),
+    var(--tovido-navy);
+  color: #ffffff;
+}
+
+.tovido-programs::after {
+  position: absolute;
+  top: 0;
+  right: 9%;
+  width: 1px;
+  height: 100%;
+  content: "";
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tovido-programs__inner {
+  padding-top: clamp(86px, 9vw, 142px);
+  padding-bottom: clamp(90px, 10vw, 160px);
+}
+
+.tovido-section__heading--light {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.55fr);
+  gap: 48px;
+  max-width: none;
+  align-items: end;
+}
+
+.tovido-section__heading--light .tovido-eyebrow {
+  grid-column: 1 / -1;
+  margin-bottom: -10px;
+}
+
+.tovido-section__heading--light h2 {
+  color: #ffffff;
+}
+
+.tovido-section__heading--light > p:last-child {
+  margin-bottom: 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.tovido-program-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: clamp(56px, 7vw, 96px);
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.tovido-program-card {
+  min-height: 320px;
+  padding: clamp(28px, 3.2vw, 50px);
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  transition:
+    background 200ms ease,
+    transform 200ms ease;
+}
+
+.tovido-program-card:hover {
+  transform: translateY(-4px);
+  background: rgba(25, 115, 59, 0.22);
+}
+
+.tovido-program-card > span {
+  display: inline-block;
+  margin-bottom: 58px;
+  color: var(--tovido-gold);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+}
+
+.tovido-program-card h3 {
+  max-width: 280px;
+  margin-bottom: 18px;
+  color: #ffffff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(25px, 2.3vw, 34px);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.tovido-program-card p {
+  max-width: 340px;
+  margin-bottom: 0;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 14px;
+  line-height: 1.72;
+}
+
+.tovido-program-story {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  gap: clamp(52px, 8vw, 126px);
+  align-items: center;
+  padding-top: clamp(88px, 10vw, 156px);
+  padding-bottom: clamp(88px, 10vw, 156px);
+}
+
+.tovido-program-story figure {
+  position: relative;
+  margin: 0;
+}
+
+.tovido-program-story figure::after {
+  position: absolute;
+  z-index: -1;
+  right: -24px;
+  bottom: -24px;
+  width: 46%;
+  height: 42%;
+  content: "";
+  background: var(--tovido-gold);
+}
+
+.tovido-program-story figure img {
+  width: 100%;
+  min-height: 520px;
+  max-height: 700px;
+  object-fit: cover;
+}
+
+.tovido-program-story figcaption {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  padding: 9px 12px;
+  background: rgba(6, 29, 57, 0.86);
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tovido-program-story__copy > p:not(.tovido-eyebrow) {
+  margin: 28px 0 0;
+  color: var(--tovido-muted);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.tovido-program-story blockquote {
+  margin: 36px 0 0;
+  padding: 4px 0 4px 26px;
+  border-left: 3px solid var(--tovido-green);
+  color: var(--tovido-navy);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(23px, 2.3vw, 32px);
+  line-height: 1.35;
+}
+
+.tovido-text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 34px;
+  padding-bottom: 7px;
+  border-bottom: 2px solid var(--tovido-green);
+  color: var(--tovido-green);
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.tovido-values {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.4), transparent),
+    #e9e4d6;
+}
+
+.tovido-values__inner {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.75fr) minmax(0, 1.25fr);
+  gap: clamp(60px, 8vw, 130px);
+  align-items: start;
+  padding-top: clamp(82px, 9vw, 130px);
+  padding-bottom: clamp(82px, 9vw, 130px);
+}
+
+.tovido-values h2 {
+  margin-bottom: 0;
+  font-size: clamp(41px, 5vw, 68px);
+  line-height: 1.02;
+}
+
+.tovido-values__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tovido-values__grid article {
+  min-height: 200px;
+  padding: 26px clamp(20px, 2.5vw, 38px);
+  border-top: 1px solid rgba(17, 38, 58, 0.2);
+  border-left: 1px solid rgba(17, 38, 58, 0.2);
+}
+
+.tovido-values__grid article:nth-child(3),
+.tovido-values__grid article:nth-child(4) {
+  border-bottom: 1px solid rgba(17, 38, 58, 0.2);
+}
+
+.tovido-values__grid article:nth-child(2n) {
+  border-right: 1px solid rgba(17, 38, 58, 0.2);
+}
+
+.tovido-values__grid span {
+  color: var(--tovido-green);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.tovido-values__grid h3 {
+  margin: 32px 0 10px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 500;
+}
+
+.tovido-values__grid p {
+  margin-bottom: 0;
+  color: var(--tovido-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.tovido-registration {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.74fr) minmax(0, 1.26fr);
+  gap: clamp(58px, 10vw, 160px);
+  align-items: center;
+  padding-top: clamp(88px, 10vw, 158px);
+  padding-bottom: clamp(88px, 10vw, 158px);
+}
+
+.tovido-registration__seal {
+  position: relative;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(17, 38, 58, 0.15);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #ffffff 0 56%, transparent 57%),
+    repeating-radial-gradient(circle, rgba(25, 115, 59, 0.12) 0 1px, transparent 1px 15px);
+}
+
+.tovido-registration__seal::before,
+.tovido-registration__seal::after {
+  position: absolute;
+  border-radius: 50%;
+  content: "";
+}
+
+.tovido-registration__seal::before {
+  inset: 7%;
+  border: 1px solid rgba(228, 173, 42, 0.45);
+}
+
+.tovido-registration__seal::after {
+  inset: 15%;
+  border: 1px solid rgba(25, 115, 59, 0.3);
+}
+
+.tovido-registration__seal img {
+  z-index: 1;
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 21%;
+}
+
+.tovido-registration__copy > p:not(.tovido-eyebrow) {
+  max-width: 680px;
+  margin: 26px 0 0;
+  color: var(--tovido-muted);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.tovido-registration dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 46px 0 0;
+  border-top: 1px solid rgba(17, 38, 58, 0.16);
+  border-left: 1px solid rgba(17, 38, 58, 0.16);
+}
+
+.tovido-registration dl div {
+  min-height: 112px;
+  padding: 24px;
+  border-right: 1px solid rgba(17, 38, 58, 0.16);
+  border-bottom: 1px solid rgba(17, 38, 58, 0.16);
+}
+
+.tovido-registration dt {
+  margin-bottom: 12px;
+  color: var(--tovido-muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.tovido-registration dd {
+  margin: 0;
+  color: var(--tovido-navy);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(18px, 1.7vw, 25px);
+  line-height: 1.2;
+}
+
+.tovido-gallery-section {
+  padding-top: clamp(80px, 9vw, 138px);
+  padding-bottom: clamp(90px, 10vw, 158px);
+}
+
+.tovido-section__heading--gallery {
+  max-width: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.45fr);
+  gap: 54px;
+  align-items: end;
+}
+
+.tovido-section__heading--gallery h2 {
+  max-width: 800px;
+}
+
+.tovido-section__heading--gallery > p {
+  margin-bottom: 6px;
+  color: var(--tovido-muted);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.tovido-gallery {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: 180px;
+  gap: 16px;
+  margin-top: clamp(48px, 7vw, 88px);
+}
+
+.tovido-gallery figure {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  background: #d9d5ca;
+}
+
+.tovido-gallery__item--1 {
+  grid-column: span 7;
+  grid-row: span 3;
+}
+
+.tovido-gallery__item--2 {
+  grid-column: span 5;
+  grid-row: span 2;
+}
+
+.tovido-gallery__item--3 {
+  grid-column: span 5;
+  grid-row: span 2;
+}
+
+.tovido-gallery__item--4 {
+  grid-column: span 7;
+  grid-row: span 3;
+}
+
+.tovido-gallery__item--5 {
+  grid-column: span 5;
+  grid-row: span 2;
+}
+
+.tovido-gallery img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 500ms ease;
+}
+
+.tovido-gallery figure:hover img {
+  transform: scale(1.025);
+}
+
+.tovido-gallery figcaption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  min-height: 66px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(0deg, rgba(3, 19, 38, 0.9), rgba(3, 19, 38, 0));
+  color: #ffffff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 16px;
+}
+
+.tovido-gallery figcaption span {
+  color: var(--tovido-gold);
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.tovido-contact {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(360px, 0.7fr);
+  gap: clamp(60px, 10vw, 170px);
+  padding: clamp(86px, 10vw, 154px) max(24px, calc((100vw - 1320px) / 2));
+  background:
+    linear-gradient(110deg, rgba(25, 115, 59, 0.2), transparent 38%),
+    var(--tovido-navy);
+  color: #ffffff;
+}
+
+.tovido-contact__copy {
+  max-width: 790px;
+}
+
+.tovido-contact h2 {
+  color: #ffffff;
+}
+
+.tovido-contact__copy > p:not(.tovido-eyebrow) {
+  max-width: 670px;
+  margin: 30px 0 0;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.tovido-button--gold {
+  background: var(--tovido-gold);
+  color: var(--tovido-navy);
+}
+
+.tovido-button--ghost-light {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+}
+
+.tovido-contact__details {
+  align-self: end;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  font-style: normal;
+}
+
+.tovido-contact__details div {
+  padding: 22px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.tovido-contact__details span,
+.tovido-contact__details a,
+.tovido-contact__details strong {
+  display: block;
+}
+
+.tovido-contact__details span {
+  margin-bottom: 9px;
+  color: var(--tovido-gold);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.tovido-contact__details a,
+.tovido-contact__details strong {
+  overflow-wrap: anywhere;
+  color: #ffffff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(17px, 1.6vw, 23px);
+  font-weight: 500;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.tovido-contact__details a:hover {
+  color: #a7d9b2;
+}
+
+.tovido-footer {
+  padding: 60px max(24px, calc((100vw - 1320px) / 2)) 28px;
+  background: #031326;
+  color: #ffffff;
+}
+
+.tovido-footer__top,
+.tovido-footer__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.tovido-footer__socials {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.tovido-footer__socials a {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.tovido-footer__socials a:hover {
+  color: var(--tovido-gold);
+}
+
+.tovido-footer__bottom {
+  margin-top: 46px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.tovido-footer__bottom p,
+.tovido-footer__bottom a {
+  margin-bottom: 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-decoration: none;
+}
+
+.tovido-footer__bottom a:hover {
+  color: #ffffff;
+}
+
+.tovido-footer__bottom .tovido-footer__credit {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border: 1px solid rgba(228, 173, 42, 0.62);
+  color: var(--tovido-gold);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  transition:
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.tovido-footer__bottom .tovido-footer__credit:hover {
+  background: var(--tovido-gold);
+  color: var(--tovido-navy);
+}
+
+@media (max-width: 1180px) {
+  .tovido-header {
+    gap: 18px;
+  }
+
+  .tovido-nav {
+    gap: 15px;
+  }
+
+  .tovido-nav a {
+    font-size: 12px;
+  }
+
+  .tovido-nav .tovido-nav__tengacion {
+    padding-left: 12px;
+  }
+
+  .tovido-hero__copy {
+    width: min(690px, 67vw);
+    margin-left: clamp(24px, 5vw, 76px);
+  }
+
+  .tovido-program-card {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 960px) {
+  .tovido-header {
+    min-height: 84px;
+    padding-block: 12px;
+  }
+
+  .tovido-brand img {
+    width: 56px;
+    height: 56px;
+  }
+
+  .tovido-menu-button {
+    position: relative;
+    z-index: 3;
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 0;
+    background: transparent;
+    color: #ffffff;
+    cursor: pointer;
+  }
+
+  .tovido-menu-button span {
+    position: absolute;
+    width: 20px;
+    height: 2px;
+    background: currentColor;
+    transition: transform 180ms ease;
+  }
+
+  .tovido-menu-button span:first-child {
+    transform: translateY(-4px);
+  }
+
+  .tovido-menu-button span:last-child {
+    transform: translateY(4px);
+  }
+
+  .tovido-menu-button[aria-expanded="true"] span:first-child {
+    transform: rotate(45deg);
+  }
+
+  .tovido-menu-button[aria-expanded="true"] span:last-child {
+    transform: rotate(-45deg);
+  }
+
+  .tovido-nav {
+    position: absolute;
+    top: 84px;
+    right: 0;
+    left: 0;
+    display: none;
+    align-items: stretch;
+    gap: 0;
+    padding: 18px 24px 26px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(3, 19, 38, 0.98);
+    box-shadow: 0 26px 50px rgba(0, 0, 0, 0.28);
+  }
+
+  .tovido-nav.is-open {
+    display: grid;
+  }
+
+  .tovido-nav a {
+    padding: 15px 2px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+    font-size: 14px;
+  }
+
+  .tovido-nav > a:not(.tovido-nav__cta)::after {
+    display: none;
+  }
+
+  .tovido-nav .tovido-nav__tengacion {
+    padding-left: 2px;
+    border-left: 0;
+  }
+
+  .tovido-nav .tovido-nav__cta {
+    min-height: 50px;
+    margin-top: 16px;
+    padding: 0 18px;
+    border-bottom: 1px solid var(--tovido-gold);
+  }
+
+  .tovido-hero {
+    min-height: 860px;
+  }
+
+  .tovido-hero__image {
+    object-position: 62% center;
+  }
+
+  .tovido-hero__overlay {
+    background:
+      linear-gradient(90deg, rgba(3, 19, 38, 0.96) 0%, rgba(3, 19, 38, 0.74) 61%, rgba(3, 19, 38, 0.34) 100%),
+      linear-gradient(0deg, rgba(3, 19, 38, 0.85) 0%, transparent 45%);
+  }
+
+  .tovido-hero__copy {
+    width: min(700px, calc(100% - 48px));
+    margin-left: 24px;
+    padding-bottom: 150px;
+  }
+
+  .tovido-intro__body,
+  .tovido-program-story,
+  .tovido-values__inner,
+  .tovido-registration,
+  .tovido-contact {
+    grid-template-columns: 1fr;
+  }
+
+  .tovido-intro__body {
+    gap: 64px;
+  }
+
+  .tovido-intro__copy {
+    max-width: 760px;
+  }
+
+  .tovido-intro__photo {
+    width: min(720px, calc(100% - 22px));
+  }
+
+  .tovido-section__heading--light,
+  .tovido-section__heading--gallery {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .tovido-program-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tovido-program-story {
+    gap: 78px;
+  }
+
+  .tovido-program-story figure {
+    width: calc(100% - 24px);
+  }
+
+  .tovido-program-story__copy {
+    max-width: 760px;
+  }
+
+  .tovido-values__inner {
+    gap: 62px;
+  }
+
+  .tovido-registration {
+    gap: 70px;
+  }
+
+  .tovido-registration__seal {
+    width: min(500px, 76vw);
+    margin-inline: auto;
+  }
+
+  .tovido-gallery {
+    grid-auto-rows: 150px;
+  }
+
+  .tovido-contact {
+    gap: 70px;
+  }
+
+  .tovido-contact__details {
+    max-width: 720px;
+  }
+}
+
+@media (max-width: 640px) {
+  .tovido-header {
+    padding-inline: 16px;
+  }
+
+  .tovido-brand {
+    gap: 9px;
+  }
+
+  .tovido-brand img {
+    width: 48px;
+    height: 48px;
+    border-width: 3px;
+  }
+
+  .tovido-brand strong {
+    font-size: 15px;
+  }
+
+  .tovido-brand small {
+    max-width: 190px;
+    overflow: hidden;
+    font-size: 7px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tovido-menu-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .tovido-section {
+    width: min(100% - 32px, 1320px);
+  }
+
+  .tovido-hero {
+    min-height: 860px;
+    align-items: flex-start;
+  }
+
+  .tovido-hero__image {
+    object-position: 68% center;
+  }
+
+  .tovido-hero__overlay {
+    background:
+      linear-gradient(90deg, rgba(3, 19, 38, 0.94), rgba(3, 19, 38, 0.5)),
+      linear-gradient(0deg, rgba(3, 19, 38, 0.96) 0%, rgba(3, 19, 38, 0.6) 54%, rgba(3, 19, 38, 0.4) 100%);
+  }
+
+  .tovido-hero__copy {
+    width: auto;
+    margin: 0;
+    padding: 132px 18px 250px;
+  }
+
+  .tovido-hero h1 {
+    font-size: clamp(48px, 14.2vw, 70px);
+    line-height: 0.94;
+  }
+
+  .tovido-hero__copy > p:not(.tovido-eyebrow) {
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .tovido-actions {
+    align-items: stretch;
+  }
+
+  .tovido-button {
+    width: 100%;
+  }
+
+  .tovido-hero__facts {
+    right: 16px;
+    bottom: 18px;
+    left: 16px;
+    grid-template-columns: 1fr;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(3, 19, 38, 0.68);
+    backdrop-filter: blur(10px);
+  }
+
+  .tovido-hero__facts div {
+    min-height: 66px;
+    padding: 12px 16px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  }
+
+  .tovido-hero__facts div:last-child {
+    border-bottom: 0;
+  }
+
+  .tovido-hero__facts span {
+    margin-bottom: 4px;
+  }
+
+  .tovido-section__heading h2,
+  .tovido-program-story h2,
+  .tovido-registration h2,
+  .tovido-contact h2 {
+    font-size: clamp(38px, 11.5vw, 56px);
+  }
+
+  .tovido-intro__body {
+    margin-top: 44px;
+  }
+
+  .tovido-intro__copy .tovido-lead {
+    font-size: 25px;
+  }
+
+  .tovido-intro__photo {
+    width: calc(100% - 14px);
+  }
+
+  .tovido-intro__photo::before {
+    top: -14px;
+    right: -14px;
+  }
+
+  .tovido-intro__photo img {
+    height: 500px;
+  }
+
+  .tovido-intro__photo figcaption {
+    width: calc(100% - 18px);
+    padding: 18px;
+  }
+
+  .tovido-program-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tovido-program-card {
+    min-height: auto;
+    padding: 28px 24px 32px;
+  }
+
+  .tovido-program-card > span {
+    margin-bottom: 32px;
+  }
+
+  .tovido-program-story figure {
+    width: calc(100% - 14px);
+  }
+
+  .tovido-program-story figure::after {
+    right: -14px;
+    bottom: -14px;
+  }
+
+  .tovido-program-story figure img {
+    min-height: 440px;
+  }
+
+  .tovido-program-story figcaption {
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .tovido-values__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tovido-values__grid article {
+    min-height: 170px;
+    border-right: 1px solid rgba(17, 38, 58, 0.2);
+    border-bottom: 0;
+  }
+
+  .tovido-values__grid article:nth-child(3),
+  .tovido-values__grid article:nth-child(4) {
+    border-bottom: 0;
+  }
+
+  .tovido-values__grid article:last-child {
+    border-bottom: 1px solid rgba(17, 38, 58, 0.2);
+  }
+
+  .tovido-registration__seal {
+    width: min(100%, 430px);
+  }
+
+  .tovido-registration dl {
+    grid-template-columns: 1fr;
+  }
+
+  .tovido-registration dl div {
+    min-height: 96px;
+  }
+
+  .tovido-gallery {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-auto-rows: 480px;
+    gap: 12px;
+  }
+
+  .tovido-gallery figure[class*="tovido-gallery__item"] {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .tovido-gallery__item--2,
+  .tovido-gallery__item--3,
+  .tovido-gallery__item--4 {
+    min-height: 420px;
+  }
+
+  .tovido-contact {
+    padding-inline: 18px;
+  }
+
+  .tovido-footer {
+    padding-inline: 18px;
+  }
+
+  .tovido-footer__top,
+  .tovido-footer__bottom {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tovido-footer__socials {
+    justify-content: flex-start;
+  }
+
+  .tovido-footer__bottom {
+    gap: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tovido-site *,
+  .tovido-site *::before,
+  .tovido-site *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -404,6 +404,7 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
             <a href="#about-school">About</a>
             <a href="#admission">Admission</a>
             {isKurahAcademy ? <a href="#tuition-payment">Pay Fees</a> : null}
+            {isKurahAcademy ? <Link to="/kurahtechandartsacademy/training">Staff Training</Link> : null}
             <a href="#announcements">Updates</a>
             <a href="#class-photographs">Class Photos</a>
             <a href="#contact">Contact</a>
@@ -420,6 +421,14 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
           <div className="school-profile-hero__actions">
             <ActionLink href="#admission" variant="primary">Apply for Admission</ActionLink>
             {isKurahAcademy ? <ActionLink href="#tuition-payment">Pay School Fees</ActionLink> : null}
+            {isKurahAcademy ? (
+              <Link
+                className="school-profile-btn school-profile-btn--secondary"
+                to="/kurahtechandartsacademy/training"
+              >
+                Staff Online Training
+              </Link>
+            ) : null}
             <ActionLink onClick={scrollToInquiry}>Send Inquiry</ActionLink>
             <ActionLink href={phoneHref || emailHref}>Contact School</ActionLink>
             <ActionLink onClick={shareSchool} variant="ghost">Share</ActionLink>

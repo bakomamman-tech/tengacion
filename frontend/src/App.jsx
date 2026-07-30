@@ -28,6 +28,7 @@ const InvestorPitchPage = lazy(() => import("./pages/InvestorPitchPage"));
 const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
 const NehezeFarmsPage = lazy(() => import("./pages/NehezeFarmsPage"));
 const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
+const TeacherTrainingPage = lazy(() => import("./pages/TeacherTrainingPage"));
 const Register = lazy(() => import("./pages/Register"));
 const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRegisterPage"));
 const SummerBootcampRegisterPage = lazy(() => import("./pages/SummerBootcampRegisterPage"));
@@ -199,6 +200,10 @@ export default function App() {
           <Route
             path="/kurahtechandartsacademy"
             element={<SchoolProfilePage slugOverride="kurahtechandartsacademy" />}
+          />
+          <Route
+            path="/kurahtechandartsacademy/training"
+            element={<TeacherTrainingPage user={user} />}
           />
           <Route
             path="/kurahtechandartsacacemy"

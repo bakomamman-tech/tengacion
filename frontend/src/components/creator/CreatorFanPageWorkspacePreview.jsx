@@ -408,7 +408,7 @@ export default function CreatorFanPageWorkspacePreview({
   };
 
   return (
-    <section className="creator-panel card creator-fan-preview" aria-label="Fan Page View">
+    <section className="creator-fan-preview" aria-label="Fan Page View">
       <div className="creator-fan-preview__chrome">
         <span className="creator-fan-preview__chip">Fan Page View</span>
         <div className="creator-fan-preview__chrome-lights" aria-hidden="true">

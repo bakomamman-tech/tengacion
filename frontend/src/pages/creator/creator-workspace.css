@@ -1167,6 +1167,16 @@ textarea {
 }
 
 .creator-fan-preview {
+  /*
+   * This preview intentionally has its own dark stage and light support card.
+   * Keep their foregrounds tied to those surfaces instead of the active app
+   * theme so global card palettes can never produce light-on-light copy.
+   */
+  --creator-preview-text: #f6efdf;
+  --creator-preview-muted: #ddd4c2;
+  --creator-preview-accent-text: #2f2718;
+  --creator-preview-support-text: #2f2718;
+  --creator-preview-support-muted: #5f5545;
   position: relative;
   display: grid;
   gap: 16px;
@@ -1178,7 +1188,7 @@ textarea {
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent);
   border: 1px solid rgba(255, 244, 223, 0.08);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  color: #f6efdf;
+  color: var(--creator-preview-text);
   isolation: isolate;
 }
 
@@ -1225,7 +1235,7 @@ textarea {
   padding: 0 12px;
   border-radius: 999px;
   background: rgba(255, 244, 223, 0.08);
-  color: rgba(246, 239, 223, 0.88);
+  color: var(--creator-preview-text);
   font-size: 0.76rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1292,6 +1302,7 @@ textarea {
 }
 
 .creator-fan-preview__hero-copy strong {
+  color: var(--creator-preview-text);
   font-family: var(--creator-font-display);
   font-size: clamp(1.2rem, 2vw, 1.72rem);
   letter-spacing: -0.03em;
@@ -1302,11 +1313,11 @@ textarea {
 .creator-fan-preview__mini-body p,
 .creator-fan-preview__support-card p {
   margin: 0;
-  color: rgba(246, 239, 223, 0.72);
+  color: var(--creator-preview-muted);
 }
 
 .creator-fan-preview__eyebrow {
-  color: rgba(246, 239, 223, 0.68);
+  color: var(--creator-preview-muted);
   font-size: 0.76rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1328,7 +1339,7 @@ textarea {
   padding: 0 16px;
   border-radius: 999px;
   background: linear-gradient(135deg, #d7aa58, #b98735);
-  color: #2f2718;
+  color: var(--creator-preview-accent-text);
   font-weight: 700;
 }
 
@@ -1341,7 +1352,7 @@ textarea {
   padding: 0 14px;
   border-radius: 999px;
   background: rgba(255, 247, 233, 0.08);
-  color: #f6efdf;
+  color: var(--creator-preview-text);
   border: 1px solid rgba(255, 247, 233, 0.08);
   font-weight: 600;
 }
@@ -1357,7 +1368,7 @@ textarea {
   padding: 0 14px;
   border-radius: 999px;
   background: rgba(255, 247, 233, 0.06);
-  color: rgba(246, 239, 223, 0.7);
+  color: var(--creator-preview-muted);
 }
 
 .creator-fan-preview__tab.is-active {
@@ -1400,7 +1411,7 @@ textarea {
   background:
     radial-gradient(circle at top right, rgba(215, 170, 88, 0.16), transparent 34%),
     linear-gradient(180deg, rgba(255, 247, 233, 0.96), rgba(244, 233, 214, 0.9));
-  color: var(--creator-text);
+  color: var(--creator-preview-support-text);
 }
 
 .creator-register-form input::placeholder,
@@ -1410,11 +1421,11 @@ textarea {
 }
 
 .creator-fan-preview__support-card p {
-  color: var(--creator-muted);
+  color: var(--creator-preview-support-muted);
 }
 
 .creator-fan-preview__support-card span {
-  color: rgba(47, 39, 24, 0.7);
+  color: var(--creator-preview-support-muted);
   font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1461,7 +1472,7 @@ textarea {
 
 .creator-fan-preview__section-label,
 .creator-fan-preview__mini-head span {
-  color: rgba(246, 239, 223, 0.64);
+  color: var(--creator-preview-muted);
   font-size: 0.8rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1529,7 +1540,7 @@ textarea {
 
 .creator-fan-preview__meta-row span,
 .creator-fan-preview__mini-body small {
-  color: rgba(246, 239, 223, 0.68);
+  color: var(--creator-preview-muted);
   font-size: 0.82rem;
 }
 
@@ -1576,7 +1587,7 @@ textarea {
 }
 
 .creator-fan-preview__queue-copy span {
-  color: rgba(246, 239, 223, 0.68);
+  color: var(--creator-preview-muted);
   font-size: 0.84rem;
 }
 
@@ -1587,7 +1598,7 @@ textarea {
 }
 
 .creator-fan-preview__queue-meta small {
-  color: rgba(246, 239, 223, 0.62);
+  color: var(--creator-preview-muted);
   font-size: 0.78rem;
 }
 
@@ -1596,7 +1607,7 @@ textarea {
   padding: 0 12px;
   border-radius: 999px;
   background: rgba(255, 247, 233, 0.08);
-  color: #f6efdf;
+  color: var(--creator-preview-text);
   border: 1px solid rgba(255, 247, 233, 0.08);
   font-size: 0.8rem;
   font-weight: 600;
@@ -1640,7 +1651,7 @@ textarea {
 }
 
 .creator-fan-preview__player-track span {
-  color: rgba(246, 239, 223, 0.64);
+  color: var(--creator-preview-muted);
   font-size: 0.82rem;
 }
 
@@ -1655,17 +1666,17 @@ textarea {
   height: 34px;
   border-radius: 999px;
   background: rgba(255, 247, 233, 0.08);
-  color: #f6efdf;
+  color: var(--creator-preview-text);
 }
 
 .creator-fan-preview__player-controls button.is-active {
   background: linear-gradient(135deg, #d7aa58, #b98735);
-  color: #2f2718;
+  color: var(--creator-preview-accent-text);
 }
 
 .creator-fan-preview__play-pill.is-active {
   background: linear-gradient(135deg, #d7aa58, #b98735);
-  color: #2f2718;
+  color: var(--creator-preview-accent-text);
   border-color: transparent;
 }
 
@@ -1694,7 +1705,7 @@ textarea {
   background:
     radial-gradient(circle at top right, rgba(215, 170, 88, 0.18), transparent 32%),
     linear-gradient(145deg, rgba(50, 39, 26, 0.84), rgba(22, 31, 23, 0.82));
-  color: #f6efdf;
+  color: var(--creator-preview-text);
 }
 
 .creator-fan-preview__book-reader-main {
@@ -1724,7 +1735,7 @@ textarea {
 .creator-fan-preview__book-copy > span:not(.creator-fan-preview__book-badge),
 .creator-fan-preview__book-description,
 .creator-fan-preview__book-navigation {
-  color: rgba(246, 239, 223, 0.72);
+  color: var(--creator-preview-muted);
 }
 
 .creator-fan-preview__book-badge {
@@ -1758,7 +1769,7 @@ textarea {
 }
 
 .creator-fan-preview__book-meta-grid small {
-  color: rgba(246, 239, 223, 0.58);
+  color: var(--creator-preview-muted);
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1819,7 +1830,7 @@ textarea {
 }
 
 .creator-fan-preview__book-version-status small {
-  color: rgba(246, 239, 223, 0.68);
+  color: var(--creator-preview-muted);
   font-size: 0.82rem;
 }
 

@@ -102,6 +102,24 @@ describe("CreatorFanPageWorkspacePreview", () => {
     });
   });
 
+  it("keeps the preview isolated from app-wide card theme surfaces", () => {
+    render(
+      <MemoryRouter>
+        <CreatorFanPageWorkspacePreview
+          creatorProfile={musicCreatorProfile}
+          dashboard={musicDashboard}
+          currentCategoryKey="music"
+        />
+      </MemoryRouter>
+    );
+
+    const preview = screen.getByRole("region", { name: /fan page view/i });
+
+    expect(preview).toHaveClass("creator-fan-preview");
+    expect(preview).not.toHaveClass("card");
+    expect(preview).not.toHaveClass("creator-panel");
+  });
+
   it("renders a playable audio dock for uploaded music", () => {
     render(
       <MemoryRouter>

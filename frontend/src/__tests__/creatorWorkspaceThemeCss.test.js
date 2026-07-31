@@ -55,4 +55,17 @@ describe("creator workspace theme contrast CSS", () => {
     expect(css).toContain("color: var(--creator-text);");
     expect(css).toContain("color: var(--creator-muted);");
   });
+
+  it("uses surface-bound fan preview foregrounds that do not change with the app theme", () => {
+    const css = readFileSync(cssPath, "utf8").replace(/\r\n/g, "\n");
+    const previewRule = getRule(css, ".creator-fan-preview");
+
+    expect(previewRule).toContain("--creator-preview-text: #f6efdf;");
+    expect(previewRule).toContain("--creator-preview-muted: #ddd4c2;");
+    expect(previewRule).toContain("--creator-preview-support-text: #2f2718;");
+    expect(previewRule).toContain("--creator-preview-support-muted: #5f5545;");
+    expect(previewRule).toContain("color: var(--creator-preview-text);");
+    expect(css).toContain("color: var(--creator-preview-support-text);");
+    expect(css).toContain("color: var(--creator-preview-support-muted);");
+  });
 });

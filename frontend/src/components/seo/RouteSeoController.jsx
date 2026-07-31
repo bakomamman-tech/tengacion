@@ -15,6 +15,9 @@ import { useLocation } from "react-router-dom";
 
 const PUBLIC_STATIC_PATHS = new Set([
   "/",
+  "/kadahive",
+  "/kadahive/programmes/kids-code",
+  "/kadahive/programmes/cyber-smart",
   "/about",
   "/leadership",
   "/investors",
@@ -56,13 +59,13 @@ const PUBLIC_STATIC_PATHS = new Set([
 
 const NOINDEX_RULES = [
   {
-    patterns: ["/login"],
+    patterns: ["/login", "/kadahive/login"],
     title: "Log In | Tengacion",
     description: "Log in to Tengacion to access your feed, creators, purchases, and messages.",
     canonicalPath: "/login",
   },
   {
-    patterns: ["/register", "/signup", "/kaduna-got-talent/register", "/summer-bootcamp/register", "/millionaire/register"],
+    patterns: ["/register", "/signup", "/kadahive/register", "/kaduna-got-talent/register", "/summer-bootcamp/register", "/millionaire/register"],
     title: "Create Account | Tengacion",
     description: "Create your Tengacion account to connect with creators, friends, and communities.",
   },
@@ -77,7 +80,7 @@ const NOINDEX_RULES = [
     description: "Private Tengacion page.",
   },
   {
-    patterns: ["/settings", "/settings/*", "/dashboard", "/dashboard/*"],
+    patterns: ["/settings", "/settings/*", "/dashboard", "/dashboard/*", "/kadahive/portal", "/kadahive/dashboard", "/kadahive/admin"],
     title: "Private Page | Tengacion",
     description: "Private Tengacion page.",
   },

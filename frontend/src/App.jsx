@@ -146,6 +146,23 @@ const ProfessionalDashboardPage = lazyNamedExport(
   "ProfessionalDashboardPage"
 );
 const SavedPage = lazyNamedExport(loadQuickAccessPages, "SavedPage");
+const KadahiveLanding = lazy(() => import("./features/kadahive/KadahiveLanding"));
+const KadahiveAuthPage = lazy(() => import("./features/kadahive/KadahiveAuthPage"));
+const KadahiveMemberDashboard = lazy(
+  () => import("./features/kadahive/KadahiveMemberDashboard")
+);
+const KadahiveAdminDashboard = lazy(
+  () => import("./features/kadahive/KadahiveAdminDashboard")
+);
+const KadahiveAdminRoute = lazy(
+  () => import("./features/kadahive/KadahiveAdminRoute")
+);
+const KadahiveSuperAdminPage = lazy(
+  () => import("./features/kadahive/KadahiveSuperAdminPage")
+);
+const KadahiveProgrammeArchive = lazy(
+  () => import("./features/kadahive/KadahiveProgrammeArchive")
+);
 
 function AppShellFallback({ message = "Loading Tengacion..." }) {
   return (
@@ -163,21 +180,59 @@ export default function App() {
   const navigate = useNavigate();
   usePageTracking();
   const isFocusedGameRoute = pathname === "/millionaire";
+  const isKadahiveRoute =
+    pathname === "/kadahive" ||
+    pathname.startsWith("/kadahive/") ||
+    pathname === "/admin/institutions/kadahive";
+  const isAuthOptionalRoute = pathname === "/" || pathname.startsWith("/kadahive");
 
   // The public landing page must remain useful while a slow mobile connection
   // checks for an existing session. Authenticated visitors are redirected as
   // soon as restoration completes; protected routes still keep the full gate.
-  if (authLoading && pathname !== "/") {
+  if (authLoading && !isAuthOptionalRoute) {
     return <AppShellFallback />;
   }
 
   return (
     <>
-      <WelcomeVoiceController user={user} />
+      <WelcomeVoiceController user={isKadahiveRoute ? null : user} />
       <RouteSeoController />
       <Suspense fallback={<AppShellFallback />}>
         <Routes>
           <Route path="/" element={user ? <Navigate to="/home" replace /> : <PublicHomePage />} />
+          <Route path="/kadahive" element={<KadahiveLanding />} />
+          <Route
+            path="/kadahive/programmes/kids-code"
+            element={<KadahiveProgrammeArchive programme="kids" />}
+          />
+          <Route
+            path="/kadahive/programmes/cyber-smart"
+            element={<KadahiveProgrammeArchive programme="cyber" />}
+          />
+          <Route path="/kadahive/login" element={<KadahiveAuthPage mode="login" />} />
+          <Route path="/kadahive/register" element={<KadahiveAuthPage mode="register" />} />
+          <Route
+            path="/kadahive/portal"
+            element={
+              user ? (
+                <KadahiveMemberDashboard />
+              ) : (
+                <Navigate to="/kadahive/login?returnTo=/kadahive/portal" replace />
+              )
+            }
+          />
+          <Route
+            path="/kadahive/dashboard"
+            element={<Navigate to="/kadahive/portal" replace />}
+          />
+          <Route
+            path="/kadahive/admin"
+            element={
+              <KadahiveAdminRoute user={user}>
+                <KadahiveAdminDashboard />
+              </KadahiveAdminRoute>
+            }
+          />
           <Route path="/about" element={<PublicInfoPage pageKey="about" />} />
           <Route path="/leadership" element={<LeadershipPage />} />
           <Route path="/investors" element={<InvestorPitchPage />} />
@@ -995,9 +1050,17 @@ export default function App() {
               </AdminRoute>
             }
           />
+          <Route
+            path="/admin/institutions/kadahive"
+            element={
+              <AdminRoute user={user} allowedRoles={["admin", "super_admin"]}>
+                <KadahiveSuperAdminPage user={user} />
+              </AdminRoute>
+            }
+          />
         </Routes>
       </Suspense>
-      {user && !isFocusedGameRoute ? (
+      {user && !isFocusedGameRoute && !isKadahiveRoute ? (
         <TopUpPromoDiscovery
           user={user}
           onExploreTip={(tip) => {
@@ -1015,8 +1078,8 @@ export default function App() {
           }}
         />
       ) : null}
-      {!isFocusedGameRoute ? <InstallPrompt /> : null}
-      {!isFocusedGameRoute ? <TengacionAssistantDock /> : null}
+      {!isFocusedGameRoute && !isKadahiveRoute ? <InstallPrompt /> : null}
+      {!isFocusedGameRoute && !isKadahiveRoute ? <TengacionAssistantDock /> : null}
     </>
   );
 }

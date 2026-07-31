@@ -4,6 +4,7 @@ import "../pages/admin-analytics.css";
 
 const ADMIN_ITEMS = [
   { key: "overview", label: "Overview", path: "/admin/dashboard" },
+  { key: "kadahive", label: "Kadahive Institution", path: "/admin/institutions/kadahive" },
   { key: "creator-earnings", label: "Earnings From Creators", path: "/admin/creator-earnings" },
   { key: "assurance", label: "Assurance", path: "/admin/assurance" },
   { key: "users", label: "Users", path: "/admin/users" },

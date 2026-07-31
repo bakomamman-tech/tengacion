@@ -124,6 +124,7 @@ const validateRegisterBody = (req, res, next) => {
   const stateOfOrigin = trimText(req.body?.stateOfOrigin);
   const password = trimText(req.body?.password);
   const dob = trimText(req.body?.dob);
+  const institutionSlug = trimText(req.body?.institutionSlug).toLowerCase();
 
   if (!name) {
     return reject(res, "Name is required");
@@ -162,6 +163,9 @@ const validateRegisterBody = (req, res, next) => {
   if (!isStrongPassword(password)) {
     return reject(res, "Password must be at least 8 characters");
   }
+  if (institutionSlug && institutionSlug !== "kadahive") {
+    return reject(res, "Unknown institution");
+  }
 
   req.body.name = name;
   req.body.username = username;
@@ -171,6 +175,7 @@ const validateRegisterBody = (req, res, next) => {
   req.body.stateOfOrigin = stateOfOrigin;
   req.body.dob = birthDate.toISOString();
   req.body.password = password;
+  req.body.institutionSlug = institutionSlug;
   return next();
 };
 

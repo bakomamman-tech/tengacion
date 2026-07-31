@@ -162,6 +162,36 @@ const UserSchema = new mongoose.Schema(
       default: () => normalizeMediaValue(),
     },
 
+    institutionMemberships: [
+      {
+        institution: {
+          type: String,
+          required: true,
+          trim: true,
+          lowercase: true,
+          maxlength: 80,
+        },
+        role: {
+          type: String,
+          enum: ["member", "admin"],
+          default: "member",
+        },
+        status: {
+          type: String,
+          enum: ["active", "suspended"],
+          default: "active",
+        },
+        joinedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        updatedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
     /* ================= ACCOUNT ================= */
     role: {
       type: String,
@@ -549,6 +579,7 @@ const UserSchema = new mongoose.Schema(
 
 /* ================= INDEXES ================= */
 UserSchema.index({ username: "text", name: "text" });
+UserSchema.index({ "institutionMemberships.institution": 1, "institutionMemberships.status": 1 });
 
 /* ================= HOOKS ================= */
 UserSchema.pre("save", async function () {

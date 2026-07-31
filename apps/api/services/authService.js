@@ -143,6 +143,7 @@ const tryLegacyInsertFallback = async ({
   stateOfOrigin,
   dob,
   gender,
+  institutionSlug,
 }) => {
   const passwordHash = await bcrypt.hash(password, 12);
   const now = new Date();
@@ -165,6 +166,18 @@ const tryLegacyInsertFallback = async ({
     following: [],
     friends: [],
     friendRequests: [],
+    institutionMemberships:
+      institutionSlug === "kadahive"
+        ? [
+            {
+              institution: "kadahive",
+              role: "member",
+              status: "active",
+              joinedAt: now,
+              updatedAt: now,
+            },
+          ]
+        : [],
     createdAt: now,
     updatedAt: now,
     dob: dob ? new Date(dob) : null,
@@ -235,7 +248,22 @@ const sanitizeRegistrationPayload = (payload = {}) => {
   const stateOfOrigin = (payload.stateOfOrigin || "").trim();
   const dob = payload.dob || "";
   const gender = payload.gender || "";
-  return { rawName, username, email, password, phone, country, stateOfOrigin, dob, gender };
+  const institutionSlug =
+    String(payload.institutionSlug || "").trim().toLowerCase() === "kadahive"
+      ? "kadahive"
+      : "";
+  return {
+    rawName,
+    username,
+    email,
+    password,
+    phone,
+    country,
+    stateOfOrigin,
+    dob,
+    gender,
+    institutionSlug,
+  };
 };
 
 const sanitizeIdentifier = (value = "") => (value || "").trim().toLowerCase();
@@ -284,7 +312,7 @@ const MFA_SUMMARY_SELECT =
 const MFA_SECRET_SELECT = `${MFA_SUMMARY_SELECT} +twoFactor.secretCipher`;
 const MFA_SETUP_SECRET_SELECT = `${MFA_SECRET_SELECT} +twoFactor.pendingSecretCipher`;
 const USER_PROFILE_SELECT =
-  "_id name username email phone country stateOfOrigin dob gender onboarding role permissions moderationProfile avatar cover audioPrefs emailVerified isActive isBanned isDeleted isSuspended lastLogin lastLoginAt lastSeenAt";
+  "_id name username email phone country stateOfOrigin dob gender onboarding role permissions moderationProfile institutionMemberships avatar cover audioPrefs emailVerified isActive isBanned isDeleted isSuspended lastLogin lastLoginAt lastSeenAt";
 const SESSION_SELECT =
   "sessions.sessionId sessions.deviceName sessions.ip sessions.userAgent sessions.country sessions.city sessions.fingerprint sessions.createdAt sessions.lastSeenAt sessions.revokedAt";
 const SESSION_SELECT_WITH_HASH = `${SESSION_SELECT} +sessions.refreshTokenHash`;
@@ -780,6 +808,7 @@ class AuthService {
       stateOfOrigin,
       dob,
       gender,
+      institutionSlug,
     } = sanitizeRegistrationPayload(payload);
 
     if (!username || !email || !phone || !password) {
@@ -841,6 +870,18 @@ class AuthService {
       dob: dob ? new Date(dob) : undefined,
       birthday: birthdayFromDob(dob, "friends") || undefined,
       gender: gender || undefined,
+      institutionMemberships:
+        institutionSlug === "kadahive"
+          ? [
+              {
+                institution: "kadahive",
+                role: "member",
+                status: "active",
+                joinedAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ]
+          : undefined,
     };
 
     Object.keys(baseUserData).forEach((key) => {
@@ -863,6 +904,7 @@ class AuthService {
         stateOfOrigin,
         dob,
         gender,
+        institutionSlug,
       });
     }
 

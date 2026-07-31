@@ -15,6 +15,7 @@ const NAV_GROUPS = [
   {
     label: "Operations",
     items: [
+      { key: "kadahive", label: "Kadahive Institution", icon: "users", path: "/admin/institutions/kadahive" },
       { key: "assistant", label: "Assistant Ops", icon: "spark", path: "/admin/assistant", dotKey: "assistant" },
       { key: "posts", label: "Posts", icon: "posts", path: "/admin/content", dotKey: "content" },
       { key: "users", label: "Users", icon: "users", path: "/admin/users" },

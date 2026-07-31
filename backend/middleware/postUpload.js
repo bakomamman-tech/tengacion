@@ -8,9 +8,9 @@ module.exports = createConfiguredUpload({
     process.env.PRIVATE_UPLOAD_DIR ? path.resolve(process.env.PRIVATE_UPLOAD_DIR) : "",
   ],
   fallbackDirName: "tengacion-post-uploads",
-  maxFileBytes: UPLOAD_LIMITS.FEED_VIDEO_BYTES,
+  maxFileBytes: UPLOAD_LIMITS.REEL_VIDEO_BYTES,
   maxBytesByCategory: {
     image: UPLOAD_LIMITS.IMAGE_BYTES,
-    video: UPLOAD_LIMITS.FEED_VIDEO_BYTES,
+    video: UPLOAD_LIMITS.REEL_VIDEO_BYTES,
   },
 });

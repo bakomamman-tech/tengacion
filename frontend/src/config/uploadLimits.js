@@ -4,10 +4,16 @@ export const UPLOAD_LIMITS = Object.freeze({
   IMAGE_BYTES: 10 * MEBIBYTE,
   PROFILE_STORY_VIDEO_BYTES: 25 * MEBIBYTE,
   FEED_VIDEO_BYTES: 50 * MEBIBYTE,
+  REEL_VIDEO_BYTES: 100 * MEBIBYTE,
   MARKETPLACE_PRODUCT_VIDEO_BYTES: 30 * MEBIBYTE,
   CREATOR_MEDIA_BYTES: 100 * MEBIBYTE,
   ADMIN_SPECIAL_BYTES: 200 * MEBIBYTE,
 });
+
+export const getPostVideoUploadLimit = (postType = "") =>
+  String(postType || "").trim().toLowerCase() === "reel"
+    ? UPLOAD_LIMITS.REEL_VIDEO_BYTES
+    : UPLOAD_LIMITS.FEED_VIDEO_BYTES;
 
 export const formatUploadLimit = (bytes = 0) => {
   const sizeInMb = Number(bytes || 0) / MEBIBYTE;

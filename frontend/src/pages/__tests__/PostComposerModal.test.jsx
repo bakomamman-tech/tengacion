@@ -107,6 +107,12 @@ const buildImageFile = (name) =>
 const buildVideoFile = (name) =>
   new File([`video:${name}`], name, { type: "video/mp4" });
 
+const buildSizedVideoFile = (name, size) => {
+  const file = buildVideoFile(name);
+  Object.defineProperty(file, "size", { configurable: true, value: size });
+  return file;
+};
+
 const renderComposer = (props = {}) =>
   render(
     <PostComposerModal
@@ -152,6 +158,34 @@ describe("PostComposerModal", () => {
     expect(screen.getByText("photo-one.png")).toBeInTheDocument();
     expect(screen.getByText("clip-one.mp4")).toBeInTheDocument();
     expect(container.querySelectorAll(".composer-preview-item")).toHaveLength(2);
+  });
+
+  it("accepts a reel at the 100MB boundary", async () => {
+    const user = userEvent.setup();
+    const { container } = renderComposer({ initialMode: "reel" });
+
+    await user.upload(
+      container.querySelector('input[type="file"]'),
+      buildSizedVideoFile("boundary-reel.mp4", 100 * 1024 * 1024)
+    );
+
+    expect(await screen.findByText("Video ready")).toBeInTheDocument();
+    expect(screen.queryByText(/Reels must be 100MB or smaller/i)).not.toBeInTheDocument();
+  });
+
+  it("rejects a reel above 100MB", async () => {
+    const user = userEvent.setup();
+    const { container } = renderComposer({ initialMode: "reel" });
+
+    await user.upload(
+      container.querySelector('input[type="file"]'),
+      buildSizedVideoFile("oversized-reel.mp4", 100 * 1024 * 1024 + 1)
+    );
+
+    expect(
+      await screen.findByText(/Reels must be 100MB or smaller/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Video ready")).not.toBeInTheDocument();
   });
 
   it("removes a selected preview from the outgoing upload payload", async () => {

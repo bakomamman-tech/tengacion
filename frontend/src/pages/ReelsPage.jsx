@@ -24,7 +24,7 @@ import {
   sortReels,
 } from "../utils/reels";
 
-const MAX_REEL_BYTES = UPLOAD_LIMITS.FEED_VIDEO_BYTES;
+const MAX_REEL_BYTES = UPLOAD_LIMITS.REEL_VIDEO_BYTES;
 const compactFormatter = new Intl.NumberFormat("en", {
   notation: "compact",
   maximumFractionDigits: 1,
@@ -206,7 +206,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
       return false;
     }
     if (nextFile.size > MAX_REEL_BYTES) {
-      setError("Reels must be 50MB or smaller.");
+      setError("Reels must be 100MB or smaller.");
       return false;
     }
     setError("");

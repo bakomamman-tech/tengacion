@@ -527,6 +527,45 @@ describe("Posts feed", () => {
     expect(await Post.countDocuments()).toBe(0);
   });
 
+  test("POST /api/posts allows reel metadata at the 100MB size boundary", async () => {
+    const response = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        type: "reel",
+        video: {
+          url: "https://cdn.test/boundary-reel.mp4",
+          playbackUrl: "https://cdn.test/boundary-reel.mp4",
+          sizeBytes: 100 * 1024 * 1024,
+          mimeType: "video/mp4",
+        },
+      })
+      .expect(400);
+
+    expect(response.body.message).toMatch(/moderated Tengacion upload flow/i);
+    expect(response.body.message).not.toMatch(/100MB or smaller/i);
+    expect(await Post.countDocuments()).toBe(0);
+  });
+
+  test("POST /api/posts rejects reel metadata above 100MB", async () => {
+    const response = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        type: "reel",
+        video: {
+          url: "https://cdn.test/oversized-reel.mp4",
+          playbackUrl: "https://cdn.test/oversized-reel.mp4",
+          sizeBytes: 100 * 1024 * 1024 + 1,
+          mimeType: "video/mp4",
+        },
+      })
+      .expect(400);
+
+    expect(response.body.message).toMatch(/Reels must be 100MB or smaller/i);
+    expect(await Post.countDocuments()).toBe(0);
+  });
+
   test("POST /api/posts/:id/like persists emoji reactions and returns viewerReaction", async () => {
     const post = await Post.create({
       author: artist._id,

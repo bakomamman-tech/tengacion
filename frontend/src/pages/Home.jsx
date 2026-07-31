@@ -282,6 +282,7 @@ function ComposerIcon({ name }) {
 const POST_COMPOSER_MAX_MEDIA_FILES = 10;
 const POST_COMPOSER_MAX_IMAGE_BYTES = UPLOAD_LIMITS.IMAGE_BYTES;
 const POST_COMPOSER_MAX_VIDEO_BYTES = UPLOAD_LIMITS.FEED_VIDEO_BYTES;
+const POST_COMPOSER_MAX_REEL_BYTES = UPLOAD_LIMITS.REEL_VIDEO_BYTES;
 const POST_COMPOSER_ALLOWED_VIDEO_TYPES = new Set([
   "video/mp4",
   "video/quicktime",
@@ -585,8 +586,13 @@ export function PostComposerModal({
         if (!POST_COMPOSER_ALLOWED_VIDEO_TYPES.has(mimeType)) {
           return "Only MP4, MOV, and WebM videos are supported.";
         }
-        if ((Number(file.size) || 0) > POST_COMPOSER_MAX_VIDEO_BYTES) {
-          return "Feed videos must be 50MB or smaller.";
+        const maxVideoBytes = isReelMode
+          ? POST_COMPOSER_MAX_REEL_BYTES
+          : POST_COMPOSER_MAX_VIDEO_BYTES;
+        if ((Number(file.size) || 0) > maxVideoBytes) {
+          return isReelMode
+            ? "Reels must be 100MB or smaller."
+            : "Feed videos must be 50MB or smaller.";
         }
       }
 

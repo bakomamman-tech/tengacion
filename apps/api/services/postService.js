@@ -22,7 +22,9 @@ const ApiError = require("../utils/ApiError");
 const {
   ALLOWED_MIME_TYPES,
 } = require("../../../backend/services/videoStorage");
-const { UPLOAD_LIMITS } = require("../../../backend/config/uploadLimits");
+const {
+  getPostVideoUploadLimit,
+} = require("../../../backend/config/uploadLimits");
 const userRepository = require("../repositories/userRepository");
 const postRepository = require("../repositories/postRepository");
 const { resolveMentionUserIds } = require("../../../backend/utils/mentions");
@@ -469,7 +471,7 @@ const collectPostCloudinaryAssets = (post = {}) => {
   return assets;
 };
 
-const validateVideoMeta = (video) => {
+const validateVideoMeta = (video, postType = "video") => {
   if (!video) {
     return;
   }
@@ -478,8 +480,14 @@ const validateVideoMeta = (video) => {
     throw ApiError.badRequest("Only MP4 and WebM videos are supported");
   }
 
-  if (video.sizeBytes > UPLOAD_LIMITS.FEED_VIDEO_BYTES) {
-    throw ApiError.badRequest("Feed videos must be 50MB or smaller");
+  const normalizedPostType = String(postType || "").trim().toLowerCase();
+  const maxBytes = getPostVideoUploadLimit(normalizedPostType);
+  if (video.sizeBytes > maxBytes) {
+    throw ApiError.badRequest(
+      normalizedPostType === "reel"
+        ? "Reels must be 100MB or smaller"
+        : "Feed videos must be 50MB or smaller"
+    );
   }
 };
 
@@ -1309,6 +1317,11 @@ class PostService {
     const hasMetadata = Boolean(
       tags.length || feeling || location || moreOptions.length || (callsEnabled && callNumber)
     );
+    const requestedTypeCandidate =
+      typeof body?.type === "string" ? body.type.toLowerCase() : "";
+    const requestedType = ALLOWED_POST_TYPES.has(requestedTypeCandidate)
+      ? requestedTypeCandidate
+      : null;
 
     const rawVideoPayload = parseVideoPayload(body?.video);
     let videoMeta = buildVideoMeta(rawVideoPayload);
@@ -1326,7 +1339,7 @@ class PostService {
       };
     }
 
-    validateVideoMeta(videoMeta);
+    validateVideoMeta(videoMeta, requestedType);
 
     if (videoMeta && !firstVideoUploadFile) {
       throw ApiError.badRequest("Video posts must use the moderated Tengacion upload flow");
@@ -1338,11 +1351,6 @@ class PostService {
       throw ApiError.badRequest("Post cannot be empty");
     }
 
-    const requestedTypeCandidate =
-      typeof body?.type === "string" ? body.type.toLowerCase() : "";
-    const requestedType = ALLOWED_POST_TYPES.has(requestedTypeCandidate)
-      ? requestedTypeCandidate
-      : null;
     let type = requestedType;
     if (!type) {
       if (hasVideo) {
@@ -2301,7 +2309,7 @@ class PostService {
           mimeType: normalizeMimeType(firstVideoUploadFile.mimetype),
         };
       }
-      validateVideoMeta(videoMeta);
+      validateVideoMeta(videoMeta, post.type);
 
       const media = [];
       for (const uploadFile of uploadFiles) {

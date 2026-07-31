@@ -11,7 +11,7 @@ import {
   getSessionAccessToken,
   setSessionAccessToken,
 } from "./authSession";
-import { UPLOAD_LIMITS } from "./config/uploadLimits";
+import { UPLOAD_LIMITS, getPostVideoUploadLimit } from "./config/uploadLimits";
 import { assertExternalDigitalCheckoutAllowed } from "./runtimePlatform";
 
 const normalizeApiBase = (value) => {
@@ -1682,22 +1682,27 @@ const toPostUploadFiles = (payload = {}) => {
   return payload?.file ? [payload.file] : [];
 };
 
-const validatePostUploadSizes = (files = []) => {
+const validatePostUploadSizes = (files = [], postType = "") => {
+  const normalizedPostType = String(postType || "").trim().toLowerCase();
   (Array.isArray(files) ? files : []).forEach((file) => {
     const isVideo = String(file?.type || "").toLowerCase().startsWith("video/");
-    const maxBytes = isVideo ? UPLOAD_LIMITS.FEED_VIDEO_BYTES : UPLOAD_LIMITS.IMAGE_BYTES;
+    const maxBytes = isVideo
+      ? getPostVideoUploadLimit(normalizedPostType)
+      : UPLOAD_LIMITS.IMAGE_BYTES;
     if ((Number(file?.size) || 0) > maxBytes) {
       throw new Error(
         isVideo
-          ? "Feed videos must be 50MB or smaller."
+          ? normalizedPostType === "reel"
+            ? "Reels must be 100MB or smaller."
+            : "Feed videos must be 50MB or smaller."
           : "Post images must be 10MB or smaller."
       );
     }
   });
 };
 
-const optimizePostUploadFiles = async (files = []) => {
-  validatePostUploadSizes(files);
+const optimizePostUploadFiles = async (files = [], postType = "") => {
+  validatePostUploadSizes(files, postType);
   return Promise.all((Array.isArray(files) ? files : []).map((file) => compressImageFile(file)));
 };
 
@@ -1793,7 +1798,7 @@ export const createPost = (input, maybeFile = null) => {
     });
   }
 
-  return optimizePostUploadFiles(uploadFiles).then((optimizedFiles) => {
+  return optimizePostUploadFiles(uploadFiles, payload.type).then((optimizedFiles) => {
     const form = new FormData();
     appendPostComposerFields(form, { ...payload, text }, optimizedFiles);
 
@@ -1854,7 +1859,10 @@ export const createPostWithUploadProgress = async (
   const {
     text = "",
   } = payload || {};
-  const optimizedFiles = await optimizePostUploadFiles(toPostUploadFiles(payload));
+  const optimizedFiles = await optimizePostUploadFiles(
+    toPostUploadFiles(payload),
+    payload?.type
+  );
   const form = new FormData();
   appendPostComposerFields(form, { ...(payload || {}), text }, optimizedFiles);
 

@@ -337,12 +337,21 @@ const normalizeSummaryTrack = ({ track, viewerState, viewerId, req }) => {
   const meta = getCreatorProfileMeta(creatorProfile);
   const itemId = String(track._id || "");
   const isPodcast = toCleanString(track.kind).toLowerCase() === "podcast";
+  const isVideo = track.mediaType === "video" || Boolean(track.videoUrl);
   const price = Number(track.price || 0);
-  const fullSource = toCleanString(track.audioUrl || track.fullAudioUrl || "");
-  const previewSource =
-    toCleanString(track.previewUrl) ||
-    toCleanString(track.previewSampleUrl) ||
-    (price <= 0 ? fullSource : "");
+  const fullSource = toCleanString(
+    isVideo
+      ? track.videoUrl || track.audioUrl || track.fullAudioUrl || ""
+      : track.audioUrl || track.fullAudioUrl || ""
+  );
+  const previewSource = isVideo
+    ? toCleanString(track.previewClipUrl) ||
+      toCleanString(track.previewUrl) ||
+      toCleanString(track.previewSampleUrl) ||
+      (price <= 0 ? fullSource : "")
+    : toCleanString(track.previewUrl) ||
+      toCleanString(track.previewSampleUrl) ||
+      (price <= 0 ? fullSource : "");
   const canAccessFull =
     price <= 0 ||
     viewerState.entitlementKeys.has(`track:${itemId}`) ||
@@ -356,13 +365,22 @@ const normalizeSummaryTrack = ({ track, viewerState, viewerId, req }) => {
         viewerId,
       })
     : "";
+  const signedFull = canAccessFull
+    ? buildSignedPreviewUrl({
+        req,
+        sourceUrl: fullSource || previewSource,
+        itemType: isPodcast ? "podcast" : "track",
+        itemId,
+        viewerId,
+      })
+    : "";
 
   return {
     id: itemId,
     contentId: itemId,
     feedItemType: isPodcast ? "podcast" : "track",
     itemType: isPodcast ? "podcast" : "track",
-    mediaType: track.mediaType === "video" || track.videoUrl ? "video" : "audio",
+    mediaType: isVideo ? "video" : "audio",
     creatorId: meta.creatorId,
     creatorUserId: meta.creatorUserId,
     creatorName: ensureCreatorTitle(creatorProfile, meta.creatorName),
@@ -383,15 +401,9 @@ const normalizeSummaryTrack = ({ track, viewerState, viewerId, req }) => {
       meta.creatorAvatar,
     previewUrl: signedPreview,
     previewAudioUrl: signedPreview,
-    audioUrl: canAccessFull
-      ? buildSignedPreviewUrl({
-          req,
-          sourceUrl: fullSource || previewSource,
-          itemType: isPodcast ? "podcast" : "track",
-          itemId,
-          viewerId,
-        })
-      : "",
+    previewVideoUrl: isVideo ? signedPreview : "",
+    audioUrl: signedFull,
+    videoUrl: isVideo ? signedFull : "",
     durationSec: Number(track.durationSec || 0),
     previewStartSec: Number(track.previewStartSec || 0),
     previewLimitSec: Number(track.previewLimitSec || 30),

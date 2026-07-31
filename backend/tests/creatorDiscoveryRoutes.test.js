@@ -187,6 +187,54 @@ describe("creator discovery routes", () => {
     expect(response.body.items.some((item) => item.previewUrl)).toBe(true);
   });
 
+  it("returns video podcast media separately from its uploaded cover artwork", async () => {
+    const viewer = await User.create({
+      name: "Podcast Viewer",
+      username: "podcast_viewer",
+      email: "podcast-viewer@test.com",
+      password: "Password123!",
+      isVerified: true,
+    });
+    const token = await issueSessionToken(viewer._id);
+    const { profile: podcastCreator } = await seedCreator({
+      name: "Daniel Stephen Kurah",
+      username: "pyrexx_singz",
+      displayName: "Pyrexx_Singz",
+      creatorTypes: ["podcast"],
+    });
+    const podcast = await Track.create({
+      creatorId: podcastCreator._id,
+      title: "Introducing Tengacion.com",
+      description: "A video podcast with separate cover artwork",
+      price: 0,
+      mediaType: "video",
+      audioUrl: "https://cdn.test/introducing-tengacion.mp4",
+      videoUrl: "https://cdn.test/introducing-tengacion.mp4",
+      previewUrl: "https://cdn.test/introducing-tengacion-preview.mp4",
+      previewClipUrl: "https://cdn.test/introducing-tengacion-preview.mp4",
+      coverImageUrl: "https://cdn.test/tengacion-logo.png",
+      creatorCategory: "podcasts",
+      kind: "podcast",
+      contentType: "podcast_episode",
+      isPublished: true,
+    });
+
+    const response = await request(app)
+      .get("/api/creators/feed?limit=8&mode=mixed")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    const item = response.body.items.find((entry) => entry.id === podcast._id.toString());
+    expect(item).toMatchObject({
+      mediaType: "video",
+      coverImage: "https://cdn.test/tengacion-logo.png",
+      previewVideoUrl: expect.stringContaining("/api/media/delivery/"),
+      videoUrl: expect.stringContaining("/api/media/delivery/"),
+    });
+    expect(item.previewVideoUrl).not.toContain("tengacion-logo.png");
+    expect(item.videoUrl).not.toContain("tengacion-logo.png");
+  });
+
   it("finds creators by @handle and display name", async () => {
     const viewer = await User.create({
       name: "Viewer User",

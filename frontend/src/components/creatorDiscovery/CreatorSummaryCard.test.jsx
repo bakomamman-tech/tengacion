@@ -62,4 +62,34 @@ describe("CreatorSummaryCard", () => {
     expect(within(metadata).getByText("10 Jul 2026")).toBeInTheDocument();
     expect(within(metadata).getByText(/500/)).toBeInTheDocument();
   });
+
+  it("renders a video podcast instead of replacing it with its uploaded cover", () => {
+    render(
+      <MemoryRouter>
+        <CreatorSummaryCard
+          item={{
+            id: "podcast-1",
+            creatorId: "creator-1",
+            creatorName: "Daniel Stephen Kurah",
+            creatorUsername: "pyrexx_singz",
+            title: "Introducing Tengacion.com",
+            summaryLabel: "Podcast",
+            mediaType: "video",
+            coverImage: "/uploads/tengacion-logo.png",
+            previewVideoUrl: "/uploads/introducing-tengacion-preview.mp4",
+            canPreview: true,
+            price: 0,
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    const video = screen.getByLabelText("Video preview for Introducing Tengacion.com");
+    expect(video).not.toHaveAttribute("poster");
+    expect(video.querySelector("source")).toHaveAttribute(
+      "src",
+      "/uploads/introducing-tengacion-preview.mp4"
+    );
+    expect(screen.queryByAltText("Introducing Tengacion.com")).not.toBeInTheDocument();
+  });
 });

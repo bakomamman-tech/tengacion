@@ -14,6 +14,14 @@ import "./creatorDiscovery.css";
 
 const getCreatorInitial = (value = "") => String(value || "T").trim().slice(0, 1).toUpperCase();
 
+const getVideoSource = (item = {}) => {
+  if (String(item.mediaType || "").toLowerCase() !== "video") {
+    return "";
+  }
+
+  return item.previewVideoUrl || item.previewUrl || item.videoUrl || item.audioUrl || "";
+};
+
 const buildBookPreviewTarget = (item = {}, detailRoute = "") => {
   const itemType = normalizePurchaseType(item.itemType || item.feedItemType || item.mediaType);
   if (itemType !== "book") {
@@ -54,6 +62,9 @@ export default function CreatorSummaryCard({ item }) {
     username: item?.creatorUsername,
   });
   const detailRoute = item?.route || creatorRoute;
+  const coverSource = resolveImage(item.coverImage) || item.coverImage || "";
+  const rawVideoSource = getVideoSource(item);
+  const videoSource = resolveImage(rawVideoSource) || rawVideoSource;
 
   const handlePreview = () => {
     if (!item?.canPreview) {
@@ -123,8 +134,19 @@ export default function CreatorSummaryCard({ item }) {
   return (
     <article className="creator-summary-card">
       <div className="creator-summary-card__media">
-        {item?.coverImage ? (
-          <img src={resolveImage(item.coverImage) || item.coverImage} alt={item?.title || "Creator release"} />
+        {videoSource ? (
+          <video
+            className="creator-summary-card__video"
+            controls
+            playsInline
+            preload="metadata"
+            aria-label={`Video preview for ${item?.title || "Creator release"}`}
+          >
+            <source src={videoSource} />
+            Your browser does not support video playback.
+          </video>
+        ) : coverSource ? (
+          <img src={coverSource} alt={item?.title || "Creator release"} />
         ) : (
           <div className="creator-summary-card__media creator-summary-card__media--fallback">
             <span>{getCreatorInitial(item?.title || item?.creatorName)}</span>

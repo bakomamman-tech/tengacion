@@ -192,6 +192,7 @@ const serializeCurrentQuestion = (attempt, now = new Date()) => {
     number: index + 1,
     totalQuestions: QUESTIONS_PER_MODULE,
     prompt: source.prompt,
+    readingFocus: source.readingFocus || "",
     options: state.optionOrder.map((optionIndex) => source.options[optionIndex]),
     timeLimitSeconds: QUESTION_TIME_LIMIT_SECONDS,
     secondsRemaining: Math.max(0, Math.ceil(remainingMs / 1000)),

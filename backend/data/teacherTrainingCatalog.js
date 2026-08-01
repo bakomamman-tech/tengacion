@@ -1,4 +1,10 @@
-const QUESTION_TIME_LIMIT_SECONDS = 20;
+const {
+  MIN_MODULE_CONTENT_WORDS,
+  MODULE_READINGS,
+} = require("./teacherTrainingReadings");
+const { QUESTION_REVISIONS } = require("./teacherTrainingQuestionRevisions");
+
+const QUESTION_TIME_LIMIT_SECONDS = 45;
 const QUESTIONS_PER_MODULE = 5;
 const PASS_MARK_PERCENT = 60;
 
@@ -9,6 +15,11 @@ const question = (id, prompt, correct, distractors, explanation) => ({
   correctIndex: 0,
   explanation,
 });
+
+const applyQuestionRevision = (entry) => {
+  const revised = QUESTION_REVISIONS[entry.id];
+  return revised ? { ...entry, ...revised, options: [...revised.options] } : entry;
+};
 
 const buildModule = ({
   code,
@@ -32,8 +43,18 @@ const buildModule = ({
   overview,
   outcomes,
   keyIdeas,
+  readingSections: MODULE_READINGS[code] || [],
   classroomPractice,
-  assessment,
+  assessment: assessment.map((entry, index) => {
+    const alignedQuestion = applyQuestionRevision(entry);
+    return {
+      ...alignedQuestion,
+      readingFocus:
+        alignedQuestion.readingFocus ||
+        MODULE_READINGS[code]?.[index % MODULE_READINGS[code].length]?.title ||
+        "",
+    };
+  }),
 });
 
 const MODULES = [
@@ -2141,6 +2162,48 @@ const getModuleByCode = (code = "") =>
 
 const getQuestionById = (id = "") => QUESTION_BY_ID.get(String(id || "").trim()) || null;
 
+const countModuleContentWords = (module) =>
+  [
+    module?.overview,
+    ...(module?.outcomes || []),
+    ...(module?.keyIdeas || []).flatMap((idea) => [idea?.title, idea?.body]),
+    ...(module?.readingSections || []).flatMap((entry) => [
+      entry?.title,
+      ...(entry?.paragraphs || []),
+    ]),
+    ...(module?.classroomPractice || []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+
+const shortModules = MODULES.filter(
+  (module) => countModuleContentWords(module) < MIN_MODULE_CONTENT_WORDS
+);
+
+const modulesWithoutRevisedQuestions = MODULES.filter(
+  (module) =>
+    module.assessment.filter((entry) => entry.revisedForExpandedReading).length < 2
+);
+
+if (shortModules.length) {
+  throw new Error(
+    `Teacher-training modules below ${MIN_MODULE_CONTENT_WORDS} words: ${shortModules
+      .map((module) => `${module.code} (${countModuleContentWords(module)})`)
+      .join(", ")}`
+  );
+}
+
+if (modulesWithoutRevisedQuestions.length) {
+  throw new Error(
+    `Teacher-training modules without two revised reading questions: ${modulesWithoutRevisedQuestions
+      .map((module) => module.code)
+      .join(", ")}`
+  );
+}
+
 const serializeModuleContent = (module) => ({
   code: module.code,
   title: module.title,
@@ -2151,6 +2214,7 @@ const serializeModuleContent = (module) => ({
   overview: module.overview,
   outcomes: module.outcomes,
   keyIdeas: module.keyIdeas,
+  readingSections: module.readingSections,
   classroomPractice: module.classroomPractice,
   questionCount: module.assessment.length,
 });
@@ -2158,10 +2222,12 @@ const serializeModuleContent = (module) => ({
 module.exports = {
   MODULES,
   MODULE_BY_CODE,
+  MIN_MODULE_CONTENT_WORDS,
   PASS_MARK_PERCENT,
   QUESTIONS_PER_MODULE,
   QUESTION_TIME_LIMIT_SECONDS,
   getModuleByCode,
   getQuestionById,
+  countModuleContentWords,
   serializeModuleContent,
 };

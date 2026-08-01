@@ -6,8 +6,11 @@ process.env.MONGO_URI =
   process.env.MONGO_URI || "mongodb://127.0.0.1:27017/tengacion-teacher-training-test";
 
 const {
+  MIN_MODULE_CONTENT_WORDS,
   MODULES,
   QUESTIONS_PER_MODULE,
+  QUESTION_TIME_LIMIT_SECONDS,
+  countModuleContentWords,
   getQuestionById,
 } = require("../data/teacherTrainingCatalog");
 const TeacherTrainingAttempt = require("../models/TeacherTrainingAttempt");
@@ -58,7 +61,7 @@ describe("Kurah academy teacher training", () => {
     }
   });
 
-  test("contains all 22 supplied PDE modules with five valid protected questions each", () => {
+  test("contains 22 substantial PDE modules with revised protected questions", () => {
     expect(MODULES).toHaveLength(22);
     expect(MODULES.map((module) => module.code)).toEqual([
       "PDE 701",
@@ -86,8 +89,22 @@ describe("Kurah academy teacher training", () => {
     ]);
 
     MODULES.forEach((module) => {
+      expect(countModuleContentWords(module)).toBeGreaterThanOrEqual(
+        MIN_MODULE_CONTENT_WORDS
+      );
+      expect(module.readingSections).toHaveLength(3);
+      module.readingSections.forEach((readingSection) => {
+        expect(readingSection.title).toEqual(expect.any(String));
+        expect(readingSection.paragraphs).toHaveLength(2);
+      });
       expect(module.assessment).toHaveLength(QUESTIONS_PER_MODULE);
+      expect(
+        module.assessment.filter((entry) => entry.revisedForExpandedReading)
+      ).toHaveLength(2);
       module.assessment.forEach((question) => {
+        expect(module.readingSections.map((entry) => entry.title)).toContain(
+          question.readingFocus
+        );
         expect(question.options).toHaveLength(4);
         expect(new Set(question.options).size).toBe(4);
         expect(question.correctIndex).toBeGreaterThanOrEqual(0);
@@ -102,6 +119,7 @@ describe("Kurah academy teacher training", () => {
     const training = await getTeacherTrainingStatus(teacher._id, { now });
 
     expect(training.campaign.access.isPreview).toBe(true);
+    expect(training.campaign.questionTimeLimitSeconds).toBe(45);
     expect(training.modules).toHaveLength(22);
     expect(training.modules[0]).not.toHaveProperty("assessment");
     expect(training.finalResult).toBeNull();
@@ -131,6 +149,7 @@ describe("Kurah academy teacher training", () => {
       expect(current).not.toHaveProperty("correctIndex");
       expect(current).not.toHaveProperty("explanation");
       expect(current.options).toHaveLength(4);
+      expect(current.timeLimitSeconds).toBe(QUESTION_TIME_LIMIT_SECONDS);
       expect(activeModule.attempt.scorePercent).toBeNull();
 
       const source = getQuestionById(current.id);
@@ -170,7 +189,11 @@ describe("Kurah academy teacher training", () => {
     );
 
     const training = await getTeacherTrainingStatus(teacher._id, {
-      now: new Date(startedAt.getTime() + 101_000),
+      now: new Date(
+        startedAt.getTime() +
+          QUESTIONS_PER_MODULE * QUESTION_TIME_LIMIT_SECONDS * 1000 +
+          1_000
+      ),
     });
     const completed = training.modules.find((module) => module.code === "PDE 702");
 

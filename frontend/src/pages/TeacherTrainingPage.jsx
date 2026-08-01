@@ -183,7 +183,7 @@ function GuestTrainingLanding() {
           </div>
           <div className="training-guest-facts" aria-label="Training facts">
             <span><strong>22</strong> modules</span>
-            <span><strong>20s</strong> per question</span>
+            <span><strong>45s</strong> per question</span>
             <span><strong>60%</strong> pass mark</span>
           </div>
         </div>
@@ -239,7 +239,14 @@ function ModuleScore({ attempt, compact = false }) {
   );
 }
 
-function ModuleReader({ module, access, onBack, onStart, working }) {
+function ModuleReader({
+  module,
+  access,
+  onBack,
+  onStart,
+  working,
+  questionTimeLimitSeconds = 45,
+}) {
   const assessmentOpen = Boolean(access?.isOpen);
   const completed = module?.attempt?.status === "completed";
 
@@ -285,6 +292,7 @@ function ModuleReader({ module, access, onBack, onStart, working }) {
           <p>In this module</p>
           <a href="#module-overview">Overview</a>
           <a href="#module-key-ideas">Key ideas</a>
+          <a href="#module-reading">In-depth reading</a>
           <a href="#module-practice">Practice moves</a>
           <a href="#module-assessment">Assessment</a>
           <div className="training-reader-outline__status">
@@ -323,8 +331,26 @@ function ModuleReader({ module, access, onBack, onStart, working }) {
             </div>
           </section>
 
+          <section id="module-reading" className="training-learning-block">
+            <p className="training-section-label">03 · In-depth reading</p>
+            <h2>Build a deeper professional understanding</h2>
+            <div className="training-deep-reading">
+              {(module.readingSections || []).map((readingSection, index) => (
+                <article key={readingSection.title}>
+                  <div className="training-deep-reading__heading">
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    <h3>{readingSection.title}</h3>
+                  </div>
+                  {readingSection.paragraphs.map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+                </article>
+              ))}
+            </div>
+          </section>
+
           <section id="module-practice" className="training-learning-block">
-            <p className="training-section-label">03 · Transfer to practice</p>
+            <p className="training-section-label">04 · Transfer to practice</p>
             <h2>Moves to try at Kurah Academy</h2>
             <div className="training-practice-panel">
               <div className="training-practice-panel__mark">KTA</div>
@@ -350,11 +376,11 @@ function ModuleReader({ module, access, onBack, onStart, working }) {
               </>
             ) : (
               <>
-                <p className="training-section-label">04 · Timed assessment</p>
+                <p className="training-section-label">05 · Timed assessment</p>
                 <h2>Ready for the knowledge challenge?</h2>
                 <p>
                   Five difficult questions will appear one at a time. Each question
-                  and its A–D answers stay on screen for exactly 20 seconds. The
+                  and its A–D answers stay on screen for exactly {questionTimeLimitSeconds} seconds. The
                   assessment cannot be paused or restarted.
                 </p>
                 <ul>
@@ -540,11 +566,16 @@ function AssessmentStage({ training, module, onTrainingChange, onRecover }) {
         </div>
 
         <div className="training-question-protection">
-          <span>20-second limit</span>
+          <span>{question.timeLimitSeconds}-second limit</span>
           <span>One question at a time</span>
           <span>Auto-advance enabled</span>
         </div>
 
+        {question.readingFocus ? (
+          <p className="training-question-reading-focus">
+            Reading focus: {question.readingFocus}
+          </p>
+        ) : null}
         <h2>{question.prompt}</h2>
         <div className="training-answer-grid">
           {question.options.map((option, index) => (
@@ -773,7 +804,7 @@ function TrainingDashboard({ training, onOpenModule }) {
         <div>
           <TrainingIcon name="clock" />
           <span>Assessment</span>
-          <strong>20 seconds each</strong>
+          <strong>{training.campaign.questionTimeLimitSeconds} seconds each</strong>
         </div>
         <div>
           <TrainingIcon name="award" />
@@ -1024,6 +1055,7 @@ export default function TeacherTrainingPage({ user }) {
       <ModuleReader
         module={selectedModule}
         access={training.campaign.access}
+        questionTimeLimitSeconds={training.campaign.questionTimeLimitSeconds}
         onBack={() => setSelectedModuleCode("")}
         onStart={startAssessment}
         working={working}

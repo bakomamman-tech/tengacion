@@ -32,6 +32,19 @@ describe("PublicContactPage", () => {
     vi.clearAllMocks();
   });
 
+  it("publishes both phone contacts as callable links", () => {
+    renderPage();
+
+    expect(screen.getByRole("link", { name: "08061201090" })).toHaveAttribute(
+      "href",
+      "tel:+2348061201090"
+    );
+    expect(screen.getByRole("link", { name: "08164649980" })).toHaveAttribute(
+      "href",
+      "tel:+2348164649980"
+    );
+  });
+
   it("keeps the category cards and native form control synchronized", async () => {
     const user = userEvent.setup();
     renderPage();

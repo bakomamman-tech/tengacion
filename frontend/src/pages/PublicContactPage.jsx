@@ -132,6 +132,11 @@ const ContactIcon = ({ name, className = "" }) => {
         </>
       );
       break;
+    case "phone":
+      content = (
+        <path d="M8.2 3.5 5.7 4.7c-.8.4-1.2 1.3-1 2.1 1.5 6.1 6.3 10.9 12.4 12.4.9.2 1.8-.2 2.1-1l1.2-2.5-4.2-2-1.3 2.1a13.4 13.4 0 0 1-6.7-6.7l2.1-1.3-2.1-4.3Z" />
+      );
+      break;
     case "clock":
       content = (
         <>
@@ -390,6 +395,17 @@ export default function PublicContactPage() {
                 <a href={buildMailto(SUPPORT_EMAIL, "Tengacion support request")}>
                   {SUPPORT_EMAIL}
                 </a>
+              </div>
+            </div>
+
+            <div className="public-contact-email-card public-contact-phone-card">
+              <span>
+                <ContactIcon name="phone" />
+              </span>
+              <div>
+                <small>Prefer to call?</small>
+                <a href="tel:+2348061201090">08061201090</a>
+                <a href="tel:+2348164649980">08164649980</a>
               </div>
             </div>
 

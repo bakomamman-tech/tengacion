@@ -223,6 +223,90 @@ const journalItems = [
     title: "At home in Kaduna",
     alt: "Portrait of Francesca Musa-Akande overlooking Kaduna",
   },
+  {
+    src: "assets/images/family/dr-dare-akande-birthday.jpg",
+    category: "life",
+    label: "Dr. Dare Akande",
+    title: "A joyful celebration",
+    alt: "Portrait of Dr. Dare Akande smiling at a family birthday celebration",
+  },
+  {
+    src: "assets/images/family/francesca-dare-birthday-moment.jpg",
+    category: "life",
+    label: "Family moments",
+    title: "Side by side",
+    alt: "Francesca Naymarie Musa-Akande with her husband, Dr. Dare Akande, at a birthday gathering",
+  },
+  {
+    src: "assets/images/family/francesca-dare-birthday-address.jpg",
+    category: "life",
+    label: "Family moments",
+    title: "Words for the moment",
+    alt: "Dr. Dare Akande speaking with Francesca Naymarie Musa-Akande beside him",
+  },
+  {
+    src: "assets/images/family/francesca-dare-birthday-gratitude.jpg",
+    category: "life",
+    label: "Family moments",
+    title: "Celebrating together",
+    alt: "Francesca Naymarie Musa-Akande speaking with Dr. Dare Akande standing beside her",
+  },
+  {
+    src: "assets/images/family/francesca-dare-celebration-pink.jpg",
+    category: "life",
+    label: "Francesca & Dr. Dare",
+    title: "A shared celebration",
+    alt: "Francesca Naymarie Musa-Akande and Dr. Dare Akande sharing a celebration",
+  },
+  {
+    src: "assets/images/family/francesca-dare-at-home.jpg",
+    category: "life",
+    label: "Francesca & Dr. Dare",
+    title: "At home, together",
+    alt: "Francesca Naymarie Musa-Akande and Dr. Dare Akande at home together",
+  },
+  {
+    src: "assets/images/family/francesca-dare-evening.jpg",
+    category: "life",
+    label: "Francesca & Dr. Dare",
+    title: "An evening together",
+    alt: "Francesca Naymarie Musa-Akande and Dr. Dare Akande at an evening gathering",
+  },
+  {
+    src: "assets/images/family/dr-dare-akande-formal.jpg",
+    category: "life",
+    label: "Dr. Dare Akande",
+    title: "A formal moment",
+    alt: "Dr. Dare Akande wearing a white dinner jacket and burgundy bow tie",
+  },
+  {
+    src: "assets/images/family/francesca-wedding-portrait.jpg",
+    category: "life",
+    label: "Wedding memory",
+    title: "The beginning of a chapter",
+    alt: "A black-and-white bridal portrait of Francesca Naymarie Musa-Akande",
+  },
+  {
+    src: "assets/images/family/dr-dare-akande-arrival.jpg",
+    category: "life",
+    label: "Dr. Dare Akande",
+    title: "A portrait in motion",
+    alt: "Dr. Dare Akande arriving in traditional attire",
+  },
+  {
+    src: "assets/images/family/francesca-dare-shared-adventure.jpg",
+    category: "life",
+    label: "Francesca & Dr. Dare",
+    title: "Shared adventures",
+    alt: "Dr. Dare Akande and Francesca Naymarie Musa-Akande enjoying an outing together",
+  },
+  {
+    src: "assets/images/family/francesca-dare-together.jpg",
+    category: "life",
+    label: "Life & family",
+    title: "Together in the everyday",
+    alt: "Francesca Naymarie Musa-Akande and Dr. Dare Akande posing together",
+  },
 ];
 
 const header = document.querySelector("[data-header]");
@@ -244,7 +328,7 @@ const hero = document.querySelector(".hero");
 const heroVisual = document.querySelector(".hero-visual");
 const parallaxTargets = [
   ...document.querySelectorAll(
-    ".hero-image-wrap, .maff-hero-image, .impact-card, .recognition-gallery figure, .life-collage figure, .closing",
+    ".hero-image-wrap, .maff-hero-image, .impact-card, .recognition-gallery figure, .life-collage figure, .family-mosaic figure, .closing",
   ),
 ];
 

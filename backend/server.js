@@ -86,7 +86,10 @@ const SOCKET_REVALIDATE_MS =
 
 const frontendPath = path.join(__dirname, "../frontend/dist");
 const frontendIndex = path.join(frontendPath, "index.html");
+const francescaSitePath = path.join(frontendPath, "francesca-naymarie");
+const francescaSiteIndex = path.join(francescaSitePath, "index.html");
 const frontendBuilt = fs.existsSync(frontendIndex);
+const francescaSiteBuilt = fs.existsSync(francescaSiteIndex);
 
 if (frontendBuilt) {
   const { renderSeoHtml, resolvePageSeo } = require("./services/seo/pageSeoService");
@@ -122,6 +125,20 @@ if (frontendBuilt) {
       return res.status(500).type("text/plain").send("Failed to generate sitemap section");
     }
   });
+  if (francescaSiteBuilt) {
+    app.get(/^\/francesca-naymarie$/, (_req, res) => {
+      res.redirect(308, "/francesca-naymarie/");
+    });
+    app.use(
+      "/francesca-naymarie",
+      express.static(francescaSitePath, {
+        index: "index.html",
+        setHeaders: (response, filePath) => {
+          setStaticCacheHeaders(response, filePath, frontendPath);
+        },
+      })
+    );
+  }
   app.use(
     express.static(frontendPath, {
       index: false,

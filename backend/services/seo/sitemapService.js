@@ -40,6 +40,7 @@ const STATIC_PUBLIC_ROUTES = [
   { path: "/kadahive/programmes/cyber-smart" },
   { path: "/about" },
   { path: "/leadership" },
+  { path: "/francesca-naymarie" },
   { path: "/investors" },
   { path: "/how-it-works" },
   { path: "/for-creators" },

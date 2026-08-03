@@ -1,3 +1,11 @@
+import { getSessionAccessToken } from "../authSession";
+import { API_BASE } from "../config/apiBase";
+import {
+  ROUTE_ANALYTICS_CONTRACT,
+  buildRouteAnalyticsEvent,
+  getRouteTruthMatch,
+} from "../config/routeTruth";
+
 const GOOGLE_TAG_MANAGER_URL = "https://www.googletagmanager.com/gtag/js";
 const GA_MEASUREMENT_ID = String(import.meta.env.VITE_GA_MEASUREMENT_ID || "").trim();
 const GA_DEBUG_MODE =
@@ -6,7 +14,7 @@ export const SEO_PAGEVIEW_EVENT = "tengacion:seo-updated";
 
 let scriptPromise = null;
 let initialized = false;
-let lastTrackedUrl = "";
+let lastTrackedNavigation = "";
 
 const canUseBrowser = () =>
   typeof window !== "undefined" && typeof document !== "undefined";
@@ -91,11 +99,35 @@ export const initializeGoogleAnalytics = async () => {
 
 export const initAnalytics = () => initializeGoogleAnalytics();
 
-export const trackPageView = async ({
-  path,
-  title,
-  referrer,
-} = {}) => {
+const sendInternalRouteView = async (event) => {
+  if (!event || !canUseBrowser() || typeof fetch !== "function") {
+    return false;
+  }
+
+  const token = getSessionAccessToken();
+
+  try {
+    const response = await fetch(
+      `${API_BASE}${ROUTE_ANALYTICS_CONTRACT.endpoint.replace(/^\/api/, "")}`,
+      {
+        method: "POST",
+        credentials: "include",
+        keepalive: true,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(event),
+      }
+    );
+
+    return response.ok;
+  } catch {
+    return false;
+  }
+};
+
+const sendGoogleRouteView = async ({ routePattern, featureTitle }) => {
   if (!isGoogleAnalyticsEnabled()) {
     return false;
   }
@@ -105,30 +137,48 @@ export const trackPageView = async ({
     return false;
   }
 
-  const safePath =
-    String(
-      path ||
-        `${window.location.pathname}${window.location.search}${window.location.hash}`
-    ).trim() || "/";
-
-  const safeTitle = String(title || document.title || "Tengacion").trim() || "Tengacion";
-  const pageLocation = new URL(safePath, window.location.origin).toString();
-  const pageReferrer = String(referrer || document.referrer || "").trim();
-
-  if (pageLocation === lastTrackedUrl) {
-    return false;
-  }
+  const pageLocation = new URL(routePattern, window.location.origin).toString();
 
   window.gtag("event", "page_view", {
-    page_title: safeTitle,
-    page_path: safePath,
+    page_title: featureTitle,
+    page_path: routePattern,
     page_location: pageLocation,
-    ...(pageReferrer ? { page_referrer: pageReferrer } : {}),
     ...(GA_DEBUG_MODE ? { debug_mode: true } : {}),
   });
 
-  lastTrackedUrl = pageLocation;
   return true;
+};
+
+export const trackPageView = async ({
+  path,
+  navigationKey,
+} = {}) => {
+  if (!canUseBrowser()) {
+    return false;
+  }
+
+  const resolvedPath = String(path || window.location.pathname).trim() || "/";
+  const match = getRouteTruthMatch(resolvedPath);
+  const event = buildRouteAnalyticsEvent(resolvedPath);
+  if (!match || !event) {
+    return false;
+  }
+
+  const dedupeKey = String(navigationKey || resolvedPath).trim();
+  if (dedupeKey && dedupeKey === lastTrackedNavigation) {
+    return false;
+  }
+  lastTrackedNavigation = dedupeKey;
+
+  const [internalRecorded, googleRecorded] = await Promise.all([
+    sendInternalRouteView(event),
+    sendGoogleRouteView({
+      routePattern: match.routePattern,
+      featureTitle: match.feature.title,
+    }),
+  ]);
+
+  return internalRecorded || googleRecorded;
 };
 
 export const trackEvent = async (eventName, params = {}) => {

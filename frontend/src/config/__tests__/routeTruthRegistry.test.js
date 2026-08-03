@@ -5,8 +5,11 @@ import { describe, expect, it } from "vitest";
 
 import registry from "../routeTruthRegistry.json";
 import {
+  ROUTE_ANALYTICS_CONTRACT,
+  buildRouteAnalyticsEvent,
   decorateNavigationItems,
   getRouteTruth,
+  getRouteTruthMatch,
   isLifecycleNavigable,
 } from "../routeTruth";
 
@@ -92,5 +95,29 @@ describe("route truth registry", () => {
     );
     expect(getRouteTruth("/artist/creator.example")).toBe(creatorProfiles);
     expect(getRouteTruth("/creator/creator.example/books")).toBe(creatorProfiles);
+  });
+
+  it("defines a privacy-safe route analytics contract from route truth", () => {
+    expect(ROUTE_ANALYTICS_CONTRACT).toEqual(
+      expect.objectContaining({
+        eventType: "route_viewed",
+        version: 1,
+        endpoint: "/api/analytics/route-views",
+        requiredClientFields: ["contractVersion", "featureId", "routePattern"],
+      })
+    );
+    expect(getRouteTruthMatch("/creator/dashboard?tab=overview#top")).toEqual(
+      expect.objectContaining({
+        routePattern: "/creator/dashboard",
+        feature: expect.objectContaining({ id: "creator_workspace" }),
+      })
+    );
+    expect(
+      buildRouteAnalyticsEvent("/creator/creator.example/books?token=secret#private")
+    ).toEqual({
+      contractVersion: 1,
+      featureId: "public_creator_profiles",
+      routePattern: "/creator/:username/books",
+    });
   });
 });

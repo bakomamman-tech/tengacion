@@ -16,7 +16,7 @@ export default function usePageTracking() {
     const currentPath = `${location.pathname}${location.search}${location.hash}`;
     let tracked = false;
 
-    const sendPageView = ({ path = currentPath, title } = {}) => {
+    const sendPageView = ({ path = currentPath } = {}) => {
       const resolvedPath = String(path || currentPath).trim() || currentPath;
       if (resolvedPath !== currentPath || tracked) {
         return;
@@ -25,14 +25,13 @@ export default function usePageTracking() {
       tracked = true;
       void trackPageView({
         path: resolvedPath,
-        title: String(title || document.title || "").trim() || document.title,
+        navigationKey: location.key,
       });
     };
 
     const handleSeoReady = (event) => {
       sendPageView({
         path: event?.detail?.path,
-        title: event?.detail?.title,
       });
     };
 

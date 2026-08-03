@@ -1,6 +1,9 @@
 import registry from "./routeTruthRegistry.json";
 
 export const ROUTE_TRUTH_REGISTRY = registry;
+export const ROUTE_ANALYTICS_CONTRACT = Object.freeze({
+  ...(registry.routeAnalyticsContract || {}),
+});
 export const ROUTE_LIFECYCLE = Object.freeze({
   PRODUCTION: "production",
   BETA: "beta",
@@ -51,15 +54,50 @@ const compileAppPath = (appPath = "") => {
   return new RegExp(`^${source}/?$`, "i");
 };
 
+const expandFeatureAppPaths = (feature = {}) => {
+  const appPaths = Array.isArray(feature.appPaths) ? feature.appPaths : [];
+  const nestedRoots = appPaths
+    .filter((appPath) => String(appPath || "").startsWith("/") && String(appPath).endsWith("/*"))
+    .map((appPath) => String(appPath).slice(0, -2));
+
+  return appPaths.flatMap((appPath) => {
+    const normalized = normalizePath(appPath);
+    if (normalized.startsWith("/")) {
+      return [{ appPath, routePattern: normalized }];
+    }
+
+    return nestedRoots.map((root) => ({
+      appPath,
+      routePattern: normalizePath(`${root}/${normalized}`),
+    }));
+  });
+};
+
+const scoreRoutePattern = (routePattern = "") => {
+  const segments = String(routePattern).split("/").filter(Boolean);
+  const staticSegments = segments.filter(
+    (segment) => segment !== "*" && !segment.startsWith(":")
+  ).length;
+  const dynamicSegments = segments.filter((segment) => segment.startsWith(":"))
+    .length;
+  const wildcardSegments = segments.filter((segment) => segment === "*").length;
+
+  return (
+    segments.length * 10000 +
+    staticSegments * 100 +
+    dynamicSegments * 10 -
+    wildcardSegments * 1000
+  );
+};
+
 const routeMatchers = registry.features
   .flatMap((feature) =>
-    (feature.appPaths || []).map((appPath) => ({
+    expandFeatureAppPaths(feature).map(({ appPath, routePattern }) => ({
       feature,
       appPath,
-      matcher: compileAppPath(appPath),
-      score:
-        String(appPath).split("/").filter(Boolean).length * 100 +
-        String(appPath).replace(/:[^/]+|\*/g, "").length,
+      routePattern,
+      matcher: compileAppPath(routePattern),
+      score: scoreRoutePattern(routePattern),
     }))
   )
   .filter((entry) => entry.matcher)
@@ -70,9 +108,35 @@ const featureById = new Map(registry.features.map((feature) => [feature.id, feat
 export const getFeatureTruthById = (featureId = "") =>
   featureById.get(String(featureId || "").trim()) || null;
 
-export const getRouteTruth = (path = "") => {
+export const getRouteTruthMatch = (path = "") => {
   const normalized = normalizePath(path);
-  return routeMatchers.find((entry) => entry.matcher.test(normalized))?.feature || null;
+  const match = routeMatchers.find((entry) => entry.matcher.test(normalized));
+  if (!match) {
+    return null;
+  }
+
+  return {
+    feature: match.feature,
+    appPath: match.appPath,
+    routePattern: match.routePattern,
+  };
+};
+
+export const getRouteTruth = (path = "") => {
+  return getRouteTruthMatch(path)?.feature || null;
+};
+
+export const buildRouteAnalyticsEvent = (path = "") => {
+  const match = getRouteTruthMatch(path);
+  if (!match || !ROUTE_ANALYTICS_CONTRACT.eventType) {
+    return null;
+  }
+
+  return {
+    contractVersion: ROUTE_ANALYTICS_CONTRACT.version,
+    featureId: match.feature.id,
+    routePattern: match.routePattern,
+  };
 };
 
 export const getLifecycleLabel = (status = "") => {

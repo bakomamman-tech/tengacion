@@ -62,6 +62,12 @@ const adminLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+const routeAnalyticsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.use(
   helmet({
@@ -113,6 +119,7 @@ app.use("/api", (req, res, next) => {
     req.path.startsWith("/payments/webhook") ||
     req.path.startsWith("/payments/paystack/transfers/webhook") ||
     req.path.startsWith("/marketplace/orders/webhook") ||
+    req.path.startsWith("/analytics/route-views") ||
     req.path.startsWith("/assistant") ||
     req.path.startsWith("/akuso")
   ) {
@@ -238,6 +245,7 @@ app.use("/api/rooms", require("./routes/rooms"));
 app.use("/api/groups", require("./routes/groups"));
 app.use("/api/checkin", require("./routes/checkin"));
 app.use("/api/discovery", require("./routes/discovery"));
+app.use("/api/analytics", routeAnalyticsLimiter, require("./routes/analytics"));
 app.use("/api/news", require("./routes/news.routes"));
 app.use("/api/marketplace", require("./routes/marketplaceRoutes"));
 app.use("/api/schools", require("./routes/schools"));

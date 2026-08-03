@@ -1,6 +1,14 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "lastReviewed": "2026-08-03",
+  "routeAnalyticsContract": {
+    "eventType": "route_viewed",
+    "version": 1,
+    "endpoint": "/api/analytics/route-views",
+    "requiredClientFields": ["contractVersion", "featureId", "routePattern"],
+    "serverDerivedFields": ["canonicalPath", "lifecycle", "surface", "access"],
+    "forbiddenClientFields": ["url", "location", "pathname", "query", "search", "hash", "referrer", "title"]
+  },
   "lifecycleDefinitions": {
     "production": "Persistent, user-meaningful workflow with no fabricated state.",
     "beta": "Server-backed workflow with material controls or operational coverage still incomplete.",

@@ -64,7 +64,7 @@ export function FriendsPage({ user }) {
             <article key={name} className="quick-list-item">
               <strong>{name}</strong>
               <span>Connected on Tengacion</span>
-              <button type="button">Message</button>
+              <button type="button" disabled title="This legacy sample does not open Messenger">Message unavailable</button>
             </article>
           ))}
         </div>
@@ -76,7 +76,7 @@ export function FriendsPage({ user }) {
             <article key={name} className="quick-list-item">
               <strong>{name}</strong>
               <span>3 mutual friends</span>
-              <button type="button">Add friend</button>
+              <button type="button" disabled title="This legacy sample cannot create a friend request">Add friend unavailable</button>
             </article>
           ))}
         </div>

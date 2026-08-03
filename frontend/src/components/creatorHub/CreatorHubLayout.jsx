@@ -56,6 +56,8 @@ export default function CreatorHubLayout({
               type="button"
               className={cx(buttonStyles({ variant: "icon", iconOnly: true }), styles.roundBtn)}
               aria-label="Search creator content"
+              title="Creator content search is not available"
+              disabled
             >
               &#128269;
             </button>
@@ -63,6 +65,8 @@ export default function CreatorHubLayout({
               type="button"
               className={cx(buttonStyles({ variant: "icon", iconOnly: true }), styles.roundBtn)}
               aria-label="Open library"
+              title="The creator library shortcut is not available"
+              disabled
             >
               &#128218;
             </button>

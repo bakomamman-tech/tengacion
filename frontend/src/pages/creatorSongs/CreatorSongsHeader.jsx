@@ -61,6 +61,8 @@ export default function CreatorSongsHeader({
               type="button"
               className={cx(buttonStyles({ variant: "icon", iconOnly: true }), styles.moreBtn)}
               aria-label="More options"
+              title="More song options are not available"
+              disabled
             >
               ...
             </button>

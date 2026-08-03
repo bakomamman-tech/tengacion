@@ -972,9 +972,9 @@ export function PostComposerModal({
           />
           <div className="pc-user-meta">
             <div className="pc-name">{user?.username}</div>
-            <button className="pc-privacy" type="button">
+            <span className="pc-privacy" title="New posts currently use the public audience">
               Public
-            </button>
+            </span>
           </div>
         </div>
 

@@ -562,7 +562,7 @@ export default function CreatorDashboard({ user }) {
             ))}
           </nav>
 
-          <button type="button" className="creator-left-cta">
+          <button type="button" className="creator-left-cta" onClick={() => navigate("/home", { state: { openComposer: true } })}>
             Create a post
           </button>
         </aside>
@@ -591,7 +591,7 @@ export default function CreatorDashboard({ user }) {
                   </select>
                 </label>
 
-                <button type="button" className="creator-see-all">
+                <button type="button" className="creator-see-all" disabled title="Detailed insight history is not available in this legacy dashboard">
                   See all
                 </button>
               </div>
@@ -707,7 +707,7 @@ export default function CreatorDashboard({ user }) {
                 {stats.totalPosts} published post{stats.totalPosts === 1 ? "" : "s"}.
               </p>
 
-              <button className="btn-secondary" type="button">
+              <button className="btn-secondary" type="button" onClick={() => navigate("/creator/dashboard")}>
                 Open analytics
               </button>
             </div>
@@ -724,10 +724,10 @@ export default function CreatorDashboard({ user }) {
               </div>
 
               <div className="creator-content-actions">
-                <button className="creator-see-all" type="button">
+                <button className="creator-see-all" type="button" disabled title="The complete content list is available in the creator workspace">
                   See all
                 </button>
-                <button className="btn-secondary" type="button">
+                <button className="btn-secondary" type="button" onClick={() => navigate("/home", { state: { openComposer: true } })}>
                   Create post
                 </button>
               </div>
@@ -857,7 +857,7 @@ export default function CreatorDashboard({ user }) {
             <div className="creator-weekly-head">
               <h3>Weekly progress</h3>
               <div className="creator-weekly-meta">
-                <button type="button" className="creator-see-all">
+                <button type="button" className="creator-see-all" disabled title="Weekly progress history is not available">
                   See all
                 </button>
                 <span>{daysLeft} day{daysLeft === 1 ? "" : "s"} left</span>
@@ -951,8 +951,8 @@ export default function CreatorDashboard({ user }) {
               </article>
             </div>
 
-            <button className="btn-primary creator-collab-cta" type="button">
-              Send collab pitch
+            <button className="btn-primary creator-collab-cta" type="button" disabled title="Collaboration pitching is not available">
+              Collab pitching unavailable
             </button>
           </section>
         </aside>

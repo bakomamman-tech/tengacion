@@ -102,7 +102,7 @@ function BirthdaySidebar({ search, onSearch }) {
       <div className="birthdays-sidebar__divider" />
       <section>
         <h2>Birthdays</h2>
-        <button type="button" className="active"><span><BirthdayIcon name="cake" /></span>Birthday calendar</button>
+        <button type="button" className="active" aria-current="page" disabled><span><BirthdayIcon name="cake" /></span>Birthday calendar</button>
         <p>Community celebrations show only the month and day members share. Email addresses and birth years stay private.</p>
       </section>
     </aside>

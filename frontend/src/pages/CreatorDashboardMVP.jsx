@@ -623,23 +623,23 @@ export default function CreatorDashboardMVP() {
         </div>
 
         <nav className="crd-menu">
-          <button className="active" type="button">
+          <button className="active" type="button" onClick={() => navigate("/creator/dashboard")}>
             <span className="crd-nav-icon">D</span>
             <span>Dashboard</span>
           </button>
-          <button type="button">
+          <button type="button" onClick={() => navigate("/creator/categories")}>
             <span className="crd-nav-icon">C</span>
             <span>My Content</span>
           </button>
-          <button type="button">
+          <button type="button" onClick={() => navigate("/creator/earnings")}>
             <span className="crd-nav-icon">E</span>
             <span>Earnings</span>
           </button>
-          <button type="button">
+          <button type="button" onClick={() => navigate("/creator/settings")}>
             <span className="crd-nav-icon">A</span>
             <span>Account</span>
           </button>
-          <button type="button">
+          <button type="button" onClick={() => navigate("/creator/support")}>
             <span className="crd-nav-icon">S</span>
             <span>Support</span>
           </button>
@@ -648,23 +648,23 @@ export default function CreatorDashboardMVP() {
         <div className="crd-divider" />
 
         <nav className="crd-menu secondary">
-          <button type="button">
+          <button type="button" onClick={() => navigate("/creator/categories")}>
             <span className="crd-nav-icon">C</span>
             <span>My Content</span>
           </button>
-          <button className="active" type="button">
+          <button className="active" type="button" onClick={() => navigate("/creator/earnings")}>
             <span className="crd-nav-icon">E</span>
             <span>Earnings</span>
           </button>
-          <button type="button">
+          <button type="button" onClick={() => navigate("/creator/payouts")}>
             <span className="crd-nav-icon">P</span>
             <span>Payouts</span>
           </button>
-          <button type="button">
+          <button type="button" onClick={() => navigate("/creator/settings")}>
             <span className="crd-nav-icon">Q</span>
             <span>Account Settings</span>
           </button>
-          <button type="button">
+          <button type="button" onClick={() => navigate("/creator/support")}>
             <span className="crd-nav-icon">U</span>
             <span>Support</span>
           </button>
@@ -675,11 +675,11 @@ export default function CreatorDashboardMVP() {
         <header className="crd-topbar">
           <h1>Creator Dashboard</h1>
           <div className="crd-top-actions">
-            <button type="button" className="crd-status-pill">
+            <span className="crd-status-pill" title="Creator location">
               <span className="crd-pill-dot" />
               <span>{creatorLocation}</span>
-            </button>
-            <button type="button" className="crd-icon-btn" aria-label="Notifications">
+            </span>
+            <button type="button" className="crd-icon-btn" aria-label="Notifications" onClick={() => navigate("/notifications")}>
               O
             </button>
             <img src={creatorAvatar} alt={creatorName} />
@@ -1185,7 +1185,7 @@ export default function CreatorDashboardMVP() {
                   <li key={label}><span>{label}</span><b>{fmtMoney(amount)}</b></li>
                 ))}
               </ul>
-              <button type="button" className="crd-submit-btn">Withdraw Earnings</button>
+              <button type="button" className="crd-submit-btn" onClick={() => navigate("/creator/payouts")}>Withdraw Earnings</button>
             </section>
 
             <section className="crd-side-card">
@@ -1216,8 +1216,8 @@ export default function CreatorDashboardMVP() {
                 From 15 July 2026, the 75% artist / 25% Tengacion split applies to
                 Net Revenue from song and album sales only. Earlier allocations remain valid.
               </p>
-              <button type="button" className="crd-submit-btn">Manage Accounts</button>
-              <button type="button" className="crd-light-btn full">Add Account</button>
+              <button type="button" className="crd-submit-btn" onClick={() => navigate("/creator/settings")}>Manage Accounts</button>
+              <button type="button" className="crd-light-btn full" onClick={() => navigate("/creator/settings")}>Add Account</button>
               <button
                 type="button"
                 className="crd-light-btn full"

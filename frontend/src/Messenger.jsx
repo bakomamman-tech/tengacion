@@ -2727,9 +2727,9 @@ export default function Messenger({
             <button
               type="button"
               className="mh-action-btn mh-call-btn"
-              title="Video call"
-              aria-label="Video call"
-              onClick={() => setHeaderNotice("Video calling coming soon")}
+              title="Video calling is not available"
+              aria-label="Video calling unavailable"
+              disabled
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h8A2.5 2.5 0 0 1 16 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 3 16.5z" />
@@ -2739,9 +2739,9 @@ export default function Messenger({
             <button
               type="button"
               className="mh-action-btn mh-call-btn"
-              title="Voice call"
-              aria-label="Voice call"
-              onClick={() => setHeaderNotice("Voice calling coming soon")}
+              title="Voice calling is not available"
+              aria-label="Voice calling unavailable"
+              disabled
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M6 4h4l1.8 4.2-2.2 1.9a11 11 0 0 0 4.6 4.6l1.9-2.2L20 14v4a2 2 0 0 1-2 2C10.8 20 4 13.2 4 6a2 2 0 0 1 2-2z" />

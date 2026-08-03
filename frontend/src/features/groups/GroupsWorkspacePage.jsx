@@ -268,13 +268,13 @@ function GroupPost({ post }) {
           <strong>{post.author?.name || "Tengacion member"}</strong>
           <span>{date && !Number.isNaN(date.valueOf()) ? date.toLocaleString() : "Just now"}</span>
         </div>
-        <button type="button" className="groups-icon-button" aria-label="Post options">•••</button>
+        <button type="button" className="groups-icon-button" aria-label="Post options unavailable" title="Post options are not available" disabled>•••</button>
       </header>
       <p>{post.text}</p>
       <footer>
-        <button type="button">Like</button>
-        <button type="button">Comment</button>
-        <button type="button">Share</button>
+        <button type="button" disabled title="Group post reactions are not available">Like</button>
+        <button type="button" disabled title="Group post comments are not available">Comment</button>
+        <button type="button" disabled title="Group post resharing is not available">Share</button>
       </footer>
     </article>
   );
@@ -318,9 +318,9 @@ function GroupDetail({ group, user, shareDraft, shared, onShare, onGroupUpdated 
             </div>
           </div>
           <div className="groups-profile__actions">
-            <button type="button" className="groups-primary-button" onClick={() => toast("Invites are coming next.")}>+ Invite</button>
+            <button type="button" className="groups-primary-button" disabled title="Group invitations are not available">Invites unavailable</button>
             <button type="button" className="groups-secondary-button" onClick={() => navigator.clipboard?.writeText(window.location.href).then(() => toast.success("Group link copied"))}>Share</button>
-            <button type="button" className="groups-secondary-button">✓ Joined</button>
+            <button type="button" className="groups-secondary-button" disabled aria-pressed="true" title="Membership changes are not available">✓ Joined</button>
             {shareDraft ? <button type="button" className="groups-primary-button" onClick={onShare}>{shared ? "Shared here" : "Share post here"}</button> : null}
           </div>
         </div>
@@ -329,8 +329,8 @@ function GroupDetail({ group, user, shareDraft, shared, onShare, onGroupUpdated 
             <button key={tab} type="button" className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>{tab}</button>
           ))}
           <span className="groups-profile__tab-actions">
-            <button type="button" className="groups-icon-button" aria-label="Search group"><GroupIcon name="search" /></button>
-            <button type="button" className="groups-icon-button" aria-label="Group options">•••</button>
+            <button type="button" className="groups-icon-button" aria-label="Group search unavailable" title="Group search is not available" disabled><GroupIcon name="search" /></button>
+            <button type="button" className="groups-icon-button" aria-label="Group options unavailable" title="Group options are not available" disabled>•••</button>
           </span>
         </nav>
       </section>
@@ -482,7 +482,7 @@ export default function GroupsWorkspacePage({ user }) {
         <aside className="groups-sidebar">
           <header>
             <h1>Groups</h1>
-            <button type="button" className="groups-icon-button" aria-label="Group settings"><GroupIcon name="settings" /></button>
+            <button type="button" className="groups-icon-button" aria-label="Group settings unavailable" title="Group settings are not available" disabled><GroupIcon name="settings" /></button>
           </header>
           <label className="groups-search">
             <GroupIcon name="search" />

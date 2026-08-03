@@ -176,6 +176,11 @@
   cursor: not-allowed;
 }
 
+.groups-workspace button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .groups-secondary-button {
   background: color-mix(in srgb, var(--surface-soft) 90%, #dce4df);
   color: var(--text);

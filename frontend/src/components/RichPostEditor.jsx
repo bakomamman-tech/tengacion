@@ -70,8 +70,10 @@ export default function RichPostEditor({ value, onChange, placeholder, autoFocus
           <button
             className="toolbar-btn"
             title="Mention someone"
+            type="button"
+            disabled
           >
-            @ Mention
+            @ Mention (unavailable)
           </button>
         </div>
 

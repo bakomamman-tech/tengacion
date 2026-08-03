@@ -31,7 +31,7 @@ export default function Watch() {
           <b>{v.name}</b>
           <video src={v.videoUrl} controls />
           <p>{v.caption}</p>
-          <button>❤️ {v.likes.length}</button>
+          <button type="button" disabled title="Likes are not available in this legacy Watch surface">❤️ {v.likes.length}</button>
         </div>
       ))}
     </div>

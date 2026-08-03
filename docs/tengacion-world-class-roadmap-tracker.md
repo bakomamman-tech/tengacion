@@ -20,7 +20,7 @@ This document is the authoritative implementation record for the Facebook benchm
 | TRUTH-003 | Make navigation status-aware | COMPLETE | Navbar, Create menu and Quick Access derive visibility and Beta/Experimental labels from the shared registry; Preview routes are not promoted. |
 | TRUTH-004 | Make Akuso capability-aware | COMPLETE | Akuso derives availability from the registry, excludes Preview recommendations/actions and explains Preview requests without a navigation path. |
 | GROUP-001 | Remove local authority from Groups | COMPLETE | Groups workspace, group post sharing and Messenger group discovery now read/write only through the Group API; legacy group caches are deleted, failure states are explicit, and backend/frontend authority tests pass. |
-| ACTION-001 | Audit and remove inert controls | NOT STARTED | Scheduled after Preview containment. |
+| ACTION-001 | Audit and remove inert controls | COMPLETE | Executable source audit now enforces that every native button/link acts, submits, navigates or is honestly disabled; 45 inert/placeholder violations were resolved and the audit reports zero remaining. |
 | FEEDBACK-001 | Correct feedback persistence and submission semantics | NOT STARTED | Browser-only draft behavior remains. |
 | ROUTE-001 | Canonicalize route and access contracts | NOT STARTED | Creator aliases and `/artist/:username` access decision remain. |
 | TEST-001 | Add route truth smoke coverage | COMPLETE | Registry completeness, Preview rendering, navigation containment and Akuso lifecycle enforcement are covered by automated tests. |
@@ -57,4 +57,8 @@ This document is the authoritative implementation record for the Facebook benchm
 - Added Groups API contract coverage plus frontend coverage for API failure, confirmed creation/posting, share persistence and Messenger group discovery. TEST-002 is now in progress because the Groups gap is covered while five named high-risk areas remain.
 - GROUP-001 verification passed: 11 targeted frontend tests, 4 backend Groups API tests, 10 backend route-registry tests, frontend lint and the frontend production build.
 - The full frontend regression run passed 401 of 402 tests across 114 of 115 files; the unrelated AdminPanel Escape-close timing assertion failed during the loaded run and passed its isolated 2-test rerun. This is recorded as a flaky existing regression, not counted as GROUP-001 verification.
+- Completed ACTION-001 with an executable frontend source audit and a detailed action-truth inventory.
+- Resolved 45 action-truth violations: connected 17 controls to existing production destinations, converted two fake controls to status text, and visibly disabled 26 controls whose backend workflow does not exist.
+- Replaced placeholder clicks for Group invitations and Messenger voice/video calls with explicit disabled states. Unsupported Group post actions, settings/search tools, creator shortcuts and legacy editor actions are recorded for later product packages.
+- ACTION-001 verification passed: zero violations from `npm run audit:actions --prefix frontend`, 14 focused frontend tests, frontend lint, frontend production build, and the full frontend suite (115 files, 402 tests).
 - No Phase 1 or later work package is recorded as complete.

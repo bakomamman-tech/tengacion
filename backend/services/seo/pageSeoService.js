@@ -567,6 +567,7 @@ const buildSeoPayload = ({
   previewTitle = "",
   previewDescription = "",
   statusCode = 200,
+  redirectPath = "",
 } = {}) => {
   const canonicalUrl = toCanonicalUrl(canonicalPath);
   const imageUrl = toAbsoluteUrl(image || DEFAULT_IMAGE_PATH);
@@ -602,6 +603,7 @@ const buildSeoPayload = ({
         description: previewDescription || normalizedDescription,
       }),
     statusCode,
+    redirectPath: redirectPath ? normalizePathname(redirectPath) : "",
     xRobotsTag: String(robots || "").toLowerCase().includes("noindex") ? robots : "",
   };
 };
@@ -1308,6 +1310,7 @@ const buildCreatorSeo = async ({ creatorRef, tab = "home", requestedPath = "/" }
     previewDescription:
       buildCreatorDescription({ displayName, profile, counts, tab: "home" }) ||
       `Explore ${displayName} across music, books, and podcasts on Tengacion.`,
+    redirectPath: isCanonicalRequest ? "" : canonicalPath,
   });
 };
 
@@ -1962,16 +1965,21 @@ const resolveDynamicSeo = async (pathname) => {
     return buildSchoolSeo("kurahtechandartsacademy");
   }
 
-  const creatorMatch = pathname.match(/^\/creators\/([^/]+)(?:\/(music|albums|podcasts|books))?$/i);
+  const creatorMatch = pathname.match(
+    /^\/creators\/([^/]+)(?:\/(songs|music|albums|podcasts|books|posts|store|comedy))?$/i
+  );
   if (creatorMatch) {
+    const compatibilityTab = String(creatorMatch[2] || "home").toLowerCase();
     return buildCreatorSeo({
       creatorRef: creatorMatch[1],
-      tab: String(creatorMatch[2] || "home").toLowerCase(),
+      tab: compatibilityTab === "songs" ? "music" : compatibilityTab,
       requestedPath: pathname,
     });
   }
 
-  const creatorAliasMatch = pathname.match(/^\/creator\/([^/]+)(?:\/(music|albums|podcasts|books))?$/i);
+  const creatorAliasMatch = pathname.match(
+    /^\/creator\/([^/]+)(?:\/(music|albums|podcasts|books|posts|store))?$/i
+  );
   if (
     creatorAliasMatch
     && !PRIVATE_CREATOR_ALIAS_SEGMENTS.has(normalizeCreatorUsername(creatorAliasMatch[1]))
@@ -1979,6 +1987,17 @@ const resolveDynamicSeo = async (pathname) => {
     return buildCreatorSeo({
       creatorRef: creatorAliasMatch[1],
       tab: String(creatorAliasMatch[2] || "home").toLowerCase(),
+      requestedPath: pathname,
+    });
+  }
+
+  const artistCompatibilityMatch = pathname.match(
+    /^\/artist\/([^/]+)(?:\/(music|albums|podcasts|books|posts|store))?$/i
+  );
+  if (artistCompatibilityMatch) {
+    return buildCreatorSeo({
+      creatorRef: artistCompatibilityMatch[1],
+      tab: String(artistCompatibilityMatch[2] || "home").toLowerCase(),
       requestedPath: pathname,
     });
   }
@@ -2013,6 +2032,20 @@ const resolveDynamicSeo = async (pathname) => {
 
 const resolvePageSeo = async ({ path = "/" } = {}) => {
   const pathname = normalizePathname(path);
+
+  const staticCreatorAliasTarget = {
+    "/pyrexx_singz": "/pyrexx-singz",
+    "/artist/pyrexx-singz": "/pyrexx-singz",
+    "/artist/pyrexx_singz": "/pyrexx-singz",
+  }[pathname.toLowerCase()];
+
+  if (staticCreatorAliasTarget) {
+    return buildSeoPayload({
+      canonicalPath: staticCreatorAliasTarget,
+      robots: "noindex,follow",
+      redirectPath: staticCreatorAliasTarget,
+    });
+  }
 
   if (pathname === "/") {
     return buildHomePageSeo();

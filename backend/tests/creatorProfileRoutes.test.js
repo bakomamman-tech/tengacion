@@ -968,6 +968,8 @@ describe("creator profile routes", () => {
     expect(response.body.creator.username).toBe("creator.example");
     expect(response.body.creator.canonicalPath).toBe("/creator/creator.example");
     expect(response.body.creator.tabPaths.music).toBe("/creator/creator.example/music");
+    expect(response.body.creator.tabPaths.posts).toBe("/creator/creator.example/posts");
+    expect(response.body.creator.tabPaths.store).toBe("/creator/creator.example/store");
     expect(response.body.seo.indexable).toBe(true);
   });
 

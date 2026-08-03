@@ -393,6 +393,21 @@ export default function CreatorHubPage() {
     creatorId: creator?.id || creatorId,
     username: creator?.username,
   });
+
+  useEffect(() => {
+    if (!creator?.canonicalPath || !/\/comedy\/?$/i.test(location.pathname)) {
+      return;
+    }
+
+    navigate(
+      {
+        pathname: creator.canonicalPath,
+        search: location.search,
+        hash: location.hash,
+      },
+      { replace: true }
+    );
+  }, [creator?.canonicalPath, location.hash, location.pathname, location.search, navigate]);
   const creatorTabPaths = creator?.tabPaths || {
     home: creatorPublicPath,
     music: buildCreatorPublicPath({ creatorId: creator?.id || creatorId, username: creator?.username, tab: "music" }),

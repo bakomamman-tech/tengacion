@@ -155,6 +155,11 @@ if (frontendBuilt) {
     try {
       res.set("Cache-Control", "no-cache");
       const seo = await resolvePageSeo({ path: req.path });
+      if (seo?.redirectPath) {
+        const queryIndex = String(req.originalUrl || "").indexOf("?");
+        const query = queryIndex >= 0 ? String(req.originalUrl || "").slice(queryIndex) : "";
+        return res.redirect(308, `${seo.redirectPath}${query}`);
+      }
       if (seo?.xRobotsTag) {
         res.set("X-Robots-Tag", seo.xRobotsTag);
       }

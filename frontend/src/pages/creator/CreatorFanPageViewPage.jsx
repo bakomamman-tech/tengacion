@@ -42,11 +42,25 @@ const resolveInitialPublicTab = (pathname = "") => {
   return "music";
 };
 
+const resolveCanonicalPublicPath = ({ pathname = "", creator = {} } = {}) => {
+  const normalizedPath = String(pathname || "").replace(/\/+$/, "");
+  const tabMatch = normalizedPath.match(/\/(music|songs|albums|podcasts|books|posts|store)$/i);
+  const matchedTab = String(tabMatch?.[1] || "home").toLowerCase();
+  const tab = matchedTab === "songs" ? "music" : matchedTab;
+
+  if (tab === "home") {
+    return String(creator?.canonicalPath || creator?.tabPaths?.home || "").trim();
+  }
+
+  return String(creator?.tabPaths?.[tab] || "").trim();
+};
+
 export default function CreatorFanPageViewPage() {
-  const { creatorId = "" } = useParams();
+  const { creatorId = "", username = "" } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const isPublicRequest = Boolean(String(creatorId || "").trim());
+  const publicCreatorRef = String(username || creatorId || "").trim();
+  const isPublicRequest = Boolean(publicCreatorRef);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [creatorProfile, setCreatorProfile] = useState(null);
@@ -64,7 +78,7 @@ export default function CreatorFanPageViewPage() {
 
     try {
       if (isPublicRequest) {
-        const nextPayload = await getPublicCreatorProfile(creatorId);
+        const nextPayload = await getPublicCreatorProfile(publicCreatorRef);
         setPublicPayload(nextPayload || null);
         setCreatorProfile(null);
         setDashboard(null);
@@ -80,11 +94,41 @@ export default function CreatorFanPageViewPage() {
     } finally {
       setLoading(false);
     }
-  }, [creatorId, isPublicRequest]);
+  }, [isPublicRequest, publicCreatorRef]);
 
   useEffect(() => {
     loadPage();
   }, [loadPage]);
+
+  useEffect(() => {
+    if (!isPublicRequest || !publicPayload?.creator) {
+      return;
+    }
+
+    const canonicalPath = resolveCanonicalPublicPath({
+      pathname: location.pathname,
+      creator: publicPayload.creator,
+    });
+    const currentPath = String(location.pathname || "").replace(/\/+$/, "") || "/";
+
+    if (canonicalPath && canonicalPath !== currentPath) {
+      navigate(
+        {
+          pathname: canonicalPath,
+          search: location.search,
+          hash: location.hash,
+        },
+        { replace: true }
+      );
+    }
+  }, [
+    isPublicRequest,
+    location.hash,
+    location.pathname,
+    location.search,
+    navigate,
+    publicPayload,
+  ]);
 
   const handleFollow = useCallback(async () => {
     const publicCreatorId = publicPayload?.creator?.id;

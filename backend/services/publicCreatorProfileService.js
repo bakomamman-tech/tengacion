@@ -85,6 +85,8 @@ const buildCreatorTabPaths = ({ creatorId = "", username = "" } = {}) => ({
   albums: buildCreatorPublicPath({ creatorId, username, tab: "albums" }),
   podcasts: buildCreatorPublicPath({ creatorId, username, tab: "podcasts" }),
   books: buildCreatorPublicPath({ creatorId, username, tab: "books" }),
+  posts: buildCreatorPublicPath({ creatorId, username, tab: "posts" }),
+  store: buildCreatorPublicPath({ creatorId, username, tab: "store" }),
 });
 
 const buildSignedUrl = ({

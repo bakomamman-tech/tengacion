@@ -71,4 +71,26 @@ describe("route truth registry", () => {
       expect.objectContaining({ label: "Gaming", lifecycleLabel: "Experimental" }),
     ]);
   });
+
+  it("records one public creator canonical family and explicit compatibility routes", () => {
+    const creatorProfiles = registry.features.find(
+      (feature) => feature.id === "public_creator_profiles"
+    );
+
+    expect(creatorProfiles).toEqual(
+      expect.objectContaining({
+        access: "mixed",
+        canonicalPath: "/creator/:username",
+        routeContract: {
+          publicCanonicalFamily: "/creator/:username",
+          idCompatibilityFamily: "/creators/:creatorId",
+          artistCompatibilityPath: "/artist/:username",
+          readAccess: "public",
+          authenticatedActions: ["follow", "message", "purchase", "subscribe"],
+        },
+      })
+    );
+    expect(getRouteTruth("/artist/creator.example")).toBe(creatorProfiles);
+    expect(getRouteTruth("/creator/creator.example/books")).toBe(creatorProfiles);
+  });
 });

@@ -13,7 +13,23 @@ export const PRIVATE_CREATOR_ALIAS_SEGMENTS = new Set([
   "support",
 ]);
 
-const PUBLIC_CREATOR_TABS = new Set(["home", "music", "albums", "podcasts", "books"]);
+const PUBLIC_CREATOR_TABS = new Set([
+  "home",
+  "music",
+  "albums",
+  "podcasts",
+  "books",
+  "posts",
+  "store",
+]);
+
+export const CREATOR_PUBLIC_ROUTE_CONTRACT = Object.freeze({
+  canonicalPath: "/creator/:username",
+  idCompatibilityPath: "/creators/:creatorId",
+  artistCompatibilityPath: "/artist/:username",
+  readAccess: "public",
+  authenticatedActionPaths: Object.freeze(["/creators/:creatorId/subscribe"]),
+});
 
 export const normalizeCreatorUsername = (value = "") =>
   String(value || "")
@@ -29,7 +45,7 @@ export const normalizePublicCreatorTab = (value = "home") => {
 export const isReservedCreatorAliasSegment = (value = "") =>
   PRIVATE_CREATOR_ALIAS_SEGMENTS.has(normalizeCreatorUsername(value));
 
-export const buildCreatorLegacyPath = ({ creatorId = "", tab = "home" } = {}) => {
+export const buildCreatorIdPath = ({ creatorId = "", tab = "home" } = {}) => {
   const normalizedTab = normalizePublicCreatorTab(tab);
   const suffix = normalizedTab === "home" ? "" : `/${normalizedTab}`;
   return `/creators/${encodeURIComponent(String(creatorId || "").trim())}${suffix}`;
@@ -44,8 +60,13 @@ export const buildCreatorPublicPath = ({ creatorId = "", username = "", tab = "h
     return `/creator/${encodeURIComponent(normalizedUsername)}${suffix}`;
   }
 
-  return buildCreatorLegacyPath({ creatorId, tab: normalizedTab });
+  return buildCreatorIdPath({ creatorId, tab: normalizedTab });
 };
+
+export const buildCreatorLegacyPath = buildCreatorIdPath;
+
+export const buildArtistCompatibilityTarget = ({ username = "", tab = "home" } = {}) =>
+  buildCreatorPublicPath({ creatorId: normalizeCreatorUsername(username), username, tab });
 
 export const buildCreatorSubscribePath = (creatorId = "") =>
   `/creators/${encodeURIComponent(String(creatorId || "").trim())}/subscribe`;

@@ -56,7 +56,6 @@ const PROTECTED_ROUTE_PATTERNS = [
   "/admin",
   "/admin/:section",
   "/admin/:section/:id",
-  "/artist/:username",
 ];
 
 const PUBLIC_ROUTE_PATTERNS = [
@@ -90,7 +89,15 @@ const PUBLIC_ROUTE_PATTERNS = [
   "/creators/:creatorId/books",
   "/creators/:creatorId/comedy",
   "/creators/:creatorId/store",
-  "/creator/:creatorId",
+  "/creators/:creatorId/posts",
+  "/creator/:username",
+  "/creator/:username/music",
+  "/creator/:username/albums",
+  "/creator/:username/podcasts",
+  "/creator/:username/books",
+  "/creator/:username/posts",
+  "/creator/:username/store",
+  "/artist/:username",
   "/tracks/:trackId",
   "/books/:bookId",
   "/albums/:albumId",

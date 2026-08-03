@@ -727,7 +727,7 @@ export function buildCreatorFanPageDataFromPublicPayload(payload = {}) {
   const booksPath = publicPaths.books || creatorHomePath;
   const podcastsPath = publicPaths.podcasts || creatorHomePath;
   const videosPath = publicPaths.music || creatorHomePath;
-  const postsPath = creatorHomePath;
+  const postsPath = publicPaths.posts || creatorHomePath;
   const storePath = payload?.marketplace?.storePath || publicPaths.store || `${creatorHomePath}/store`;
 
   const trackItems = safeArray(payload?.music?.tracks).map((entry) =>

@@ -611,11 +611,25 @@ describe("SEO routes", () => {
     expect(schoolsResponse.text).toContain("<loc>https://tengacion.com/kurahtechandartsacademy</loc>");
   });
 
-  test("canonical creator route renders indexable metadata and legacy creator route canonicalizes to username path", async () => {
+  test("canonical creator route renders metadata and compatibility routes redirect permanently", async () => {
     const { profile } = await createCreator();
 
     const canonicalResponse = await request(server).get("/creator/seo_creator").expect(200);
-    const legacyResponse = await request(server).get(`/creators/${profile._id}`).expect(200);
+    const legacyResponse = await request(server)
+      .get(`/creators/${profile._id}?source=legacy`)
+      .expect(308);
+    const artistResponse = await request(server)
+      .get("/artist/seo_creator?source=artist")
+      .expect(308);
+    const legacyPostsResponse = await request(server)
+      .get(`/creators/${profile._id}/posts`)
+      .expect(308);
+    const legacySongsResponse = await request(server)
+      .get(`/creators/${profile._id}/songs?source=songs`)
+      .expect(308);
+    const legacyComedyResponse = await request(server)
+      .get(`/creators/${profile._id}/comedy`)
+      .expect(308);
 
     expect(canonicalResponse.text).toContain(
       '<title data-seo-key="title">SEO Creator on Tengacion | Music, Books, Podcasts &amp; Updates</title>'
@@ -623,8 +637,22 @@ describe("SEO routes", () => {
     expect(canonicalResponse.text).toContain('href="https://tengacion.com/creator/seo_creator"');
     expect(canonicalResponse.text).toContain('content="index,follow"');
 
-    expect(legacyResponse.text).toContain('href="https://tengacion.com/creator/seo_creator"');
-    expect(legacyResponse.text).toContain('content="noindex,follow"');
+    expect(legacyResponse.headers.location).toBe("/creator/seo_creator?source=legacy");
+    expect(artistResponse.headers.location).toBe("/creator/seo_creator?source=artist");
+    expect(legacyPostsResponse.headers.location).toBe("/creator/seo_creator/posts");
+    expect(legacySongsResponse.headers.location).toBe("/creator/seo_creator/music?source=songs");
+    expect(legacyComedyResponse.headers.location).toBe("/creator/seo_creator");
+  });
+
+  test("branded creator aliases redirect to their dedicated canonical route", async () => {
+    await request(server)
+      .get("/pyrexx_singz?source=underscore")
+      .expect("Location", "/pyrexx-singz?source=underscore")
+      .expect(308);
+    await request(server)
+      .get("/artist/pyrexx-singz")
+      .expect("Location", "/pyrexx-singz")
+      .expect(308);
   });
 
   test("public track pages render server-injected SEO tags", async () => {

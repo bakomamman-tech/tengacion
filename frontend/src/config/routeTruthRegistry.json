@@ -156,13 +156,20 @@
       "status": "production",
       "surface": "creator_public",
       "access": "mixed",
-      "canonicalPath": "/creators/:creatorId",
-      "appPaths": ["/creators/:creatorId", "/creators/:creatorId/songs", "/creators/:creatorId/music", "/creators/:creatorId/albums", "/creators/:creatorId/podcasts", "/creators/:creatorId/books", "/creators/:creatorId/posts", "/creators/:creatorId/comedy", "/creators/:creatorId/store", "/creators/:creatorId/subscribe", "/creator/:creatorId", "/creator/:creatorId/music", "/creator/:creatorId/albums", "/creator/:creatorId/podcasts", "/creator/:creatorId/books", "/creator/:creatorId/posts", "/creator/:creatorId/store", "/artist/:username"],
-      "dataAuthority": "Creator, artist and creator-hub APIs.",
+      "canonicalPath": "/creator/:username",
+      "appPaths": ["/creators/:creatorId", "/creators/:creatorId/songs", "/creators/:creatorId/music", "/creators/:creatorId/albums", "/creators/:creatorId/podcasts", "/creators/:creatorId/books", "/creators/:creatorId/posts", "/creators/:creatorId/comedy", "/creators/:creatorId/store", "/creators/:creatorId/subscribe", "/creator/:username", "/creator/:username/music", "/creator/:username/albums", "/creator/:username/podcasts", "/creator/:username/books", "/creator/:username/posts", "/creator/:username/store", "/artist/:username"],
+      "routeContract": {
+        "publicCanonicalFamily": "/creator/:username",
+        "idCompatibilityFamily": "/creators/:creatorId",
+        "artistCompatibilityPath": "/artist/:username",
+        "readAccess": "public",
+        "authenticatedActions": ["follow", "message", "purchase", "subscribe"]
+      },
+      "dataAuthority": "Public Creator Profile API resolves usernames or creator IDs; username routes are canonical, ID and artist paths redirect as compatibility aliases, and authenticated actions retain their existing gates.",
       "ownerRole": "Creator Economy Owner",
       "kpi": "Follow or purchase after profile view",
       "featureFlag": null,
-      "testEvidence": ["frontend/src/pages/creator/__tests__/CreatorFanPageViewPage.test.jsx", "backend/tests/creatorProfileRoutes.test.js"]
+      "testEvidence": ["frontend/src/__tests__/App.creatorRoutes.test.jsx", "frontend/src/pages/creator/__tests__/CreatorFanPageCanonicalRoute.test.jsx", "frontend/src/lib/__tests__/publicRoutes.test.js", "backend/tests/creatorProfileRoutes.test.js", "backend/tests/seoRoutes.test.js"]
     },
     {
       "id": "creator_content_details",

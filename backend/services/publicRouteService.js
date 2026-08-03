@@ -1,6 +1,22 @@
 const mongoose = require("mongoose");
 
-const PUBLIC_CREATOR_TABS = new Set(["home", "music", "albums", "podcasts", "books"]);
+const PUBLIC_CREATOR_TABS = new Set([
+  "home",
+  "music",
+  "albums",
+  "podcasts",
+  "books",
+  "posts",
+  "store",
+]);
+
+const CREATOR_PUBLIC_ROUTE_CONTRACT = Object.freeze({
+  canonicalPath: "/creator/:username",
+  idCompatibilityPath: "/creators/:creatorId",
+  artistCompatibilityPath: "/artist/:username",
+  readAccess: "public",
+  authenticatedActionPaths: Object.freeze(["/creators/:creatorId/subscribe"]),
+});
 
 const PRIVATE_CREATOR_ALIAS_SEGMENTS = new Set([
   "register",
@@ -51,11 +67,16 @@ const buildCreatorPublicPath = ({ creatorId = "", username = "", tab = "home" } 
   return buildCreatorIdPath({ creatorId, tab: normalizedTab });
 };
 
+const buildArtistCompatibilityTarget = ({ username = "", tab = "home" } = {}) =>
+  buildCreatorPublicPath({ creatorId: normalizeCreatorUsername(username), username, tab });
+
 const buildCreatorSubscribePath = (creatorId = "") =>
   `/creators/${encodeURIComponent(String(creatorId || "").trim())}/subscribe`;
 
 module.exports = {
+  CREATOR_PUBLIC_ROUTE_CONTRACT,
   PRIVATE_CREATOR_ALIAS_SEGMENTS,
+  buildArtistCompatibilityTarget,
   buildCreatorIdPath,
   buildCreatorPublicPath,
   buildCreatorSubscribePath,

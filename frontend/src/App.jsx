@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import AdminRoute from "./components/AdminRoute";
 import InstallPrompt from "./components/InstallPrompt";
@@ -10,6 +10,7 @@ import WelcomeVoiceController from "./components/WelcomeVoiceController";
 import TopUpPromoDiscovery from "./components/TopUpPromoDiscovery";
 import { useAuth } from "./context/AuthContext";
 import usePageTracking from "./hooks/usePageTracking";
+import { buildArtistCompatibilityTarget } from "./lib/publicRoutes";
 
 const loadQuickAccessPages = () => import("./pages/quickAccess/QuickAccessPages");
 const loadAccountPages = () => import("./pages/AccountPages");
@@ -78,9 +79,7 @@ const AdminRaffleCardsPage = lazy(() => import("./pages/AdminRaffleCards"));
 const AdminMillionaireGamePage = lazy(() => import("./pages/AdminMillionaireGame"));
 const AdminSettingsPage = lazy(() => import("./pages/AdminSettings"));
 const AdminStoragePage = lazy(() => import("./pages/AdminStorage"));
-const CreatorSongs = lazy(() => import("./pages/CreatorSongs"));
 const CreatorHubPage = lazy(() => import("./pages/CreatorHubPage"));
-const ArtistProfileRoute = lazy(() => import("@web/features/creator/ArtistPage"));
 const TrackDetail = lazy(() => import("./pages/TrackDetail"));
 const BookDetail = lazy(() => import("./pages/BookDetail"));
 const AlbumDetail = lazy(() => import("./pages/AlbumDetail"));
@@ -174,6 +173,16 @@ function AppShellFallback({ message = "Loading Tengacion..." }) {
   );
 }
 
+function RouteAliasRedirect({ to }) {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${to}${search}${hash}`} replace />;
+}
+
+function ArtistProfileAliasRedirect() {
+  const { username = "" } = useParams();
+  return <RouteAliasRedirect to={buildArtistCompatibilityTarget({ username })} />;
+}
+
 export default function App() {
   const { user, loading: authLoading } = useAuth();
   const { pathname } = useLocation();
@@ -242,9 +251,9 @@ export default function App() {
           <Route path="/for-authors" element={<PublicInfoPage pageKey="for-authors" />} />
           <Route path="/for-podcasters" element={<PublicInfoPage pageKey="for-podcasters" />} />
           <Route path="/pyrexx-singz" element={<PyrexxSingzPage />} />
-          <Route path="/pyrexx_singz" element={<PyrexxSingzPage />} />
-          <Route path="/artist/pyrexx-singz" element={<PyrexxSingzPage />} />
-          <Route path="/artist/pyrexx_singz" element={<PyrexxSingzPage />} />
+          <Route path="/pyrexx_singz" element={<RouteAliasRedirect to="/pyrexx-singz" />} />
+          <Route path="/artist/pyrexx-singz" element={<RouteAliasRedirect to="/pyrexx-singz" />} />
+          <Route path="/artist/pyrexx_singz" element={<RouteAliasRedirect to="/pyrexx-singz" />} />
           <Route path="/tovido-anthony-foundation" element={<TovidoAnthonyFoundationPage />} />
           <Route path="/tovido_anthony_foundation" element={<TovidoAnthonyFoundationPage />} />
           <Route path="/foundation/tovido-anthony" element={<TovidoAnthonyFoundationPage />} />
@@ -356,7 +365,7 @@ export default function App() {
             }
           />
           <Route path="/creators/:creatorId" element={<CreatorFanPageViewPage />} />
-          <Route path="/creators/:creatorId/songs" element={<CreatorSongs />} />
+          <Route path="/creators/:creatorId/songs" element={<CreatorFanPageViewPage />} />
           <Route path="/creators/:creatorId/music" element={<CreatorFanPageViewPage />} />
           <Route path="/creators/:creatorId/albums" element={<CreatorFanPageViewPage />} />
           <Route path="/creators/:creatorId/podcasts" element={<CreatorFanPageViewPage />} />
@@ -372,13 +381,13 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/creator/:creatorId" element={<CreatorFanPageViewPage />} />
-          <Route path="/creator/:creatorId/music" element={<CreatorFanPageViewPage />} />
-          <Route path="/creator/:creatorId/albums" element={<CreatorFanPageViewPage />} />
-          <Route path="/creator/:creatorId/podcasts" element={<CreatorFanPageViewPage />} />
-          <Route path="/creator/:creatorId/books" element={<CreatorFanPageViewPage />} />
-          <Route path="/creator/:creatorId/posts" element={<CreatorFanPageViewPage />} />
-          <Route path="/creator/:creatorId/store" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:username" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:username/music" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:username/albums" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:username/podcasts" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:username/books" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:username/posts" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:username/store" element={<CreatorFanPageViewPage />} />
           <Route path="/tracks/:trackId" element={<TrackDetail />} />
           <Route path="/books/:bookId" element={<BookDetail />} />
           <Route path="/albums/:albumId" element={<AlbumDetail />} />
@@ -416,11 +425,7 @@ export default function App() {
           />
           <Route
             path="/artist/:username"
-            element={
-              <ProtectedRoute user={user}>
-                <ArtistProfileRoute />
-              </ProtectedRoute>
-            }
+            element={<ArtistProfileAliasRedirect />}
           />
 
           <Route

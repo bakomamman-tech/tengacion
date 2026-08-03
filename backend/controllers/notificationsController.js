@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
 const { buildExpiryDate, notificationReadRetentionDays } = require("../config/storage");
@@ -62,6 +63,13 @@ exports.getNotifications = asyncHandler(async (req, res) => {
  * @access  Private
  */
 exports.markAsRead = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({
+      success: false,
+      error: "Invalid notification id",
+    });
+  }
+
   const notification = await Notification.findOneAndUpdate(
     {
       _id: req.params.id,
@@ -79,8 +87,10 @@ exports.markAsRead = asyncHandler(async (req, res) => {
   ).populate("sender", "_id name username avatar");
 
   if (!notification) {
-    res.status(404);
-    throw new Error("Notification not found");
+    return res.status(404).json({
+      success: false,
+      error: "Notification not found",
+    });
   }
 
   const unreadCount = await getUnreadCountForUser(req.user.id);
@@ -153,8 +163,11 @@ exports.updateNotificationPrefs = asyncHandler(async (req, res) => {
   const allowed = ["likes", "comments", "follows", "mentions", "messages", "reports", "system"];
   const patch = req.body && typeof req.body === "object" ? req.body : {};
   for (const key of allowed) {
-    if (Object.prototype.hasOwnProperty.call(patch, key)) {
-      user.notificationPrefs[key] = Boolean(patch[key]);
+    if (
+      Object.prototype.hasOwnProperty.call(patch, key)
+      && typeof patch[key] === "boolean"
+    ) {
+      user.notificationPrefs[key] = patch[key];
     }
   }
   await user.save();

@@ -266,9 +266,15 @@ const buildBirthdayInfo = (birthday = {}, dob = null) => {
   };
 };
 
-const buildCommunityBirthdayCard = (entry = {}, canWish = false) => {
+const buildCommunityBirthdayCard = (
+  entry = {},
+  { isFriend = false, isSelf = false } = {}
+) => {
   const birthdayInfo = buildBirthdayInfo(entry?.birthday, entry?.dob);
   if (!birthdayInfo) {
+    return null;
+  }
+  if (birthdayInfo.birthday.visibility === "friends" && !isFriend && !isSelf) {
     return null;
   }
 
@@ -284,7 +290,7 @@ const buildCommunityBirthdayCard = (entry = {}, canWish = false) => {
     birthdayDaysAgo: birthdayInfo.birthdayDaysAgo,
     lastBirthdayAt: birthdayInfo.lastBirthdayAt,
     nextBirthdayAt: birthdayInfo.nextBirthdayAt,
-    canWish: Boolean(canWish),
+    canWish: Boolean(isFriend && !isSelf),
   };
 };
 
@@ -704,8 +710,15 @@ router.get("/birthdays/community", auth, async (req, res) => {
       (viewer?.friends || []).map((entry) => toIdString(entry)).filter(Boolean)
     );
 
+    const viewerId = toIdString(viewer?._id || req.user.id);
     const birthdays = users
-      .map((entry) => buildCommunityBirthdayCard(entry, friendIdSet.has(toIdString(entry?._id))))
+      .map((entry) => {
+        const entryId = toIdString(entry?._id);
+        return buildCommunityBirthdayCard(entry, {
+          isFriend: friendIdSet.has(entryId),
+          isSelf: entryId === viewerId,
+        });
+      })
       .filter(Boolean)
       .sort((left, right) => {
         const dayDelta = Number(left.birthdayDaysUntil || 0) - Number(right.birthdayDaysUntil || 0);

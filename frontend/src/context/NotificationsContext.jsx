@@ -28,6 +28,11 @@ export function NotificationsProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const markAllPromiseRef = useRef(null);
+  const notificationsRef = useRef([]);
+
+  useEffect(() => {
+    notificationsRef.current = notifications;
+  }, [notifications]);
 
   const resetState = useCallback(() => {
     setNotifications([]);
@@ -81,14 +86,15 @@ export function NotificationsProvider({ children }) {
     async (id) => {
       if (!id || !user?._id) {return false;}
 
-      let wasUnread = false;
-      setNotifications((prev) =>
-        prev.map((item) => {
+      const previous = notificationsRef.current;
+      const previousTarget = previous.find((item) => String(item?._id) === String(id));
+      const wasUnread = Boolean(previousTarget && !previousTarget.read);
+      const optimistic = previous.map((item) => {
           if (String(item?._id) !== String(id)) {return item;}
-          wasUnread = !item?.read;
           return { ...item, read: true };
-        })
-      );
+        });
+      notificationsRef.current = optimistic;
+      setNotifications(optimistic);
       if (wasUnread) {
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
@@ -100,22 +106,37 @@ export function NotificationsProvider({ children }) {
         }
         return true;
       } catch {
+        const restored = notificationsRef.current.map((item) => {
+          if (!previousTarget || String(item?._id) !== String(id)) {return item;}
+          return { ...item, read: Boolean(previousTarget.read) };
+        });
+        notificationsRef.current = restored;
+        setNotifications(restored);
+        if (wasUnread) {
+          setUnreadCount((prev) => prev + 1);
+        }
+        void fetchUnreadCount();
         return false;
       }
     },
-    [user?._id]
+    [fetchUnreadCount, user?._id]
   );
 
   const markAllRead = useCallback(
     async ({ optimistic = true } = {}) => {
       if (!user?._id) {return false;}
-      if (optimistic) {
-        setUnreadCount(0);
-        setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
-      }
-
       if (markAllPromiseRef.current) {
         return markAllPromiseRef.current;
+      }
+
+      const previousReadState = new Map(
+        notificationsRef.current.map((item) => [String(item?._id || ""), Boolean(item?.read)])
+      );
+      if (optimistic) {
+        setUnreadCount(0);
+        const optimisticNotifications = notificationsRef.current.map((item) => ({ ...item, read: true }));
+        notificationsRef.current = optimisticNotifications;
+        setNotifications(optimisticNotifications);
       }
 
       markAllPromiseRef.current = markAllNotificationsAsRead()
@@ -127,14 +148,26 @@ export function NotificationsProvider({ children }) {
           }
           return true;
         })
-        .catch(() => true)
+        .catch(() => {
+          const restored = notificationsRef.current.map((item) => {
+            const id = String(item?._id || "");
+            return previousReadState.has(id)
+              ? { ...item, read: previousReadState.get(id) }
+              : item;
+          });
+          notificationsRef.current = restored;
+          setNotifications(restored);
+          setUnreadCount(restored.filter((item) => !item?.read).length);
+          void fetchUnreadCount();
+          return false;
+        })
         .finally(() => {
           markAllPromiseRef.current = null;
         });
 
       return markAllPromiseRef.current;
     },
-    [user?._id]
+    [fetchUnreadCount, user?._id]
   );
 
   const handleRealtimeNotification = useCallback((payload) => {

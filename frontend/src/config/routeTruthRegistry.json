@@ -148,7 +148,7 @@
       "ownerRole": "Commerce Owner",
       "kpi": "Completed trusted orders",
       "featureFlag": null,
-      "testEvidence": ["backend/tests/marketplaceRoutes.test.js"]
+      "testEvidence": ["backend/tests/marketplaceRoutes.test.js", "frontend/src/pages/__tests__/MarketplaceJourneys.test.jsx"]
     },
     {
       "id": "public_creator_profiles",
@@ -337,7 +337,7 @@
       "ownerRole": "Communication Product Owner",
       "kpi": "Notification destination action rate",
       "featureFlag": null,
-      "testEvidence": ["frontend/src/__tests__/notificationUtils.test.js"]
+      "testEvidence": ["backend/tests/notificationsRoutes.test.js", "frontend/src/context/NotificationsContext.test.jsx", "frontend/src/__tests__/notificationUtils.test.js"]
     },
     {
       "id": "profiles_and_friends",
@@ -435,7 +435,7 @@
       "ownerRole": "Trust and Identity Owner",
       "kpi": "Successful settings completion",
       "featureFlag": null,
-      "testEvidence": ["backend/tests/mfaRiskSecurity.test.js", "backend/tests/sessionAuth.test.js"]
+      "testEvidence": ["backend/tests/mfaRiskSecurity.test.js", "backend/tests/sessionAuth.test.js", "backend/tests/userSettingsRoutes.test.js", "frontend/src/pages/__tests__/SettingsJourneys.test.jsx"]
     },
     {
       "id": "feedback",
@@ -477,7 +477,7 @@
       "ownerRole": "Communication Product Owner",
       "kpi": "Server-confirmed room participation",
       "featureFlag": null,
-      "testEvidence": []
+      "testEvidence": ["backend/tests/roomsRoutes.test.js", "frontend/src/pages/Rooms.test.jsx"]
     },
     {
       "id": "events",
@@ -505,7 +505,7 @@
       "ownerRole": "Community Product Owner",
       "kpi": "Successful birthday messages",
       "featureFlag": null,
-      "testEvidence": []
+      "testEvidence": ["backend/tests/birthdayRoutes.test.js", "frontend/src/features/birthdays/BirthdayWorkspacePage.test.jsx", "frontend/src/__tests__/notificationUtils.test.js"]
     },
     {
       "id": "calculator",

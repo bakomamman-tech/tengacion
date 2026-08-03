@@ -11930,6 +11930,38 @@ html.dark-mode .create-menu-empty {
   flex-wrap: wrap;
 }
 
+.feedback-form-intro {
+  margin: 0 0 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.feedback-form-meta {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.feedback-submission-status {
+  margin-top: 2px;
+}
+
+.feedback-submission-status span {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.feedback-submission-status.is-success {
+  border-color: color-mix(in srgb, #16a34a 38%, var(--border));
+  background: color-mix(in srgb, #16a34a 8%, var(--surface));
+}
+
+.feedback-submission-status.is-error {
+  border-color: color-mix(in srgb, #dc2626 38%, var(--border));
+  background: color-mix(in srgb, #dc2626 7%, var(--surface));
+}
+
 .account-slider-group {
   display: grid;
   gap: 10px;

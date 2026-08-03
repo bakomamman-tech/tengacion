@@ -1,5 +1,7 @@
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
+import { submitAdminComplaint } from "../api";
 import QuickAccessLayout from "../components/QuickAccessLayout";
 import { SUPPORT_EMAIL, buildMailto } from "../config/businessContact";
 import { useTheme } from "../context/ThemeContext";
@@ -56,6 +58,43 @@ function humanize(value) {
     .replace(/_/g, " ")
     .replace(/\b\w/g, (match) => match.toUpperCase());
 }
+
+const FEEDBACK_TYPES = [
+  {
+    value: "product",
+    label: "Product feedback",
+    category: "general",
+    description: "Tell us what works well or what could be clearer.",
+  },
+  {
+    value: "bug",
+    label: "Bug report",
+    category: "bug",
+    description: "Report something that is broken or behaving unexpectedly.",
+  },
+  {
+    value: "idea",
+    label: "Feature idea",
+    category: "other",
+    description: "Suggest a useful capability or improvement.",
+  },
+  {
+    value: "accessibility",
+    label: "Accessibility feedback",
+    category: "other",
+    description: "Share an accessibility barrier or improvement.",
+  },
+  {
+    value: "safety",
+    label: "Safety concern",
+    category: "safety",
+    description: "Flag a safety issue that needs support-team review.",
+  },
+];
+
+const getFeedbackType = (value = "") =>
+  FEEDBACK_TYPES.find((entry) => entry.value === String(value || "").trim().toLowerCase()) ||
+  FEEDBACK_TYPES[0];
 
 export function SettingsHubPage({ user }) {
   const navigate = useNavigate();
@@ -368,27 +407,188 @@ export function DisplayAccessibilityPage({ user }) {
 }
 
 export function FeedbackPage({ user }) {
+  const [searchParams] = useSearchParams();
+  const [feedbackType, setFeedbackType] = useState(
+    () => getFeedbackType(searchParams.get("type")).value
+  );
+  const [subject, setSubject] = useState("");
+  const [details, setDetails] = useState("");
+  const [submission, setSubmission] = useState({
+    status: "idle",
+    message: "",
+    reference: "",
+  });
+
+  const selectedType = getFeedbackType(feedbackType);
+  const isSubmitting = submission.status === "submitting";
+
+  const resetSubmissionStatus = () => {
+    if (submission.status !== "idle") {
+      setSubmission({ status: "idle", message: "", reference: "" });
+    }
+  };
+
+  const submitFeedback = async (event) => {
+    event.preventDefault();
+
+    const normalizedSubject = subject.trim();
+    const normalizedDetails = details.trim();
+    if (!normalizedSubject || !normalizedDetails) {
+      setSubmission({
+        status: "error",
+        message: "Add a short subject and enough detail for the team to review.",
+        reference: "",
+      });
+      return;
+    }
+
+    setSubmission({ status: "submitting", message: "", reference: "" });
+
+    try {
+      const response = await submitAdminComplaint({
+        subject: normalizedSubject,
+        details: normalizedDetails,
+        category: selectedType.category,
+        sourcePath: "/feedback",
+        sourceLabel: `Feedback · ${selectedType.label}`,
+        supportFlow: "product_feedback",
+      });
+      const reference = String(response?.complaint?._id || "").trim();
+
+      if (response?.success !== true || !reference) {
+        throw new Error("Tengacion did not return a submission reference.");
+      }
+
+      setSubject("");
+      setDetails("");
+      setSubmission({
+        status: "success",
+        message: "Your feedback is in the Tengacion support queue for review.",
+        reference,
+      });
+    } catch (error) {
+      setSubmission({
+        status: "error",
+        message: error?.message || "Feedback could not be sent. Your text is still here so you can retry.",
+        reference: "",
+      });
+    }
+  };
+
   return (
     <QuickAccessLayout
       user={user}
       title="Give Feedback"
-      subtitle="This surface is being prepared for a future Tengacion release."
+      subtitle="Send product feedback, bug reports, feature ideas, accessibility notes, or safety concerns to the Tengacion review queue."
     >
-      <section className="card quick-preview-state" aria-labelledby="feedback-preview-title">
-        <span className="feature-lifecycle-badge">Preview</span>
-        <h2 id="feedback-preview-title">Web feedback submission is not available yet</h2>
-        <p>
-          Tengacion does not currently send this form to a production support system.
-          This page will not claim that a browser-only draft has been submitted.
+      <SectionCard
+        title="Send feedback"
+        action={<span className="feature-lifecycle-badge">Beta</span>}
+      >
+        <p className="feedback-form-intro">
+          Submissions are stored on Tengacion&apos;s server and enter the Admin Messages
+          review queue. A success message appears only after the server returns a reference.
         </p>
-        <p>For product or safety support now, contact the published support address.</p>
-        <a
-          className="quick-preview-link"
-          href={buildMailto(SUPPORT_EMAIL, "Tengacion feedback or support request")}
-        >
-          Email {SUPPORT_EMAIL}
-        </a>
-      </section>
+
+        <form className="account-form-grid" onSubmit={submitFeedback}>
+          <label htmlFor="feedback-type">
+            Feedback type
+            <select
+              id="feedback-type"
+              className="account-select"
+              value={feedbackType}
+              onChange={(event) => {
+                setFeedbackType(event.target.value);
+                resetSubmissionStatus();
+              }}
+              disabled={isSubmitting}
+            >
+              {FEEDBACK_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+            <span className="feedback-form-meta">{selectedType.description}</span>
+          </label>
+
+          <label htmlFor="feedback-subject">
+            Subject
+            <input
+              id="feedback-subject"
+              className="account-input"
+              value={subject}
+              onChange={(event) => {
+                setSubject(event.target.value);
+                resetSubmissionStatus();
+              }}
+              placeholder="Summarize the issue or idea"
+              maxLength={160}
+              minLength={4}
+              required
+              disabled={isSubmitting}
+            />
+            <span className="feedback-form-meta">{subject.length}/160 characters</span>
+          </label>
+
+          <label htmlFor="feedback-details">
+            Details
+            <textarea
+              id="feedback-details"
+              className="account-textarea"
+              value={details}
+              onChange={(event) => {
+                setDetails(event.target.value);
+                resetSubmissionStatus();
+              }}
+              placeholder="Describe what happened, what you expected, and any steps that could help reproduce it."
+              maxLength={2000}
+              minLength={10}
+              required
+              disabled={isSubmitting}
+            />
+            <span className="feedback-form-meta">{details.length}/2,000 characters</span>
+          </label>
+
+          <div className="account-button-row">
+            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? "Sending…" : "Send feedback"}
+            </button>
+          </div>
+
+          {submission.status === "success" ? (
+            <div className="account-note-card feedback-submission-status is-success" role="status">
+              <strong>Feedback received</strong>
+              <p>{submission.message}</p>
+              <span>Reference: {submission.reference}</span>
+            </div>
+          ) : null}
+
+          {submission.status === "error" ? (
+            <div className="account-note-card feedback-submission-status is-error" role="alert">
+              <strong>Feedback not sent</strong>
+              <p>{submission.message}</p>
+              <span>Review the form and try again. Your text has not been cleared.</span>
+            </div>
+          ) : null}
+        </form>
+      </SectionCard>
+
+      <SectionCard title="Other support paths">
+        <p className="feedback-form-intro">
+          Do not use this form for an emergency. For account or policy support, visit Help &amp;
+          Support or use the published support email.
+        </p>
+        <div className="account-button-row">
+          <a className="quick-preview-link" href="/help-support">Open Help &amp; Support</a>
+          <a
+            className="quick-preview-link"
+            href={buildMailto(SUPPORT_EMAIL, "Tengacion feedback or support request")}
+          >
+            Email {SUPPORT_EMAIL}
+          </a>
+        </div>
+      </SectionCard>
     </QuickAccessLayout>
   );
 }

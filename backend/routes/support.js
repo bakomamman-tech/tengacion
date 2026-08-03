@@ -68,6 +68,7 @@ const isValidEmail = (value = "") => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(va
 
 const normalizeSupportFlow = (value = "") => {
   const allowed = new Set([
+    "product_feedback",
     "creator_onboarding",
     "creator_payouts",
     "creator_uploads",

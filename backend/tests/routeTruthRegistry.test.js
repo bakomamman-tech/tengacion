@@ -20,7 +20,6 @@ const PREVIEW_FEATURE_IDS = [
   "saved",
   "events",
   "ads_manager",
-  "feedback",
 ];
 
 describe("authoritative route truth", () => {
@@ -81,25 +80,65 @@ describe("authoritative route truth", () => {
 
   it("blocks Preview routes in the legacy assistant retrieval and help pipeline", () => {
     const retrieved = retrieveAssistantContext({
-      query: "feedback",
+      query: "saved bookmarks",
       classification: { category: "app_guidance" },
-      context: { currentSurface: "support" },
+      context: { currentSurface: "social" },
     });
 
     expect(retrieved.feature).toEqual(
       expect.objectContaining({
-        id: "feedback",
+        id: "saved",
         route: "",
         lifecycleStatus: "preview",
         assistantEnabled: false,
         allowedActions: [],
       })
     );
-    expect(getHelpArticleByFeatureId("feedback")).toBeNull();
+    expect(getHelpArticleByFeatureId("saved")).toBeNull();
+  });
+
+  it("exposes server-backed Feedback as a navigable Beta capability", () => {
+    const feature = FEATURE_REGISTRY.find((entry) => entry.id === "feedback");
+    const retrieved = retrieveAssistantContext({
+      query: "feedback",
+      classification: { category: "app_guidance" },
+      context: { currentSurface: "support" },
+    });
+
+    expect(feature).toEqual(
+      expect.objectContaining({
+        lifecycleStatus: "beta",
+        availabilityStatus: "beta",
+        navigationVisible: true,
+        assistantEnabled: true,
+        route: "/feedback",
+      })
+    );
+    expect(SAFE_ACTION_PERMISSIONS.feedback).toEqual(
+      expect.objectContaining({
+        route: "/feedback",
+        lifecycleStatus: "beta",
+        allowedActions: expect.arrayContaining(["submit feedback", "report bug"]),
+      })
+    );
+    expect(buildFeatureCard(feature)).toEqual(
+      expect.objectContaining({ type: "quick-link", route: "/feedback", lifecycleStatus: "beta" })
+    );
+    expect(retrieved.feature).toEqual(
+      expect.objectContaining({
+        id: "feedback",
+        route: "/feedback",
+        lifecycleStatus: "beta",
+        assistantEnabled: true,
+      })
+    );
+    expect(getHelpArticleByFeatureId("feedback")).toEqual(
+      expect.objectContaining({ id: "report-abuse", route: "/feedback?type=safety" })
+    );
     expect(
       searchHelpArticles("report abuse", { limit: 10 }).map(
         (article) => article.feature?.id || ""
       )
-    ).not.toContain("feedback");
+    ).toContain("feedback");
   });
 });

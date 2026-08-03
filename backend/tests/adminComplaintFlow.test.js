@@ -203,6 +203,74 @@ describe("admin complaint inbox flow", () => {
     );
   });
 
+  test("stores product feedback with its review-queue and analytics contract", async () => {
+    const submitResponse = await request(app)
+      .post("/api/support/complaints")
+      .set("Authorization", `Bearer ${userToken}`)
+      .send({
+        subject: "Composer loses an unfinished caption",
+        details: "Keep the caption available after a failed image upload so I can retry safely.",
+        category: "bug",
+        sourcePath: "/feedback",
+        sourceLabel: "Feedback · Bug report",
+        supportFlow: "product_feedback",
+      })
+      .expect(201);
+
+    expect(submitResponse.body).toEqual(
+      expect.objectContaining({
+        success: true,
+        complaint: expect.objectContaining({
+          _id: expect.any(String),
+          category: "bug",
+          sourcePath: "/feedback",
+          sourceLabel: "Feedback · Bug report",
+          status: "open",
+        }),
+      })
+    );
+
+    const storedComplaint = await AdminComplaint.findById(
+      submitResponse.body.complaint._id
+    ).lean();
+    expect(storedComplaint).toEqual(
+      expect.objectContaining({
+        reporterId: user._id,
+        priority: "medium",
+        metadata: expect.objectContaining({
+          supportFlow: "product_feedback",
+        }),
+      })
+    );
+
+    const adminInbox = await request(app)
+      .get("/api/admin/messages/complaints")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+    expect(adminInbox.body.complaints[0]).toEqual(
+      expect.objectContaining({
+        _id: submitResponse.body.complaint._id,
+        subject: "Composer loses an unfinished caption",
+        sourceLabel: "Feedback · Bug report",
+      })
+    );
+
+    const analyticsEvent = await AnalyticsEvent.findOne({
+      type: "support_complaint_submitted",
+      targetId: storedComplaint._id,
+    }).lean();
+    expect(analyticsEvent).toEqual(
+      expect.objectContaining({
+        targetType: "support_complaint",
+        metadata: expect.objectContaining({
+          category: "bug",
+          sourcePath: "/feedback",
+          supportFlow: "product_feedback",
+        }),
+      })
+    );
+  });
+
   test("accepts public copyright reports without login and exposes contact details to admin", async () => {
     const submitResponse = await request(app)
       .post("/api/support/public-reports")

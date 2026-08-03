@@ -433,16 +433,16 @@
     {
       "id": "feedback",
       "title": "Feedback",
-      "status": "preview",
+      "status": "beta",
       "surface": "support",
       "access": "authenticated",
       "canonicalPath": "/feedback",
       "appPaths": ["/feedback"],
-      "dataAuthority": "Browser-only draft storage; no production submission workflow.",
+      "dataAuthority": "Authenticated Support Complaint API and AdminComplaint model; feedback is tagged as product_feedback and enters the Admin Messages review queue.",
       "ownerRole": "Internal Operations Owner",
-      "kpi": "Not measured until server submission exists",
+      "kpi": "Server-confirmed feedback submissions reviewed by Admin",
       "featureFlag": null,
-      "testEvidence": ["frontend/src/pages/quickAccess/__tests__/QuickAccessTruth.test.jsx", "backend/tests/routeTruthRegistry.test.js"]
+      "testEvidence": ["frontend/src/pages/quickAccess/__tests__/FeedbackPage.test.jsx", "backend/tests/adminComplaintFlow.test.js", "backend/tests/routeTruthRegistry.test.js"]
     },
     {
       "id": "onboarding",

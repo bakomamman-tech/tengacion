@@ -16,12 +16,12 @@ This document is the authoritative implementation record for the Facebook benchm
 | ID | Work package | Status | Verification record |
 |---|---|---|---|
 | TRUTH-001 | Create the route truth registry | COMPLETE | One shared registry classifies all 181 App paths exactly once and records lifecycle, access, authority, owner role, KPI, flag and test evidence. |
-| TRUTH-002 | Contain deceptive Preview routes | COMPLETE | Dashboard, Memories, Saved, Events, Ads Manager and Feedback now show honest Preview states with no fabricated personal data, submission claims or inert actions. |
+| TRUTH-002 | Contain deceptive Preview routes | COMPLETE | Dashboard, Memories, Saved, Events and Ads Manager show honest Preview states; Feedback's former fabricated browser-only success was removed before FEEDBACK-001 introduced server submission. |
 | TRUTH-003 | Make navigation status-aware | COMPLETE | Navbar, Create menu and Quick Access derive visibility and Beta/Experimental labels from the shared registry; Preview routes are not promoted. |
 | TRUTH-004 | Make Akuso capability-aware | COMPLETE | Akuso derives availability from the registry, excludes Preview recommendations/actions and explains Preview requests without a navigation path. |
 | GROUP-001 | Remove local authority from Groups | COMPLETE | Groups workspace, group post sharing and Messenger group discovery now read/write only through the Group API; legacy group caches are deleted, failure states are explicit, and backend/frontend authority tests pass. |
 | ACTION-001 | Audit and remove inert controls | COMPLETE | Executable source audit now enforces that every native button/link acts, submits, navigates or is honestly disabled; 45 inert/placeholder violations were resolved and the audit reports zero remaining. |
-| FEEDBACK-001 | Correct feedback persistence and submission semantics | NOT STARTED | Browser-only draft behavior remains. |
+| FEEDBACK-001 | Correct feedback persistence and submission semantics | COMPLETE | Authenticated feedback is persisted through the Support Complaint API, tagged `product_feedback`, queued in Admin Messages, analytics-recorded, and shown as successful only after a server reference is returned. |
 | ROUTE-001 | Canonicalize route and access contracts | NOT STARTED | Creator aliases and `/artist/:username` access decision remain. |
 | TEST-001 | Add route truth smoke coverage | COMPLETE | Registry completeness, Preview rendering, navigation containment and Akuso lifecycle enforcement are covered by automated tests. |
 | TEST-002 | Fill high-risk journey coverage gaps | IN PROGRESS | Groups authority journeys are now covered across API persistence/access, workspace reads/writes, post sharing, Messenger discovery and legacy-cache removal. Notifications, Rooms, Birthdays, Marketplace and settings remain. |
@@ -61,4 +61,8 @@ This document is the authoritative implementation record for the Facebook benchm
 - Resolved 45 action-truth violations: connected 17 controls to existing production destinations, converted two fake controls to status text, and visibly disabled 26 controls whose backend workflow does not exist.
 - Replaced placeholder clicks for Group invitations and Messenger voice/video calls with explicit disabled states. Unsupported Group post actions, settings/search tools, creator shortcuts and legacy editor actions are recorded for later product packages.
 - ACTION-001 verification passed: zero violations from `npm run audit:actions --prefix frontend`, 14 focused frontend tests, frontend lint, frontend production build, and the full frontend suite (115 files, 402 tests).
+- Completed FEEDBACK-001: replaced the Preview-only feedback page with a Beta form for product feedback, bug reports, feature ideas, accessibility feedback and safety concerns.
+- Feedback submissions now use the authenticated Support Complaint API and `AdminComplaint` authority, carry a `product_feedback` flow tag, enter Admin Messages, notify the review team and emit the existing support analytics event. The form clears only after a durable server reference and keeps the user's text on any failure or incomplete response.
+- Updated route truth and Akuso so Feedback is a navigable Beta capability with its real server authority and support help path.
+- FEEDBACK-001 verification passed: 9 focused frontend tests, 14 focused backend tests, frontend lint, inert-control audit, production build, and the full frontend suite (116 files, 404 tests).
 - No Phase 1 or later work package is recorded as complete.

@@ -10,7 +10,6 @@ import {
   ProfessionalDashboardPage,
   SavedPage,
 } from "../QuickAccessPages";
-import { FeedbackPage } from "../../AccountPages";
 
 vi.mock("../../../components/QuickAccessLayout", () => ({
   default: ({ title, subtitle, children }) => (
@@ -28,7 +27,6 @@ const PREVIEW_SURFACES = [
   [SavedPage, "Saved is not available yet"],
   [EventsPage, "Events is not available yet"],
   [AdsManagerPage, "Ads Manager is not available yet"],
-  [FeedbackPage, "Web feedback submission is not available yet"],
 ];
 
 describe("quick access route truth", () => {

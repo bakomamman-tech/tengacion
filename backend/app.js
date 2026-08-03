@@ -10,7 +10,7 @@ const { config } = require("./config/env");
 const { buildAndroidAssetLinksFromConfig } = require("./services/androidAssetLinksService");
 const {
   buildLivenessPayload,
-  buildReadinessPayload,
+  buildPublicReadinessPayload,
 } = require("./services/healthService");
 const { REQUEST_ID_HEADER, requestId } = require("./middleware/requestId");
 const { requestLogger } = require("./middleware/requestLogger");
@@ -184,16 +184,21 @@ app.get("/.well-known/assetlinks.json", (_req, res) => {
 });
 
 app.get("/api/health", (_req, res) => {
-  res.json(buildLivenessPayload());
+  res.set("Cache-Control", "no-store").json(buildLivenessPayload());
 });
 
 app.get("/api/health/live", (_req, res) => {
-  res.json(buildLivenessPayload());
+  res.set("Cache-Control", "no-store").json(buildLivenessPayload());
 });
 
 app.get("/api/health/ready", async (_req, res) => {
-  const payload = await buildReadinessPayload();
-  res.status(payload.status === "ready" ? 200 : 503).json(payload);
+  const payload = await buildPublicReadinessPayload();
+  const isReady = payload.status === "ready";
+  res.set("Cache-Control", "no-store");
+  if (!isReady) {
+    res.set("Retry-After", "30");
+  }
+  return res.status(isReady ? 200 : 503).json(payload);
 });
 
 app.get("/api/me", auth, async (req, res) => {

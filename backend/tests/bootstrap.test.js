@@ -9,6 +9,7 @@ describe("backend bootstrap", () => {
     expect(response.body.environment).toBe("test");
     expect(response.headers["x-request-id"]).toEqual(expect.any(String));
     expect(response.headers["x-request-id"]).toHaveLength(36);
+    expect(response.headers["cache-control"]).toBe("no-store");
   });
 
   test("GET /api/health/live responds with liveness payload", async () => {
@@ -18,6 +19,7 @@ describe("backend bootstrap", () => {
       environment: "test",
     });
     expect(response.body.time).toEqual(expect.any(String));
+    expect(response.headers["cache-control"]).toBe("no-store");
   });
 
   test("GET /api/health/ready reports degraded when database is disconnected", async () => {
@@ -26,14 +28,17 @@ describe("backend bootstrap", () => {
     expect(response.body).toMatchObject({
       status: "degraded",
       environment: "test",
-      checks: {
-        database: {
-          status: "fail",
-          required: true,
-        },
-      },
     });
-    expect(response.body.requiredFailures).toContain("database");
+    expect(response.body).not.toHaveProperty("checks");
+    expect(response.body).not.toHaveProperty("requiredFailures");
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.headers["retry-after"]).toBe("30");
+  });
+
+  test("GET /api/admin/system/readiness requires an authenticated operator", async () => {
+    const response = await request(app).get("/api/admin/system/readiness").expect(401);
+
+    expect(response.body).toMatchObject({ error: "No token" });
   });
 
   test("request ID middleware preserves valid inbound request IDs", async () => {

@@ -34,11 +34,17 @@ This document is the authoritative implementation record for the Facebook benchm
 
 | Phase | Objective | Status |
 |---|---|---|
-| Phase 1 | Reliability, measurement and user control | NOT STARTED |
+| Phase 1 | Reliability, measurement and user control | IN PROGRESS |
 | Phase 2 | Trust, data rights and server authority | NOT STARTED |
 | Phase 3 | Complete high-value product loops | NOT STARTED |
 | Phase 4 | Recommendation quality and responsible monetization | NOT STARTED |
 | Phase 5 | Regional ecosystem scale | NOT STARTED |
+
+### Phase 1 work packages
+
+| ID | Work package | Status | Verification record |
+|---|---|---|---|
+| REL-001 | Separate public readiness probes from operator diagnostics | COMPLETE | Public liveness/readiness probes are non-cacheable and reveal only runtime state, degraded readiness returns HTTP 503 with a retry window, and authenticated Admin Settings exposes the full required/advisory dependency checklist. |
 
 ## Change log
 
@@ -89,4 +95,7 @@ This document is the authoritative implementation record for the Facebook benchm
 - Added `npm run audit:encoding --prefix frontend`, which scans repository text surfaces for invalid UTF-8 replacement characters, recognized Latin-1/Windows-1252 mojibake sequences and corrupt HTML entities while excluding generated mobile build artifacts and third-party/build directories. The initial clean run scanned 1,268 files with zero defects.
 - Replaced the Trending page's literal corrupt-character regression pattern with Unicode code-point escapes and added source-wide audit tests covering both positive detection and the clean repository invariant.
 - QUALITY-001 verification passed: the encoding audit scanned 1,268 files with zero defects, 3 focused frontend test files passed all 11 tests, frontend lint reported zero warnings or errors, the action audit found no inert controls, the audit script passed its syntax check and the frontend production build completed successfully.
-- No Phase 1 or later work package is recorded as complete.
+- Started Phase 1 with REL-001. Public health probes now return non-cacheable, monitor-safe state without dependency names, configuration presence, failure lists or operator messages; degraded and draining readiness responses include a 30-second retry window.
+- Added the authenticated `/api/admin/system/readiness` diagnostic contract and connected Admin Settings to its required and advisory dependency checks, status messages, uptime and last-check time.
+- Added the deployment-readiness incident runbook and updated Render smoke-test guidance so detailed diagnostics are reviewed only through authenticated operator access.
+- REL-001 verification passed: 3 focused backend test files passed all 16 tests, the focused Admin Settings test passed, backend syntax checks and frontend lint were clean, action and encoding audits passed, and the frontend production build completed successfully.

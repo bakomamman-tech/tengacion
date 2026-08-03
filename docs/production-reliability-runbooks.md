@@ -2,6 +2,24 @@
 
 These runbooks support the Admin Analytics production reliability snapshot. Each incident note should identify the affected surface, owner, current status, next action, and the relevant admin page.
 
+## Deployment Readiness Failure
+
+Owner: Infrastructure and backend
+
+First checks:
+
+- Confirm `/api/health/live` returns HTTP 200. If it does not, inspect the process or deployment before dependency diagnostics.
+- Confirm `/api/health/ready` returns HTTP 503 with `Cache-Control: no-store` and `Retry-After: 30` while the service is degraded or draining.
+- Sign in as an operator, open `/admin/settings`, and review the required failures in System Health. Do not copy configuration details into public status messages.
+- Distinguish a deliberate draining state during deployment from database, secret, media, payment, assistant, or allowed-origin readiness failures.
+
+Resolution path:
+
+- For draining, allow the deployment shutdown window to complete before investigating dependencies.
+- Restore required dependencies in the order reported by the authenticated checklist; advisory warnings do not block traffic unless their check is marked required.
+- Recheck the public readiness probe until it returns HTTP 200, then confirm the authenticated checklist contains no required failures.
+- Record the affected deployment, failure window, dependency owner role, corrective action, and follow-up review.
+
 ## Checkout Failure
 
 Owner: Infrastructure and backend

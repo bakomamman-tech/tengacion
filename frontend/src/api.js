@@ -2984,6 +2984,12 @@ export const adminGetAnalyticsSystemAlerts = (params = {}) => {
   });
 };
 
+export const adminGetSystemReadiness = () =>
+  request(`${API_BASE}/admin/system/readiness`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 10000,
+  });
+
 export const adminGetAnalyticsReliabilityHealth = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {

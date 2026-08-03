@@ -461,4 +461,33 @@ describe("admin commerce operations analytics", () => {
       ])
     );
   });
+
+  test("returns detailed deployment readiness to an authenticated operator", async () => {
+    const adminToken = await createAdminToken();
+
+    const response = await request(app)
+      .get("/api/admin/system/readiness")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.body).toMatchObject({
+      status: "ready",
+      requiredFailures: [],
+      checks: {
+        runtime: {
+          status: "ok",
+          required: true,
+        },
+        database: {
+          status: "ok",
+          required: true,
+          details: {
+            readyState: 1,
+            state: "connected",
+          },
+        },
+      },
+    });
+  });
 });

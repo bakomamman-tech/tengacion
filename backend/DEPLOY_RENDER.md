@@ -76,9 +76,10 @@ The command prints only the key mode, HTTP status, and Paystack message. It does
 After each deploy, exercise these endpoints:
 1. `GET https://<your-render-url>/api/health` -> 200 with `{"status":"ok"}` plus uptime and environment fields. Confirm the response includes an `X-Request-ID` header.
 2. `GET https://<your-render-url>/api/health/live` -> 200 for liveness monitoring
-3. `GET https://<your-render-url>/api/health/ready` -> 200 with `{"status":"ready"}` when MongoDB, required secrets, media storage, payments, assistant config, and allowed origins are ready. A `503` means at least one required dependency is degraded, or `{"status":"draining"}` during SIGTERM/SIGINT shutdown.
+3. `GET https://<your-render-url>/api/health/ready` -> 200 with `{"status":"ready"}` when required dependencies are ready. The public response intentionally omits dependency names and configuration details. A `503` means at least one required dependency is degraded, or `{"status":"draining"}` during SIGTERM/SIGINT shutdown; confirm `Cache-Control: no-store` and `Retry-After: 30` on that response.
 4. `GET https://<your-render-url>/socket.io` -> 200 with response containing `socket ok`
 5. Trigger a harmless missing API route and confirm Render logs include `http.request.completed`, the returned `X-Request-ID`, status code, and request duration.
+6. Sign in as an operator and open `/admin/settings`. Confirm System Health shows the authenticated dependency checklist from `/api/admin/system/readiness`; do not expose that payload through public monitors or status pages.
 
 ## Notes
 - The backend still preserves `/uploads` static serving and raw-body verification for `/api/payments/webhook/paystack`.

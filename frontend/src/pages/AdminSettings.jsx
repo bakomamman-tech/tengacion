@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminShell from "../components/AdminShell";
-import { adminGetAnalyticsSystemAlerts, adminGetUser } from "../api";
+import {
+  adminGetAnalyticsSystemAlerts,
+  adminGetSystemReadiness,
+  adminGetUser,
+} from "../api";
 
 const number = (value) => Number(value || 0).toLocaleString();
 const dateTime = (value) => {
@@ -9,12 +13,25 @@ const dateTime = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
 };
+const titleCase = (value) =>
+  String(value || "unknown")
+    .split("_")
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+const healthBadgeClass = (status) => {
+  const normalized = String(status || "").toLowerCase();
+  if (["fail", "draining"].includes(normalized)) {return "adminx-badge--danger";}
+  if (["degraded", "warn", "unknown"].includes(normalized)) {return "adminx-badge--warn";}
+  return "adminx-badge--good";
+};
 
 export default function AdminSettingsPage({ user }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [systemAlerts, setSystemAlerts] = useState({ alerts: [], metrics: {} });
+  const [systemReadiness, setSystemReadiness] = useState({ status: "unknown", checks: {} });
   const [adminDetail, setAdminDetail] = useState(null);
 
   const adminId = user?._id || user?.id || "";
@@ -23,11 +40,13 @@ export default function AdminSettingsPage({ user }) {
     setLoading(true);
     setError("");
     try {
-      const [alertsPayload, detailPayload] = await Promise.all([
+      const [alertsPayload, readinessPayload, detailPayload] = await Promise.all([
         adminGetAnalyticsSystemAlerts({ range: "30d" }),
+        adminGetSystemReadiness(),
         adminId ? adminGetUser(adminId) : Promise.resolve(null),
       ]);
       setSystemAlerts(alertsPayload || { alerts: [], metrics: {} });
+      setSystemReadiness(readinessPayload || { status: "unknown", checks: {} });
       setAdminDetail(detailPayload || null);
     } catch (err) {
       setError(err?.message || "Failed to load admin settings");
@@ -45,9 +64,10 @@ export default function AdminSettingsPage({ user }) {
       ["Role", adminDetail?.role || user?.role || "admin"],
       ["Status", adminDetail?.status || "active"],
       ["Last Login", dateTime(adminDetail?.lastLoginAt || user?.lastLoginAt)],
+      ["Runtime", titleCase(systemReadiness.status)],
       ["Open Alerts", number(systemAlerts.alerts?.length)],
     ],
-    [adminDetail, systemAlerts.alerts, user?.lastLoginAt, user?.role]
+    [adminDetail, systemAlerts.alerts, systemReadiness.status, user?.lastLoginAt, user?.role]
   );
 
   const shortcuts = [
@@ -108,7 +128,38 @@ export default function AdminSettingsPage({ user }) {
             <section className="adminx-panel adminx-panel--span-6">
               <div className="adminx-panel-head">
                 <h2 className="adminx-panel-title">System Health</h2>
-                <span className="adminx-section-meta">Current operational checks</span>
+                <span className={`adminx-badge ${healthBadgeClass(systemReadiness.status)}`}>
+                  {titleCase(systemReadiness.status)}
+                </span>
+              </div>
+              <div className="adminx-leaderboard">
+                <article className="adminx-leaderboard-item">
+                  <div className="adminx-row">
+                    <strong>Deployment readiness</strong>
+                    <span>{number(systemReadiness.uptimeSeconds)}s uptime</span>
+                  </div>
+                  <div className="adminx-muted">
+                    Last checked {dateTime(systemReadiness.time)}
+                  </div>
+                </article>
+                {Object.entries(systemReadiness.checks || {}).map(([key, check]) => (
+                  <article key={key} className="adminx-leaderboard-item">
+                    <div className="adminx-row">
+                      <strong>{titleCase(key)}</strong>
+                      <span className={`adminx-badge ${healthBadgeClass(check?.status)}`}>
+                        {titleCase(check?.status)}
+                      </span>
+                    </div>
+                    <div className="adminx-muted">
+                      {check?.message || "No readiness detail was returned."}
+                      {check?.required ? " Required for traffic." : " Advisory check."}
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="adminx-panel-head">
+                <h3 className="adminx-panel-title">Operational Signals</h3>
+                <span className="adminx-section-meta">Last 30 days</span>
               </div>
               <div className="adminx-leaderboard">
                 <article className="adminx-leaderboard-item"><div className="adminx-row"><strong>Failed Payments</strong><span>{number(systemAlerts.metrics?.failedPayments)}</span></div></article>

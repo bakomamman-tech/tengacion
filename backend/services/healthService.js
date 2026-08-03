@@ -291,7 +291,24 @@ const buildReadinessPayload = async (options = {}) => {
   };
 };
 
+const buildPublicReadinessPayload = async (options = {}) => {
+  const {
+    status,
+    time,
+    uptimeSeconds,
+    environment,
+  } = await buildReadinessPayload(options);
+
+  return {
+    status,
+    time,
+    uptimeSeconds,
+    environment,
+  };
+};
+
 module.exports = {
   buildLivenessPayload,
+  buildPublicReadinessPayload,
   buildReadinessPayload,
 };

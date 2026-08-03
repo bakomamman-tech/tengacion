@@ -87,6 +87,7 @@ const {
 const {
   buildProductScorecard,
 } = require("../services/productScorecardService");
+const { buildReadinessPayload } = require("../services/healthService");
 const {
   getStorageActionCatalog,
   getStorageOverview,
@@ -398,6 +399,18 @@ router.use("/marketplace", require("./marketplaceAdminRoutes"));
 router.use("/raffle", require("./adminRaffle"));
 router.use("/millionaire", require("./adminMillionaire"));
 router.use("/top-up-promo", require("./adminTopUpPromo"));
+
+router.get("/system/readiness", async (_req, res) => {
+  try {
+    const payload = await buildReadinessPayload();
+    return res.set("Cache-Control", "no-store").json(payload);
+  } catch (err) {
+    return res
+      .status(500)
+      .set("Cache-Control", "no-store")
+      .json({ error: err.message || "Failed to load system readiness" });
+  }
+});
 
 router.get("/assurance/dashboard", async (req, res) => {
   try {

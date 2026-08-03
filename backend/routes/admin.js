@@ -85,6 +85,9 @@ const {
   logAnalyticsEvent,
 } = require("../services/analyticsService");
 const {
+  buildProductScorecard,
+} = require("../services/productScorecardService");
+const {
   getStorageActionCatalog,
   getStorageOverview,
   previewCleanup,
@@ -2870,6 +2873,18 @@ router.get("/analytics/commerce-ops", async (req, res) => {
   } catch (err) {
     const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
     return res.status(code).json({ error: err.message || "Failed to load commerce operations analytics" });
+  }
+});
+
+router.get("/analytics/product-scorecard", async (req, res) => {
+  try {
+    return res.json(await buildProductScorecard(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    console.error("Admin product scorecard error:", req.requestId, err);
+    return res
+      .status(code)
+      .json({ error: err.message || "Failed to load the product scorecard" });
   }
 });
 

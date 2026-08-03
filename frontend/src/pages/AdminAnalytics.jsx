@@ -21,6 +21,7 @@ import {
   adminGetAnalyticsContentUploads,
   adminGetAnalyticsRevenue,
   adminGetAnalyticsCommerceOps,
+  adminGetAnalyticsProductScorecard,
   adminGetAnalyticsEngagement,
   adminGetAnalyticsTopCreators,
   adminGetAnalyticsTopContent,
@@ -143,6 +144,13 @@ export default function AdminAnalyticsPage({ user }) {
     webhooks: {},
     payouts: { statusCounts: {}, stalePending: {}, amounts: {} },
   });
+  const [productScorecard, setProductScorecard] = useState({
+    capture: {},
+    summary: {},
+    distributions: { lifecycle: [], surface: [], access: [] },
+    features: [],
+    zeroViewProductionFeatures: [],
+  });
   const [engagement, setEngagement] = useState({ series: [] });
   const [topCreators, setTopCreators] = useState({ items: [] });
   const [topContent, setTopContent] = useState({ items: [] });
@@ -187,6 +195,7 @@ export default function AdminAnalyticsPage({ user }) {
         uploadsPayload,
         revenuePayload,
         commerceOpsPayload,
+        productScorecardPayload,
         engagementPayload,
         topCreatorsPayload,
         topContentPayload,
@@ -200,6 +209,7 @@ export default function AdminAnalyticsPage({ user }) {
         adminGetAnalyticsContentUploads(filterParams),
         adminGetAnalyticsRevenue(filterParams),
         adminGetAnalyticsCommerceOps(filterParams),
+        adminGetAnalyticsProductScorecard(filterParams),
         adminGetAnalyticsEngagement(filterParams),
         adminGetAnalyticsTopCreators({ ...filterParams, mode: creatorMode }),
         adminGetAnalyticsTopContent(filterParams),
@@ -219,6 +229,13 @@ export default function AdminAnalyticsPage({ user }) {
         onboarding: { steps: [] },
         webhooks: {},
         payouts: { statusCounts: {}, stalePending: {}, amounts: {} },
+      });
+      setProductScorecard(productScorecardPayload || {
+        capture: {},
+        summary: {},
+        distributions: { lifecycle: [], surface: [], access: [] },
+        features: [],
+        zeroViewProductionFeatures: [],
       });
       setEngagement(engagementPayload || { series: [] });
       setTopCreators(topCreatorsPayload || { items: [] });
@@ -255,7 +272,15 @@ export default function AdminAnalyticsPage({ user }) {
   const exportJson = () => {
     downloadBlob({
       filename: `tengacion-admin-analytics-${filters.range}.json`,
-      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, engagement, topCreators, topContent, recentActivity, systemAlerts, reliabilityHealth, reportsSummary }, null, 2),
+      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, productScorecard, engagement, topCreators, topContent, recentActivity, systemAlerts, reliabilityHealth, reportsSummary }, null, 2),
+      type: "application/json",
+    });
+  };
+
+  const exportProductScorecard = () => {
+    downloadBlob({
+      filename: `tengacion-product-scorecard-${filters.range}.json`,
+      content: JSON.stringify(productScorecard, null, 2),
       type: "application/json",
     });
   };
@@ -356,6 +381,72 @@ export default function AdminAnalyticsPage({ user }) {
 
       {!loading ? (
         <div className="adminx-analytics-grid">
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <div>
+                <h2 className="adminx-panel-title">Baseline Product Scorecard</h2>
+                <span className="adminx-section-meta">
+                  Privacy-safe governed route adoption for METRIC-002
+                </span>
+              </div>
+              <div className="adminx-action-row">
+                <span className={`adminx-badge ${statusBadgeClass(productScorecard.capture?.ready ? "healthy" : "watch")}`}>
+                  {eventLabel(productScorecard.capture?.status || "no_data")}
+                </span>
+                <button type="button" className="adminx-btn" onClick={exportProductScorecard}>
+                  Export Scorecard
+                </button>
+              </div>
+            </div>
+            <div className="adminx-muted">{productScorecard.capture?.message || "No scorecard data is available yet."}</div>
+            <div className="adminx-ops-grid adminx-mobile-stack--spaced">
+              {[
+                ["Route views", number(productScorecard.summary?.totalRouteViews)],
+                ["Authenticated views", number(productScorecard.summary?.authenticatedViews)],
+                ["Anonymous views", number(productScorecard.summary?.anonymousViews)],
+                ["Known users", number(productScorecard.summary?.uniqueAuthenticatedUsers)],
+                ["Features viewed", `${number(productScorecard.summary?.viewedFeatureCount)} / ${number(productScorecard.summary?.registryFeatureCount)}`],
+                ["Production coverage", percent(productScorecard.summary?.productionFeatureCoverageRate)],
+                ["Observed days", `${number(productScorecard.capture?.observedWindowDays)} / ${number(productScorecard.capture?.requiredWindowDays)}`],
+                ["Unclassified views", number(productScorecard.summary?.unclassifiedViews)],
+              ].map(([label, value]) => (
+                <div key={label} className="adminx-ops-metric">
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="adminx-mobile-stack adminx-mobile-stack--spaced">
+              {(productScorecard.distributions?.lifecycle || []).map((entry) => (
+                <span key={entry.key} className="adminx-badge">
+                  {eventLabel(entry.key)} {number(entry.views)} ({percent(entry.share)})
+                </span>
+              ))}
+              <span className="adminx-badge">
+                Zero-view production features {number(productScorecard.zeroViewProductionFeatures?.length)}
+              </span>
+            </div>
+            <div className="adminx-leaderboard adminx-mobile-stack--spaced">
+              {(productScorecard.features || [])
+                .filter((feature) => Number(feature.views || 0) > 0)
+                .slice(0, 6)
+                .map((feature) => (
+                  <div key={feature.featureId} className="adminx-leaderboard-item">
+                    <div className="adminx-row">
+                      <strong>{feature.title}</strong>
+                      <span className="adminx-badge">{number(feature.views)} views</span>
+                    </div>
+                    <div className="adminx-muted">
+                      {eventLabel(feature.lifecycle)} · {eventLabel(feature.surface)} · {percent(feature.share)} of governed views
+                    </div>
+                  </div>
+                ))}
+              {!(productScorecard.features || []).some((feature) => Number(feature.views || 0) > 0) ? (
+                <div className="adminx-empty">No governed route views have been accepted in this window.</div>
+              ) : null}
+            </div>
+          </section>
+
           <section className="adminx-panel adminx-panel--span-12">
             <div className="adminx-panel-head">
               <div>

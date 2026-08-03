@@ -2886,6 +2886,17 @@ export const adminGetAnalyticsCommerceOps = (params = {}) => {
   });
 };
 
+export const adminGetAnalyticsProductScorecard = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/analytics/product-scorecard?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
 export const adminGetAnalyticsEngagement = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {

@@ -28,7 +28,7 @@ This document is the authoritative implementation record for the Facebook benchm
 | METRIC-001 | Define the route analytics event contract | COMPLETE | Versioned `route_viewed` ingestion records registry-derived lifecycle, surface, access and canonical route metadata; raw URLs, dynamic identifiers, query/hash state, titles and referrers are excluded and contract-tested. |
 | METRIC-002 | Capture the baseline product scorecard | IN PROGRESS | Privacy-safe scorecard aggregation, readiness gates, admin visibility and JSON export are implemented and tested; completion still requires a reviewed 30-day production telemetry capture. |
 | OWNER-001 | Assign named accountable owners | NOT STARTED | Registry currently records accountable roles, not named people. |
-| QUALITY-001 | Correct visible encoding defects | NOT STARTED | Scheduled after product-truth controls. |
+| QUALITY-001 | Correct visible encoding defects | COMPLETE | Invalid Windows-1252 punctuation in the creator Artist page is normalized to UTF-8, and an executable repository-wide audit enforces zero mojibake, replacement-character or corrupt-entity defects across repository text surfaces. |
 
 ## Later roadmap phases
 
@@ -85,4 +85,8 @@ This document is the authoritative implementation record for the Facebook benchm
 - Added an explicit 30-calendar-day capture gate with `no_data`, `insufficient_selected_window`, `insufficient_telemetry_window` and `ready` states. Admin Analytics surfaces the honest state and can export the current scorecard as JSON.
 - Documented the production capture and review procedure in `docs/tengacion-product-scorecard.md`. METRIC-002 remains in progress because no 30-day production telemetry window exists yet.
 - METRIC-002 implementation-layer verification passed: 3 focused backend test files (20 tests), the focused Admin Analytics test, backend syntax checks, frontend lint with one pre-existing warning, zero inert-control violations and the frontend production build. Production capture evidence is still outstanding.
+- Completed QUALITY-001 by converting the legacy Artist page from mixed Windows-1252/ASCII bytes to valid UTF-8. Its loading ellipsis, error separator and saving ellipsis now render as the intended punctuation instead of replacement glyphs.
+- Added `npm run audit:encoding --prefix frontend`, which scans repository text surfaces for invalid UTF-8 replacement characters, recognized Latin-1/Windows-1252 mojibake sequences and corrupt HTML entities while excluding generated mobile build artifacts and third-party/build directories. The initial clean run scanned 1,268 files with zero defects.
+- Replaced the Trending page's literal corrupt-character regression pattern with Unicode code-point escapes and added source-wide audit tests covering both positive detection and the clean repository invariant.
+- QUALITY-001 verification passed: the encoding audit scanned 1,268 files with zero defects, 3 focused frontend test files passed all 11 tests, frontend lint reported zero warnings or errors, the action audit found no inert controls, the audit script passed its syntax check and the frontend production build completed successfully.
 - No Phase 1 or later work package is recorded as complete.

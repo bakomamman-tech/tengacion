@@ -104,7 +104,7 @@ export default function ArtistProfilePage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-12 text-center">
-        <p className="text-sm text-slate-500">Loading creator profile…</p>
+        <p className="text-sm text-slate-500">Loading creator profileâ€¦</p>
       </div>
     );
   }
@@ -262,14 +262,14 @@ export default function ArtistProfilePage() {
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs text-slate-500">
               Saving status: {status}
-              {updateError ? ` — ${updateError.message || updateError}` : ""}
+              {updateError ? ` â€” ${updateError.message || updateError}` : ""}
             </span>
             <button
               type="submit"
               disabled={status === "saving"}
               className="rounded-xl bg-brand-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
             >
-              {status === "saving" ? "Saving…" : "Save artist profile"}
+              {status === "saving" ? "Savingâ€¦" : "Save artist profile"}
             </button>
           </div>
         </form>

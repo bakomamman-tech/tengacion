@@ -17,6 +17,7 @@
     "lint": "eslint \"src/**/*.{js,jsx}\"",
     "lint:fix": "eslint \"src/**/*.{js,jsx}\" --fix",
     "audit:actions": "node scripts/auditInertControls.cjs",
+    "audit:encoding": "node scripts/auditEncoding.cjs",
     "test": "vitest run --reporter=dot --testTimeout=20000 --hookTimeout=20000",
     "test:watch": "vitest",
     "repro:chat-friend": "node scripts/repro-chat-friend.js"

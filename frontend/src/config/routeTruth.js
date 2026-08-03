@@ -122,9 +122,8 @@ export const getRouteTruthMatch = (path = "") => {
   };
 };
 
-export const getRouteTruth = (path = "") => {
-  return getRouteTruthMatch(path)?.feature || null;
-};
+export const getRouteTruth = (path = "") =>
+  getRouteTruthMatch(path)?.feature || null;
 
 export const buildRouteAnalyticsEvent = (path = "") => {
   const match = getRouteTruthMatch(path);

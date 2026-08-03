@@ -31,6 +31,6 @@ describe("modern Trending page", () => {
   });
 
   it("does not ship corrupted emoji text from the legacy page", () => {
-    expect(source).not.toMatch(/ðŸ|âœ|â­/);
+    expect(source).not.toMatch(/\u00f0\u0178|\u00e2\u0153|\u00e2\u00ad/);
   });
 });

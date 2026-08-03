@@ -1,8 +1,5 @@
 import { resolveImage } from "../../api";
 
-export const GROUP_SHARE_STORAGE_KEY = "tengacion:group-shares";
-export const DEFAULT_SHARE_GROUPS = [];
-
 export const SHARE_DESTINATION_OPTIONS = [
   { id: "feed", label: "Feed" },
   { id: "story", label: "Story" },
@@ -151,30 +148,4 @@ export const mapPrivacyToStoryVisibility = (value = "") => {
     return "public";
   }
   return "friends";
-};
-
-export const readStoredGroupShares = () => {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
-  try {
-    const raw = window.localStorage.getItem(GROUP_SHARE_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-};
-
-export const writeStoredGroupShares = (value) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(GROUP_SHARE_STORAGE_KEY, JSON.stringify(value || {}));
-  } catch {
-    // Ignore storage errors for this lightweight group share handoff.
-  }
 };

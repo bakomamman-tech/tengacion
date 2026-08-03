@@ -6,21 +6,14 @@ import { useLocation } from "react-router-dom";
 import { apiRequest, resolveImage } from "../../api";
 import QuickAccessLayout from "../../components/QuickAccessLayout";
 import {
-  readStoredGroupShares,
-  writeStoredGroupShares,
-} from "../../components/share/postShareUtils";
-import {
   createGroup as createGroupRequest,
   createGroupPost as createGroupPostRequest,
   getMyGroups,
 } from "./groupApi";
 import {
-  GROUPS_CHANGED_EVENT,
-  addStoredGroupPost,
-  createStoredGroup,
+  normalizeGroup,
+  normalizeGroups,
   purgeLegacyGroupArtifacts,
-  readStoredGroups,
-  replaceStoredGroups,
 } from "./groupStore";
 import "./groups.css";
 
@@ -58,6 +51,24 @@ const normalizeShareDraft = (value = {}) => {
     authorName: String(value?.authorName || "Tengacion creator").trim(),
   };
 };
+
+const getRequestError = (error, fallback) =>
+  String(error?.response?.data?.error || error?.message || fallback);
+
+const wasSharedToGroup = (group, shareDraft) =>
+  Boolean(
+    shareDraft?.url &&
+      group?.posts?.some((post) => String(post?.text || "").includes(shareDraft.url))
+  );
+
+const buildGroupShareText = (shareDraft) =>
+  [
+    shareDraft?.note,
+    shareDraft?.authorName ? `Shared from ${shareDraft.authorName}` : "Shared on Tengacion",
+    shareDraft?.url,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
 function GroupIcon({ name }) {
   if (name === "search") {
@@ -114,7 +125,7 @@ function EmptyGroups({ mode, onCreate }) {
   );
 }
 
-function CreateGroupModal({ open, onClose, onCreate }) {
+function CreateGroupModal({ open, busy = false, onClose, onCreate }) {
   const [name, setName] = useState("");
   const [privacy, setPrivacy] = useState("public");
   const [description, setDescription] = useState("");
@@ -167,7 +178,7 @@ function CreateGroupModal({ open, onClose, onCreate }) {
               toast.error("Give your group a name");
               return;
             }
-            onCreate({ name, privacy, description, coverImage });
+            void onCreate({ name, privacy, description, coverImage });
           }}
         >
           <label>
@@ -206,8 +217,8 @@ function CreateGroupModal({ open, onClose, onCreate }) {
             />
           </label>
           <footer>
-            <button type="button" className="groups-secondary-button" onClick={onClose}>Cancel</button>
-            <button type="submit" className="groups-primary-button">Create group</button>
+            <button type="button" className="groups-secondary-button" onClick={onClose} disabled={busy}>Cancel</button>
+            <button type="submit" className="groups-primary-button" disabled={busy}>{busy ? "Creating..." : "Create group"}</button>
           </footer>
         </form>
       </section>
@@ -269,9 +280,10 @@ function GroupPost({ post }) {
   );
 }
 
-function GroupDetail({ group, user, shareDraft, shared, onShare, onRefresh }) {
+function GroupDetail({ group, user, shareDraft, shared, onShare, onGroupUpdated }) {
   const [activeTab, setActiveTab] = useState("Discussion");
   const [postText, setPostText] = useState("");
+  const [posting, setPosting] = useState(false);
   const owner = group.members[0];
 
   const publishPost = async () => {
@@ -279,17 +291,16 @@ function GroupDetail({ group, user, shareDraft, shared, onShare, onRefresh }) {
       return;
     }
     try {
+      setPosting(true);
       const updatedGroup = await createGroupPostRequest(group.id, postText);
-      replaceStoredGroups(
-        readStoredGroups(user).map((entry) => (entry.id === updatedGroup.id ? updatedGroup : entry)),
-        user
-      );
-    } catch {
-      addStoredGroupPost(group.id, postText, user);
+      onGroupUpdated(updatedGroup);
+      setPostText("");
+      toast.success("Posted to your group");
+    } catch (error) {
+      toast.error(getRequestError(error, "The post was not published. Please try again."));
+    } finally {
+      setPosting(false);
     }
-    setPostText("");
-    await onRefresh();
-    toast.success("Posted to your group");
   };
 
   return (
@@ -333,7 +344,7 @@ function GroupDetail({ group, user, shareDraft, shared, onShare, onRefresh }) {
               <textarea id={`group-post-${group.id}`} value={postText} onChange={(event) => setPostText(event.target.value)} placeholder={`Post in ${group.name}`} rows={postText ? 3 : 1} />
               <div className="groups-composer__actions">
                 <span>Photo/video</span><span>Feeling/activity</span><span>Check in</span>
-                <button type="button" className="groups-primary-button" disabled={!postText.trim()} onClick={() => void publishPost()}>Post</button>
+                <button type="button" className="groups-primary-button" disabled={!postText.trim() || posting} onClick={() => void publishPost()}>{posting ? "Posting..." : "Post"}</button>
               </div>
             </section>
             <section className="groups-featured card"><strong>Featured</strong><span>No featured posts yet</span><b>⌄</b></section>
@@ -366,36 +377,47 @@ function GroupDetail({ group, user, shareDraft, shared, onShare, onRefresh }) {
 export default function GroupsWorkspacePage({ user }) {
   const location = useLocation();
   const shareDraft = normalizeShareDraft(location.state?.sharePost);
-  const [groups, setGroups] = useState(() => readStoredGroups(user));
+  const [groups, setGroups] = useState([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [groupsError, setGroupsError] = useState("");
   const [activeView, setActiveView] = useState("feed");
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
-  const [groupShares, setGroupShares] = useState(() => readStoredGroupShares());
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
-  const refreshGroups = useCallback(async () => {
+  const refreshGroups = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setGroupsLoading(true);
+    }
+    setGroupsError("");
     try {
       const serverGroups = await getMyGroups();
-      const nextGroups = replaceStoredGroups(Array.isArray(serverGroups) ? serverGroups : [], user);
+      const nextGroups = normalizeGroups(serverGroups);
       setGroups(nextGroups);
       return nextGroups;
-    } catch {
-      const cachedGroups = readStoredGroups(user);
-      setGroups(cachedGroups);
-      return cachedGroups;
+    } catch (error) {
+      setGroupsError(getRequestError(error, "Groups could not be loaded from the server."));
+      return null;
+    } finally {
+      if (!silent) {
+        setGroupsLoading(false);
+      }
     }
-  }, [user]);
+  }, []);
+
+  const mergeServerGroup = useCallback((payload) => {
+    const nextGroup = normalizeGroup(payload);
+    if (!nextGroup) {
+      return null;
+    }
+    setGroups((current) => [nextGroup, ...current.filter((group) => group.id !== nextGroup.id)]);
+    return nextGroup;
+  }, []);
 
   useEffect(() => {
     purgeLegacyGroupArtifacts();
     void refreshGroups();
-    const refresh = () => void refreshGroups();
-    window.addEventListener(GROUPS_CHANGED_EVENT, refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener(GROUPS_CHANGED_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
-    };
   }, [refreshGroups]);
 
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) || null;
@@ -413,17 +435,38 @@ export default function GroupsWorkspacePage({ user }) {
   };
 
   const handleShare = async (group) => {
-    if (!shareDraft || groupShares?.[group.id]?.postId === shareDraft.postId) {
+    if (!shareDraft || wasSharedToGroup(group, shareDraft)) {
       return;
     }
-    await apiRequest(`/api/posts/${encodeURIComponent(shareDraft.postId)}/share`, { method: "POST" }).catch(() => null);
-    const nextShares = {
-      ...groupShares,
-      [group.id]: { postId: shareDraft.postId, groupName: group.name, sharedAt: new Date().toISOString() },
-    };
-    setGroupShares(nextShares);
-    writeStoredGroupShares(nextShares);
-    toast.success(`Shared to ${group.name}`);
+    try {
+      const updatedGroup = await createGroupPostRequest(group.id, buildGroupShareText(shareDraft));
+      mergeServerGroup(updatedGroup);
+      await apiRequest(`/api/posts/${encodeURIComponent(shareDraft.postId)}/share`, { method: "POST" }).catch(() => null);
+      toast.success(`Shared to ${group.name}`);
+    } catch (error) {
+      toast.error(getRequestError(error, `The post was not shared to ${group.name}.`));
+    }
+  };
+
+  const handleCreateGroup = async (draft) => {
+    if (creatingGroup) {
+      return;
+    }
+    try {
+      setCreatingGroup(true);
+      const created = mergeServerGroup(await createGroupRequest(draft));
+      if (!created) {
+        throw new Error("The server returned an invalid group record.");
+      }
+      setCreateOpen(false);
+      openGroup(created.id);
+      toast.success(`${created.name} was created`);
+      void refreshGroups({ silent: true });
+    } catch (error) {
+      toast.error(getRequestError(error, "The group was not created. Please try again."));
+    } finally {
+      setCreatingGroup(false);
+    }
   };
 
   return (
@@ -472,14 +515,24 @@ export default function GroupsWorkspacePage({ user }) {
 
         <main className="groups-content">
           {shareDraft ? <section className="groups-share-notice"><div><b>Share a post to a group</b><span>{shareDraft.authorName}: {shareDraft.note || shareDraft.url}</span></div><small>Choose one of your groups</small></section> : null}
-          {selectedGroup ? (
+          {groupsError && groups.length > 0 ? (
+            <section className="groups-server-warning" role="alert">
+              <span>Could not refresh Groups. Showing the last server-confirmed result from this session.</span>
+              <button type="button" onClick={() => void refreshGroups()}>Try again</button>
+            </section>
+          ) : null}
+          {groupsLoading && groups.length === 0 ? (
+            <section className="groups-server-state card" aria-live="polite"><h2>Loading groups...</h2><p>Checking Tengacion for your latest group data.</p></section>
+          ) : groupsError && groups.length === 0 ? (
+            <section className="groups-server-state card" role="alert"><h2>Groups unavailable</h2><p>{groupsError}</p><button type="button" className="groups-primary-button" onClick={() => void refreshGroups()}>Try again</button></section>
+          ) : selectedGroup ? (
             <GroupDetail
               group={selectedGroup}
               user={user}
               shareDraft={shareDraft}
-              shared={groupShares?.[selectedGroup.id]?.postId === shareDraft?.postId}
+              shared={wasSharedToGroup(selectedGroup, shareDraft)}
               onShare={() => void handleShare(selectedGroup)}
-              onRefresh={refreshGroups}
+              onGroupUpdated={mergeServerGroup}
             />
           ) : groups.length === 0 ? (
             <EmptyGroups mode={activeView} onCreate={() => setCreateOpen(true)} />
@@ -494,7 +547,7 @@ export default function GroupsWorkspacePage({ user }) {
                     key={group.id}
                     group={group}
                     shareDraft={shareDraft}
-                    shared={groupShares?.[group.id]?.postId === shareDraft?.postId}
+                    shared={wasSharedToGroup(group, shareDraft)}
                     onOpen={() => openGroup(group.id)}
                     onShare={() => void handleShare(group)}
                   />
@@ -508,23 +561,13 @@ export default function GroupsWorkspacePage({ user }) {
 
       <CreateGroupModal
         open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreate={(draft) => {
-          void (async () => {
-            let group;
-            try {
-              group = await createGroupRequest(draft);
-              replaceStoredGroups([...readStoredGroups(user), group], user);
-            } catch {
-              group = createStoredGroup(draft, user);
-              toast("The group was saved on this device and will sync when the server is available.");
-            }
-            await refreshGroups();
+        busy={creatingGroup}
+        onClose={() => {
+          if (!creatingGroup) {
             setCreateOpen(false);
-            openGroup(group.id);
-            toast.success(`${group.name} was created`);
-          })();
+          }
         }}
+        onCreate={handleCreateGroup}
       />
     </QuickAccessLayout>
   );

@@ -2,11 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getChatContacts, resolveImage } from "../api";
-import { useAuth } from "../context/AuthContext";
-import {
-  GROUPS_CHANGED_EVENT,
-  readStoredGroups,
-} from "../features/groups/groupStore";
+import { getMyGroups } from "../features/groups/groupApi";
+import { normalizeGroups } from "../features/groups/groupStore";
 
 const COMMUNITY_ENTRIES = [
   {
@@ -76,7 +73,7 @@ const normalizeDirectoryRows = (rows = [], kind = "Group") =>
   rows.map((entry) => ({
     id: String(entry?.id || "").trim(),
     name: String(entry?.name || kind).trim(),
-    note: String(entry?.note || `Open ${kind.toLowerCase()}`).trim(),
+    note: String(entry?.note || entry?.description || `Open ${kind.toLowerCase()}`).trim(),
     kind,
   }));
 
@@ -162,7 +159,6 @@ export default function MessengerInboxDropdown({
   onSelectContact,
   onOpenInbox,
 }) {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const searchInputRef = useRef(null);
   const [contacts, setContacts] = useState([]);
@@ -173,7 +169,9 @@ export default function MessengerInboxDropdown({
   const [composeMode, setComposeMode] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [activeOptionsId, setActiveOptionsId] = useState("");
-  const [userGroups, setUserGroups] = useState(() => readStoredGroups(user));
+  const [userGroups, setUserGroups] = useState([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [groupsError, setGroupsError] = useState("");
 
   const loadContacts = useCallback(async () => {
     try {
@@ -188,20 +186,22 @@ export default function MessengerInboxDropdown({
     }
   }, []);
 
-  useEffect(() => {
-    void loadContacts();
-  }, [loadContacts]);
+  const loadGroups = useCallback(async () => {
+    try {
+      setGroupsLoading(true);
+      setGroupsError("");
+      setUserGroups(normalizeGroups(await getMyGroups()));
+    } catch (err) {
+      setGroupsError(err?.message || "Failed to load groups from Tengacion");
+    } finally {
+      setGroupsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const refreshGroups = () => setUserGroups(readStoredGroups(user));
-    refreshGroups();
-    window.addEventListener(GROUPS_CHANGED_EVENT, refreshGroups);
-    window.addEventListener("storage", refreshGroups);
-    return () => {
-      window.removeEventListener(GROUPS_CHANGED_EVENT, refreshGroups);
-      window.removeEventListener("storage", refreshGroups);
-    };
-  }, [user]);
+    void loadContacts();
+    void loadGroups();
+  }, [loadContacts, loadGroups]);
 
   useEffect(() => {
     if (!composeMode) {
@@ -292,6 +292,8 @@ export default function MessengerInboxDropdown({
   }, [activeTab, composeMode, contacts, search]);
 
   const isDirectoryView = activeTab === "groups" || activeTab === "communities";
+  const viewLoading = activeTab === "groups" ? groupsLoading : loading;
+  const viewError = activeTab === "groups" ? groupsError : error;
 
   const openContact = (contact) => {
     setComposeMode(false);
@@ -388,6 +390,7 @@ export default function MessengerInboxDropdown({
                   onClick={() => {
                     setShowActionsMenu(false);
                     void loadContacts();
+                    void loadGroups();
                   }}
                 >
                   Refresh chats
@@ -469,15 +472,15 @@ export default function MessengerInboxDropdown({
       ) : null}
 
       <div className="nav-messenger-list">
-        {loading ? <div className="nav-messenger-state">Loading chats...</div> : null}
+        {viewLoading ? <div className="nav-messenger-state">{activeTab === "groups" ? "Loading groups..." : "Loading chats..."}</div> : null}
 
-        {!loading && error ? <div className="nav-messenger-state">{error}</div> : null}
+        {!viewLoading && viewError ? <div className="nav-messenger-state">{viewError}</div> : null}
 
-        {!loading && !error && isDirectoryView && directoryRows.length === 0 ? (
+        {!viewLoading && !viewError && isDirectoryView && directoryRows.length === 0 ? (
           <div className="nav-messenger-state">No matches for this filter yet.</div>
         ) : null}
 
-        {!loading && !error && isDirectoryView
+        {!viewLoading && !viewError && isDirectoryView
           ? directoryRows.map((entry) => (
               <button
                 key={entry.id}
@@ -498,13 +501,13 @@ export default function MessengerInboxDropdown({
             ))
           : null}
 
-        {!loading && !error && !isDirectoryView && filteredContacts.length === 0 ? (
+        {!viewLoading && !viewError && !isDirectoryView && filteredContacts.length === 0 ? (
           <div className="nav-messenger-state">
             {composeMode ? "No friends match that search yet." : "No chats found yet."}
           </div>
         ) : null}
 
-        {!loading && !error && !isDirectoryView
+        {!viewLoading && !viewError && !isDirectoryView
           ? filteredContacts.map((contact) => {
               const contactId = String(contact?._id || "");
               const unreadCount = Number(contact?.unreadCount) || 0;

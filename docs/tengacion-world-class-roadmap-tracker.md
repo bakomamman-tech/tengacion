@@ -19,12 +19,12 @@ This document is the authoritative implementation record for the Facebook benchm
 | TRUTH-002 | Contain deceptive Preview routes | COMPLETE | Dashboard, Memories, Saved, Events, Ads Manager and Feedback now show honest Preview states with no fabricated personal data, submission claims or inert actions. |
 | TRUTH-003 | Make navigation status-aware | COMPLETE | Navbar, Create menu and Quick Access derive visibility and Beta/Experimental labels from the shared registry; Preview routes are not promoted. |
 | TRUTH-004 | Make Akuso capability-aware | COMPLETE | Akuso derives availability from the registry, excludes Preview recommendations/actions and explains Preview requests without a navigation path. |
-| GROUP-001 | Remove local authority from Groups | NOT STARTED | Scheduled after TRUTH-001 through TRUTH-004. |
+| GROUP-001 | Remove local authority from Groups | COMPLETE | Groups workspace, group post sharing and Messenger group discovery now read/write only through the Group API; legacy group caches are deleted, failure states are explicit, and backend/frontend authority tests pass. |
 | ACTION-001 | Audit and remove inert controls | NOT STARTED | Scheduled after Preview containment. |
 | FEEDBACK-001 | Correct feedback persistence and submission semantics | NOT STARTED | Browser-only draft behavior remains. |
 | ROUTE-001 | Canonicalize route and access contracts | NOT STARTED | Creator aliases and `/artist/:username` access decision remain. |
 | TEST-001 | Add route truth smoke coverage | COMPLETE | Registry completeness, Preview rendering, navigation containment and Akuso lifecycle enforcement are covered by automated tests. |
-| TEST-002 | Fill high-risk journey coverage gaps | NOT STARTED | Groups, Notifications, Rooms, Birthdays, Marketplace and settings remain priority gaps. |
+| TEST-002 | Fill high-risk journey coverage gaps | IN PROGRESS | Groups authority journeys are now covered across API persistence/access, workspace reads/writes, post sharing, Messenger discovery and legacy-cache removal. Notifications, Rooms, Birthdays, Marketplace and settings remain. |
 | METRIC-001 | Define the route analytics event contract | NOT STARTED | Begins after the route registry is accepted. |
 | METRIC-002 | Capture the baseline product scorecard | NOT STARTED | Requires production telemetry window. |
 | OWNER-001 | Assign named accountable owners | NOT STARTED | Registry currently records accountable roles, not named people. |
@@ -52,4 +52,9 @@ This document is the authoritative implementation record for the Facebook benchm
 - Made Akuso lifecycle-aware: Preview capabilities have no routes or actions and cannot enter visible or recommended feature lists.
 - Completed TEST-001 alongside the truth package.
 - Verification passed: frontend tests (112 files, 394 tests), frontend lint, frontend production build, backend route-truth tests (10), and existing Akuso service tests (34).
-- No later work package is recorded as complete.
+- Completed GROUP-001: removed browser-backed group creation, posting, sharing, directory reads and fallback behavior; the Group API and database are now authoritative.
+- Deleted legacy `tengacion:user-groups:v1` and `tengacion:group-shares` records on Groups entry and removed their read/write APIs.
+- Added Groups API contract coverage plus frontend coverage for API failure, confirmed creation/posting, share persistence and Messenger group discovery. TEST-002 is now in progress because the Groups gap is covered while five named high-risk areas remain.
+- GROUP-001 verification passed: 11 targeted frontend tests, 4 backend Groups API tests, 10 backend route-registry tests, frontend lint and the frontend production build.
+- The full frontend regression run passed 401 of 402 tests across 114 of 115 files; the unrelated AdminPanel Escape-close timing assertion failed during the loaded run and passed its isolated 2-test rerun. This is recorded as a flaky existing regression, not counted as GROUP-001 verification.
+- No Phase 1 or later work package is recorded as complete.

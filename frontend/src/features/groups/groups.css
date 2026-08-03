@@ -283,6 +283,41 @@
   white-space: nowrap;
 }
 
+.groups-server-state {
+  width: min(620px, calc(100% - 48px));
+  margin: 48px auto;
+  padding: 32px;
+  text-align: center;
+}
+
+.groups-server-state h2,
+.groups-server-state p {
+  margin: 0 0 12px;
+}
+
+.groups-server-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px 24px 0;
+  padding: 11px 14px;
+  border: 1px solid #f0c36a;
+  border-radius: 10px;
+  background: #fff8e6;
+  color: #6b4f16;
+  font-size: 14px;
+}
+
+.groups-server-warning button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .groups-empty {
   width: min(720px, calc(100% - 40px));
   min-height: 420px;

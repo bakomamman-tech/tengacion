@@ -410,11 +410,11 @@
       "access": "authenticated",
       "canonicalPath": "/groups",
       "appPaths": ["/groups"],
-      "dataAuthority": "Group API with a temporary browser cache/fallback that must not remain authoritative.",
+      "dataAuthority": "Group API and Group model; browser storage is legacy cleanup only and is never authoritative.",
       "ownerRole": "Community Product Owner",
       "kpi": "Server-confirmed active group members",
       "featureFlag": null,
-      "testEvidence": ["frontend/src/features/groups/__tests__/groupStore.test.js"]
+      "testEvidence": ["backend/tests/groups.test.js", "frontend/src/features/groups/__tests__/groupStore.test.js", "frontend/src/features/groups/__tests__/GroupsWorkspacePage.test.jsx", "frontend/src/components/share/__tests__/PostShareModal.groups.test.jsx", "frontend/src/components/__tests__/MessengerInboxDropdown.groups.test.jsx"]
     },
     {
       "id": "settings",

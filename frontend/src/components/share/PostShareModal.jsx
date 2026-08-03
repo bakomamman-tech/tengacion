@@ -14,9 +14,10 @@ import {
 } from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import {
-  GROUPS_CHANGED_EVENT,
-  readStoredGroups,
-} from "../../features/groups/groupStore";
+  createGroupPost as createGroupPostRequest,
+  getMyGroups,
+} from "../../features/groups/groupApi";
+import { normalizeGroup, normalizeGroups } from "../../features/groups/groupStore";
 import QuickShareActions from "./QuickShareActions";
 import ShareComposerHeader from "./ShareComposerHeader";
 import SharePreviewCard from "./SharePreviewCard";
@@ -27,8 +28,6 @@ import {
   buildShareState,
   mapPrivacyToStoryVisibility,
   mergeShareTargets,
-  readStoredGroupShares,
-  writeStoredGroupShares,
 } from "./postShareUtils";
 
 const ANIMATION_MS = 220;
@@ -129,8 +128,9 @@ export default function PostShareModal({
   const [profileSearch, setProfileSearch] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState("");
-  const [groupShares, setGroupShares] = useState({});
-  const [storedGroups, setStoredGroups] = useState(() => readStoredGroups(user));
+  const [serverGroups, setServerGroups] = useState([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [groupsError, setGroupsError] = useState("");
 
   const shareUrl = useMemo(() => buildPostShareUrl(resolvedPostId), [resolvedPostId]);
   const shareState = useMemo(
@@ -166,13 +166,12 @@ export default function PostShareModal({
     [profileTargets, selectedProfileId]
   );
   const orderedGroups = useMemo(() => {
-    const rows = [...storedGroups];
-    return rows.sort((left, right) => {
-      const rightTime = Date.parse(groupShares?.[right.id]?.sharedAt || "") || 0;
-      const leftTime = Date.parse(groupShares?.[left.id]?.sharedAt || "") || 0;
-      return rightTime - leftTime;
-    });
-  }, [groupShares, storedGroups]);
+    const rows = [...serverGroups];
+    return rows.sort(
+      (left, right) =>
+        (Date.parse(right?.updatedAt || "") || 0) - (Date.parse(left?.updatedAt || "") || 0)
+    );
+  }, [serverGroups]);
   const selectedGroup = useMemo(
     () => orderedGroups.find((entry) => entry.id === selectedGroupId) || null,
     [orderedGroups, selectedGroupId]
@@ -185,6 +184,7 @@ export default function PostShareModal({
     Boolean(error) ||
     Boolean(loading) ||
     Boolean(busyAction) ||
+    (destination === "group" && (groupsLoading || Boolean(groupsError))) ||
     destinationNeedsSelection;
   const primaryLabel =
     destination === "story"
@@ -213,6 +213,22 @@ export default function PostShareModal({
     setProfileSearch("");
     setSelectedGroupId("");
     setSelectedProfileId("");
+  }, []);
+
+  const loadGroups = useCallback(async () => {
+    try {
+      setGroupsLoading(true);
+      setGroupsError("");
+      setServerGroups(normalizeGroups(await getMyGroups()));
+    } catch (groupError) {
+      setGroupsError(
+        groupError?.response?.data?.error ||
+          groupError?.message ||
+          "Groups could not be loaded from Tengacion."
+      );
+    } finally {
+      setGroupsLoading(false);
+    }
   }, []);
 
   const requestClose = useCallback(() => {
@@ -283,23 +299,9 @@ export default function PostShareModal({
     setLoading(!seededPost);
     setError("");
     setInlineError("");
-    setGroupShares(readStoredGroupShares());
-    setStoredGroups(readStoredGroups(user));
     resetState();
-  }, [open, resolvedPostId, resetState, seededPost, user]);
-
-  useEffect(() => {
-    if (!open) {
-      return undefined;
-    }
-    const refreshGroups = () => setStoredGroups(readStoredGroups(user));
-    window.addEventListener(GROUPS_CHANGED_EVENT, refreshGroups);
-    window.addEventListener("storage", refreshGroups);
-    return () => {
-      window.removeEventListener(GROUPS_CHANGED_EVENT, refreshGroups);
-      window.removeEventListener("storage", refreshGroups);
-    };
-  }, [open, user]);
+    void loadGroups();
+  }, [loadGroups, open, resolvedPostId, resetState, seededPost]);
 
   useEffect(() => {
     if (!open || !resolvedPostId) {
@@ -617,18 +619,19 @@ export default function PostShareModal({
 
     try {
       setBusyAction("group");
-      const nextShares = {
-        ...groupShares,
-        [selectedGroup.id]: {
-          postId: resolvedPostId,
-          groupName: selectedGroup.name,
-          note: String(caption || "").trim(),
-          sharedAt: new Date().toISOString(),
-        },
-      };
-
-      setGroupShares(nextShares);
-      writeStoredGroupShares(nextShares);
+      const updatedGroup = normalizeGroup(
+        await createGroupPostRequest(
+          selectedGroup.id,
+          buildShareBody({ note: caption, post, url: shareUrl, compact: true })
+        )
+      );
+      if (!updatedGroup) {
+        throw new Error("The server returned an invalid group record.");
+      }
+      setServerGroups((current) => [
+        updatedGroup,
+        ...current.filter((group) => group.id !== updatedGroup.id),
+      ]);
       await recordShare().catch(() => null);
       finishSuccess(`Shared to ${selectedGroup.name}.`, {
         action: "group",
@@ -643,11 +646,10 @@ export default function PostShareModal({
     busyAction,
     caption,
     finishSuccess,
-    groupShares,
     post,
     recordShare,
-    resolvedPostId,
     selectedGroup,
+    shareUrl,
   ]);
 
   const shareToProfile = useCallback(async () => {
@@ -917,14 +919,21 @@ export default function PostShareModal({
                     </div>
                   </div>
 
-                  {orderedGroups.length ? (
+                  {groupsLoading ? (
+                    <p className="tg-share-empty">Loading your groups from Tengacion...</p>
+                  ) : groupsError ? (
+                    <div className="tg-share-empty" role="alert">
+                      <p>{groupsError}</p>
+                      <button type="button" onClick={() => void loadGroups()}>Try again</button>
+                    </div>
+                  ) : orderedGroups.length ? (
                     <div className="tg-share-target-grid">
                       {orderedGroups.map((group) => (
                       <TargetCard
                         key={group.id}
                         title={group.name}
                         subtitle={`${group.privacy === "private" ? "Private" : "Public"} group`}
-                        badge={groupShares?.[group.id]?.postId === resolvedPostId ? "Recent" : ""}
+                        badge={group.posts?.some((entry) => String(entry?.text || "").includes(shareUrl)) ? "Shared" : ""}
                         active={group.id === selectedGroupId}
                         disabled={Boolean(busyAction)}
                         onClick={() => {

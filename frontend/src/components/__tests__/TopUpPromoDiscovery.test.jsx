@@ -28,6 +28,7 @@ vi.mock("../../socket", () => ({
 
 import TopUpPromoDiscovery from "../TopUpPromoDiscovery";
 import { DISCOVERY_PLACEMENTS } from "../topUpPromoConfig";
+import { getRouteTruth } from "../../config/routeTruth";
 
 const user = {
   _id: "user-1",
@@ -71,6 +72,11 @@ describe("TopUpPromoDiscovery", () => {
     expect(DISCOVERY_PLACEMENTS).toHaveLength(103);
     expect(new Set(DISCOVERY_PLACEMENTS.map((placement) => placement.id)).size).toBe(103);
     expect(DISCOVERY_PLACEMENTS.every((placement) => !/^\/(admin|creator|marketplace)(?:\/|$)/i.test(placement.route))).toBe(true);
+    expect(
+      DISCOVERY_PLACEMENTS.every(
+        (placement) => getRouteTruth(placement.route)?.status !== "preview"
+      )
+    ).toBe(true);
 
     renderDiscovery();
 

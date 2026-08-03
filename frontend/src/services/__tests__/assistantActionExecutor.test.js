@@ -10,6 +10,9 @@ describe("assistantActionExecutor", () => {
     expect(isSafeAssistantRoute("/messages")).toBe(true);
     expect(isSafeAssistantRoute("/messages?chat=chat-1")).toBe(true);
     expect(isSafeAssistantRoute("/creator/music/upload")).toBe(true);
+    expect(isSafeAssistantRoute("/saved")).toBe(false);
+    expect(isSafeAssistantRoute("/events")).toBe(false);
+    expect(isSafeAssistantRoute("/ads-manager")).toBe(false);
     expect(isSafeAssistantRoute("https://example.com")).toBe(false);
     expect(isSafeAssistantRoute("/../../secret")).toBe(false);
   });

@@ -162,7 +162,7 @@ export default function CreatorSupportPage() {
             <span>Help center</span>
             <small>Get help with creator setup, publishing, and workspace questions.</small>
           </Link>
-          <Link className="creator-quick-action" to="/feedback?type=bug">
+          <Link className="creator-quick-action" to="/help-support">
             <span>Report a problem</span>
             <small>Share a bug report if a creator tool, upload form, or dashboard state looks wrong.</small>
           </Link>

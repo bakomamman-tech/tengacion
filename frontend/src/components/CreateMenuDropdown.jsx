@@ -217,7 +217,12 @@ function MenuSection({ title, items, onItemClick }) {
           >
             <span className="create-menu-item-icon">{renderIcon(item.icon)}</span>
             <span className="create-menu-item-copy">
-              <strong>{item.label}</strong>
+              <span className="create-menu-item-title">
+                <strong>{item.label}</strong>
+                {item.lifecycleLabel ? (
+                  <span className="feature-lifecycle-badge">{item.lifecycleLabel}</span>
+                ) : null}
+              </span>
               {item.description ? <small>{item.description}</small> : null}
             </span>
           </button>
@@ -244,7 +249,12 @@ function CreateRail({ items, onItemClick }) {
             >
               <span className="create-menu-item-icon">{renderIcon(item.icon)}</span>
               <span className="create-menu-item-copy">
-                <strong>{item.label}</strong>
+                <span className="create-menu-item-title">
+                  <strong>{item.label}</strong>
+                  {item.lifecycleLabel ? (
+                    <span className="feature-lifecycle-badge">{item.lifecycleLabel}</span>
+                  ) : null}
+                </span>
                 {item.description ? <small>{item.description}</small> : null}
               </span>
             </button>

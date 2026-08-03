@@ -195,7 +195,10 @@ const buildAppGuidanceResponse = async ({ conversationId, assistantContext, clas
   const feature = retrieved.feature || classification.feature || null;
   const featureRoute = (await resolveFeatureRoute(feature, assistantContext)) || classification.routeHint || "";
   const userAccess = assistantContext?.isAdmin ? "admin" : assistantContext?.isCreator ? "creator" : "authenticated";
-  const canNavigateDirectly = Boolean(featureRoute) && canAccessFeature(feature, userAccess);
+  const canNavigateDirectly =
+    feature?.assistantEnabled !== false &&
+    Boolean(featureRoute) &&
+    canAccessFeature(feature, userAccess);
   const helpArticle = feature?.id ? getHelpArticleByFeatureId(feature.id) : null;
   const helpArticles = feature
     ? [
@@ -401,6 +404,10 @@ const inferDiscoveryCategory = (message = "") => {
 };
 
 const resolveFeatureRoute = async (feature = null, assistantContext = {}) => {
+  if (feature?.assistantEnabled === false) {
+    return "";
+  }
+
   const userId = assistantContext?.userId || "";
   const featureId = String(feature?.id || "").trim();
 
@@ -493,6 +500,34 @@ const detectWritingContentType = ({ message = "", retrieved = {}, classification
   const direct = classifyWritingTask(message);
   if (direct && direct !== "caption") {
     return direct;
+  }
+
+  if (feature?.assistantEnabled === false) {
+    return makeKnowledgeResponse({
+      message:
+        feature.safeDescription ||
+        feature.description ||
+        `${feature.title || "That feature"} is not available as a production workflow yet.`,
+      details: [
+        {
+          title: `${feature.title || "Feature"} — ${feature.lifecycleStatus || "Preview"}`,
+          body:
+            feature.dataAuthority ||
+            "Tengacion will publish this workflow only after its data and controls are production-ready.",
+        },
+      ],
+      followUps: (feature.quickPrompts || [])
+        .slice(0, 3)
+        .map((prompt) => ({ label: prompt, prompt })),
+      cards: [],
+      conversationId,
+      confidence: 0.94,
+      safety: {
+        level: "caution",
+        notice: "Preview feature — no navigation or completion action is available.",
+        escalation: "",
+      },
+    });
   }
 
   const featureId = retrieved?.feature?.id || classification?.featureId || "";
@@ -647,7 +682,8 @@ const buildFollowUpRoute = ({ message, state, assistantContext }) => {
   const feature = findFeatureByRoute(route) || findFeatureById(state?.lastFeatureId || "");
   if (
     feature &&
-    !canAccessFeature(feature, assistantContext?.isAdmin ? "admin" : assistantContext?.isCreator ? "creator" : "authenticated")
+    (feature.assistantEnabled === false ||
+      !canAccessFeature(feature, assistantContext?.isAdmin ? "admin" : assistantContext?.isCreator ? "creator" : "authenticated"))
   ) {
     return null;
   }

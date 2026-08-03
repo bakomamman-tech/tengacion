@@ -418,7 +418,15 @@ const searchHelpArticles = (query = "", { limit = 4 } = {}) => {
     article,
     score: scoreHelpArticle(article, query),
   }))
-    .filter(({ score }) => score > 0)
+    .filter(({ article, score }) => {
+      if (score <= 0) {
+        return false;
+      }
+      const feature = article.featureId
+        ? FEATURE_REGISTRY.find((entry) => entry.id === article.featureId)
+        : null;
+      return !feature || feature.assistantEnabled !== false;
+    })
     .sort((left, right) => right.score - left.score);
 
   return scored.slice(0, limit).map(({ article }) => ({
@@ -431,8 +439,14 @@ const searchHelpArticles = (query = "", { limit = 4 } = {}) => {
   }));
 };
 
-const getHelpArticleByFeatureId = (featureId = "") =>
-  HELP_ARTICLES.find((article) => article.featureId === String(featureId || "").trim()) || null;
+const getHelpArticleByFeatureId = (featureId = "") => {
+  const normalizedFeatureId = String(featureId || "").trim();
+  const feature = FEATURE_REGISTRY.find((entry) => entry.id === normalizedFeatureId);
+  if (feature?.assistantEnabled === false) {
+    return null;
+  }
+  return HELP_ARTICLES.find((article) => article.featureId === normalizedFeatureId) || null;
+};
 
 const getHelpPrompts = ({ featureId = "", surface = "general" } = {}) => {
   const article = getHelpArticleByFeatureId(featureId);

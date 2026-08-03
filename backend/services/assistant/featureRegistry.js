@@ -1,10 +1,13 @@
+const fs = require("fs");
+const path = require("path");
+
 const normalizeText = (value = "") =>
   String(value || "")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
 
-const FEATURE_REGISTRY = [
+const FEATURE_DEFINITIONS = [
   {
     id: "home",
     title: "Home",
@@ -978,6 +981,81 @@ const FEATURE_REGISTRY = [
   },
 ];
 
+const ROUTE_TRUTH_PATH = path.resolve(
+  __dirname,
+  "../../../frontend/src/config/routeTruthRegistry.json"
+);
+
+const ROUTE_TRUTH_REGISTRY = JSON.parse(fs.readFileSync(ROUTE_TRUTH_PATH, "utf8"));
+const NAVIGATION_STATUSES = new Set(["production", "beta", "experimental"]);
+const ASSISTANT_STATUSES = new Set(["production", "beta", "experimental", "internal"]);
+
+const escapeRouteSegment = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const compileTruthPath = (appPath = "") => {
+  const route = String(appPath || "").trim().replace(/\/+$/, "") || "/";
+  if (!route.startsWith("/")) {
+    return null;
+  }
+
+  const source = route
+    .split("/")
+    .map((segment) => {
+      if (!segment) return "";
+      if (segment === "*") return ".*";
+      if (segment.startsWith(":")) return "[^/]+";
+      return escapeRouteSegment(segment);
+    })
+    .join("/");
+
+  return new RegExp(`^${source}/?$`, "i");
+};
+
+const ROUTE_TRUTH_MATCHERS = (ROUTE_TRUTH_REGISTRY.features || [])
+  .flatMap((truth) =>
+    (truth.appPaths || []).map((appPath) => ({
+      truth,
+      matcher: compileTruthPath(appPath),
+      score:
+        String(appPath).split("/").filter(Boolean).length * 100 +
+        String(appPath).replace(/:[^/]+|\*/g, "").length,
+    }))
+  )
+  .filter((entry) => entry.matcher)
+  .sort((left, right) => right.score - left.score);
+
+const findRouteTruth = (route = "") => {
+  const normalized = String(route || "").trim().split(/[?#]/, 1)[0].replace(/\/+$/, "") || "/";
+  return ROUTE_TRUTH_MATCHERS.find((entry) => entry.matcher.test(normalized))?.truth || null;
+};
+
+const FEATURE_REGISTRY = FEATURE_DEFINITIONS.map((feature) => {
+  const truth = findRouteTruth(feature.route);
+  const lifecycleStatus = truth?.status || "unclassified";
+  const isPreview = lifecycleStatus === "preview";
+  const assistantEnabled = ASSISTANT_STATUSES.has(lifecycleStatus);
+
+  return {
+    ...feature,
+    lifecycleStatus,
+    availabilityStatus: lifecycleStatus,
+    routeTruthId: truth?.id || null,
+    navigationVisible: NAVIGATION_STATUSES.has(lifecycleStatus),
+    assistantEnabled,
+    dataAuthority: truth?.dataAuthority || "No authoritative route record is available.",
+    ownerRole: truth?.ownerRole || "Unassigned",
+    ...(isPreview
+      ? {
+          description: `${feature.title} is a Preview surface and is not available as a production workflow.`,
+          safeDescription: `${feature.title} is not available yet. Tengacion will publish it only after its data and controls are production-ready.`,
+          allowedActions: [],
+          quickPrompts: [`What is planned for ${feature.title}?`],
+        }
+      : {}),
+  };
+});
+
 const SURFACE_FALLBACKS = {
   general: ["home", "messages", "notifications", "creator_discovery", "search", "purchases", "settings_hub"],
   home: ["home", "messages", "notifications", "creator_discovery", "search", "purchases", "settings_hub"],
@@ -1115,7 +1193,7 @@ const listVisibleFeatures = ({ surface = "general", access = "authenticated" } =
   const priority = new Map(priorityIds.map((id, index) => [id, index]));
 
   return FEATURE_REGISTRY.filter((feature) => {
-    return canAccessFeature(feature, normalizedAccess);
+    return feature.assistantEnabled && canAccessFeature(feature, normalizedAccess);
   })
     .map((feature) => ({
       feature,
@@ -1159,33 +1237,41 @@ const getSurfaceFeatureSummary = ({ surface = "general", access = "authenticated
     surface: feature.surface,
     safeDescription: feature.safeDescription || feature.description || "",
     access: feature.access,
+    lifecycleStatus: feature.lifecycleStatus,
+    dataAuthority: feature.dataAuthority,
     allowedActions: [...(feature.allowedActions || [])],
   }));
 };
 
-const buildFeatureCard = (feature, { route = "", payload = {} } = {}) => ({
-  type: "quick-link",
-  title: feature.title,
-  subtitle: feature.safeDescription || feature.description || "",
-  description: feature.description || "",
-  route: route || feature.route || "",
-  payload: {
-    featureId: feature.id,
-    ...payload,
-  },
-});
+const buildFeatureCard = (feature, { route = "", payload = {} } = {}) => {
+  const canNavigate = feature?.assistantEnabled !== false;
+  return {
+    type: canNavigate ? "quick-link" : "info",
+    title: feature.title,
+    subtitle: feature.safeDescription || feature.description || "",
+    description: feature.description || "",
+    route: canNavigate ? route || feature.route || "" : "",
+    lifecycleStatus: feature.lifecycleStatus || "unclassified",
+    payload: {
+      featureId: feature.id,
+      ...payload,
+    },
+  };
+};
 
 const SAFE_ACTION_PERMISSIONS = FEATURE_REGISTRY.reduce((acc, feature) => {
   acc[feature.id] = {
     access: feature.access,
-    route: feature.route,
-    allowedActions: [...(feature.allowedActions || [])],
+    route: feature.assistantEnabled ? feature.route : "",
+    lifecycleStatus: feature.lifecycleStatus,
+    allowedActions: feature.assistantEnabled ? [...(feature.allowedActions || [])] : [],
   };
   return acc;
 }, {});
 
 module.exports = {
   FEATURE_REGISTRY,
+  ROUTE_TRUTH_REGISTRY,
   buildFeatureCard,
   findFeatureById,
   findFeatureByIntent,

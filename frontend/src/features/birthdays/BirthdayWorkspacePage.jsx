@@ -82,14 +82,12 @@ function BirthdayIcon({ name }) {
 function BirthdaySidebar({ search, onSearch }) {
   const navigate = useNavigate();
   const items = [
-    { label: "Home", icon: "calendar", path: "/events" },
-    { label: "Your events", icon: "person", path: "/events" },
     { label: "Notifications", icon: "bell", path: "/notifications" },
   ];
 
   return (
     <aside className="birthdays-sidebar">
-      <h1>Events</h1>
+      <h1>Birthdays</h1>
       <label className="birthdays-sidebar__search">
         <BirthdayIcon name="search" />
         <input value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Search birthdays" />
@@ -101,7 +99,6 @@ function BirthdaySidebar({ search, onSearch }) {
           </button>
         ))}
       </nav>
-      <button type="button" className="birthdays-create-event" onClick={() => navigate("/events")}>+ Create new event</button>
       <div className="birthdays-sidebar__divider" />
       <section>
         <h2>Birthdays</h2>

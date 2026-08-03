@@ -1,3 +1,5 @@
+import { getRouteTruth } from "../config/routeTruth";
+
 const SAFE_ASSISTANT_ROUTE_PATTERNS = [
   /^\/home\/?$/i,
   /^\/messages(?:[/?#].*)?$/i,
@@ -59,6 +61,11 @@ const isSafeAssistantRoute = (target = "") => {
   }
 
   if (route.includes("://") || route.includes("\\") || route.includes("..")) {
+    return false;
+  }
+
+  const truth = getRouteTruth(route);
+  if (!truth || ["preview", "alias"].includes(truth.status)) {
     return false;
   }
 
@@ -160,10 +167,10 @@ const getAssistantSuggestions = (pathname = "") => {
     search: ["Search for creators", "Find a post", "Search books", "Find trending content"],
     purchases: ["What did I buy?", "Open a song I purchased", "Open a book I purchased", "Open home"],
     settings: ["Open privacy settings", "Open security settings", "Change notifications", "Adjust display"],
-    support: ["How do I report abuse?", "I need help", "Send feedback", "Open privacy settings"],
-    social: ["Open friends", "Open groups", "Open rooms", "Show memories"],
+    support: ["How do I report abuse?", "Open help and support", "Email support", "Open privacy settings"],
+    social: ["Open friends", "Open groups", "Open rooms", "Open birthdays"],
     utility: ["Solve 12 * (8 + 4)", "Explain percentages", "Check my answer", "Open home"],
-    business: ["Open the dashboard", "What is ads manager?", "How do I promote a post?", "Open creator dashboard"],
+    business: ["Open creator dashboard", "Show creator earnings", "Open creator support", "Find creators"],
     live: ["How do I go live?", "Open live rooms", "Join a live session", "Open home"],
     news: ["Open world news", "Find African news", "Show a news topic", "Open trending"],
     discover: ["What is trending now?", "Find popular creators", "Open reels", "Open news"],

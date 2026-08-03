@@ -1,14 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import QuickAccessLayout from "../components/QuickAccessLayout";
 import { SUPPORT_EMAIL, buildMailto } from "../config/businessContact";
 import { useTheme } from "../context/ThemeContext";
 import { normalizeWelcomeVoicePrefs } from "../services/welcomeVoice";
 import { getThemeLabel } from "../themeConfig";
-
-const FEEDBACK_STORAGE_KEY = "tengacion_feedback_draft";
-const FEEDBACK_TYPES = ["general", "bug", "idea", "safety"];
 
 function SectionCard({ title, action, children }) {
   return (
@@ -219,24 +215,6 @@ export function HelpSupportPage({ user }) {
     },
   ];
 
-  const supportActions = [
-    {
-      label: "Report a problem",
-      detail: "Broken page, upload issue, or something not working as expected.",
-      target: "/feedback?type=bug",
-    },
-    {
-      label: "Suggest a feature",
-      detail: "Share an idea that would improve the product experience.",
-      target: "/feedback?type=idea",
-    },
-    {
-      label: "Safety concern",
-      detail: "Send safety-related feedback or review community guidelines before reporting.",
-      target: "/feedback?type=safety",
-    },
-  ];
-
   return (
     <QuickAccessLayout
       user={user}
@@ -267,15 +245,6 @@ export function HelpSupportPage({ user }) {
               Email
             </a>
           </article>
-          {supportActions.map((item) => (
-            <article key={item.label} className="quick-list-item">
-              <strong>{item.label}</strong>
-              <span>{item.detail}</span>
-              <button type="button" onClick={() => navigate(item.target)}>
-                Open
-              </button>
-            </article>
-          ))}
         </div>
       </SectionCard>
     </QuickAccessLayout>
@@ -399,124 +368,27 @@ export function DisplayAccessibilityPage({ user }) {
 }
 
 export function FeedbackPage({ user }) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialType = FEEDBACK_TYPES.includes(searchParams.get("type"))
-    ? searchParams.get("type")
-    : "general";
-  const [form, setForm] = useState({
-    type: initialType,
-    subject: "",
-    details: "",
-  });
-  const [message, setMessage] = useState("");
-
-  const ideas = useMemo(
-    () => [
-      "Share a bug report with clear steps, what you expected, and what actually happened.",
-      "Suggest features that would improve posting, messaging, discovery, or account controls.",
-      "Use safety feedback for moderation, abuse, or privacy-related concerns.",
-    ],
-    []
-  );
-
-  useEffect(() => {
-    const nextType = FEEDBACK_TYPES.includes(searchParams.get("type"))
-      ? searchParams.get("type")
-      : "general";
-    setForm((current) => ({ ...current, type: nextType }));
-  }, [searchParams]);
-
-  const setType = (nextType) => {
-    const safeType = FEEDBACK_TYPES.includes(nextType) ? nextType : "general";
-    setSearchParams(safeType === "general" ? {} : { type: safeType });
-    setForm((current) => ({ ...current, type: safeType }));
-  };
-
-  const submit = (event) => {
-    event.preventDefault();
-    const payload = {
-      ...form,
-      savedAt: new Date().toISOString(),
-    };
-
-    try {
-      localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(payload));
-      setMessage("Feedback draft saved on this browser.");
-      setForm((current) => ({
-        ...current,
-        subject: "",
-        details: "",
-      }));
-    } catch {
-      setMessage("Unable to save feedback on this browser.");
-    }
-  };
-
   return (
     <QuickAccessLayout
       user={user}
       title="Give Feedback"
-      subtitle="Collect bug reports, feature ideas, and general product feedback from the account menu."
+      subtitle="This surface is being prepared for a future Tengacion release."
     >
-      <SectionCard title="Choose a feedback type">
-        <div className="account-chip-row">
-          {FEEDBACK_TYPES.map((type) => (
-            <button
-              key={type}
-              type="button"
-              className={`account-chip ${form.type === type ? "active" : ""}`}
-              onClick={() => setType(type)}
-            >
-              {humanize(type)}
-            </button>
-          ))}
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Submit feedback">
-        <form className="account-form-grid" onSubmit={submit}>
-          <label>
-            Subject
-            <input
-              className="account-input"
-              type="text"
-              value={form.subject}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, subject: event.target.value }))
-              }
-              placeholder="Brief summary"
-              required
-            />
-          </label>
-
-          <label>
-            Details
-            <textarea
-              className="account-textarea"
-              value={form.details}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, details: event.target.value }))
-              }
-              placeholder="Describe the issue, idea, or feedback clearly."
-              rows={6}
-              required
-            />
-          </label>
-
-          <div className="account-button-row">
-            <button type="submit">Save feedback</button>
-            {message ? <span className="account-inline-message">{message}</span> : null}
-          </div>
-        </form>
-      </SectionCard>
-
-      <SectionCard title="What to include">
-        <ul className="quick-timeline">
-          {ideas.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </SectionCard>
+      <section className="card quick-preview-state" aria-labelledby="feedback-preview-title">
+        <span className="feature-lifecycle-badge">Preview</span>
+        <h2 id="feedback-preview-title">Web feedback submission is not available yet</h2>
+        <p>
+          Tengacion does not currently send this form to a production support system.
+          This page will not claim that a browser-only draft has been submitted.
+        </p>
+        <p>For product or safety support now, contact the published support address.</p>
+        <a
+          className="quick-preview-link"
+          href={buildMailto(SUPPORT_EMAIL, "Tengacion feedback or support request")}
+        >
+          Email {SUPPORT_EMAIL}
+        </a>
+      </section>
     </QuickAccessLayout>
   );
 }

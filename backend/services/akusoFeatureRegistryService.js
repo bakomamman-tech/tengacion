@@ -19,6 +19,11 @@ const ROLE_LABELS = {
 };
 
 const buildCautionNotes = (feature = {}) => {
+  if (feature.lifecycleStatus === "preview") {
+    return [
+      "Preview only: do not present this surface as available and do not offer navigation or completion actions.",
+    ];
+  }
   if (feature.access === "creator") {
     return ["Requires an authenticated creator account or admin access."];
   }
@@ -29,6 +34,13 @@ const buildCautionNotes = (feature = {}) => {
 };
 
 const buildNavigationSteps = (feature = {}) => {
+  if (feature.lifecycleStatus === "preview" || feature.assistantEnabled === false) {
+    return [
+      `${sanitizePlainText(feature.title || "This feature", 80)} is not available as a production workflow yet.`,
+      "Explain its Preview status without inventing data, controls, or a completion path.",
+    ];
+  }
+
   const article = getHelpArticleByFeatureId(feature.id);
   if (article?.steps?.length) {
     return article.steps.map((step) => sanitizePlainText(step, 180)).filter(Boolean);
@@ -43,7 +55,7 @@ const buildNavigationSteps = (feature = {}) => {
 
 const toAkusoFeature = (feature = {}) => ({
   featureKey: sanitizePlainText(feature.id || "", 80),
-  routePattern: sanitizeRoute(feature.route || ""),
+  routePattern: feature.assistantEnabled ? sanitizeRoute(feature.route || "") : "",
   pageName: sanitizePlainText(feature.title || "", 120),
   surface: sanitizePlainText(feature.surface || "general", 60) || "general",
   purpose: sanitizePlainText(feature.description || "", 220),
@@ -59,7 +71,8 @@ const toAkusoFeature = (feature = {}) => ({
     ? feature.quickPrompts.map((entry) => sanitizePlainText(entry, 120)).filter(Boolean)
     : [],
   safeNavigationSteps: buildNavigationSteps(feature),
-  availabilityStatus: "implemented",
+  availabilityStatus: sanitizePlainText(feature.lifecycleStatus || "unclassified", 24),
+  dataAuthority: sanitizePlainText(feature.dataAuthority || "", 220),
   cautionNotes: buildCautionNotes(feature),
   aliases: Array.isArray(feature.aliases)
     ? feature.aliases.map((entry) => normalize(entry)).filter(Boolean)
@@ -113,6 +126,9 @@ const getUserAccess = (user = {}) => {
 };
 
 const canUserAccessFeature = (feature = {}, user = {}) => {
+  if (["preview", "alias", "unclassified"].includes(feature.availabilityStatus)) {
+    return false;
+  }
   const access = getUserAccess(user);
   if (feature.access === "admin") {
     return access === "admin";
@@ -176,7 +192,7 @@ const listRelevantFeatures = ({ query = "", currentRoute = "", user = {}, limit 
         return false;
       }
       seen.add(feature.featureKey);
-      return true;
+      return !["preview", "alias", "unclassified"].includes(feature.availabilityStatus);
     })
     .slice(0, Math.max(1, Number(limit) || 4))
     .map((feature) => ({

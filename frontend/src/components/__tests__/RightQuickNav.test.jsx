@@ -18,4 +18,17 @@ describe("RightQuickNav", () => {
       "/find-friends"
     );
   });
+
+  it("does not promote Preview routes and labels Beta routes", () => {
+    render(
+      <MemoryRouter initialEntries={["/home"]}>
+        <RightQuickNav />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByRole("link", { name: /professional dashboard/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^saved/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^events/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /groups/i })).toHaveTextContent("Beta");
+  });
 });

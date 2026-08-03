@@ -1,3 +1,5 @@
+import { getRouteTruth, isLifecycleNavigable } from "../config/routeTruth";
+
 export const TOTAL_DISCOVERY_STARS = 103;
 
 const BASE_STAR_COORDINATES = [
@@ -88,9 +90,20 @@ const BASE_PLACEMENT_DEFINITIONS = [
   ["Birthdays", "/birthdays", "exact", "Upcoming birthdays sidebar", "birthdays"],
 ];
 
+const VERIFIED_PLACEMENT_DEFINITIONS = BASE_PLACEMENT_DEFINITIONS.filter(([, route]) =>
+  isLifecycleNavigable(getRouteTruth(route))
+);
+const VERIFIED_PLACEMENT_FILLERS = VERIFIED_PLACEMENT_DEFINITIONS.filter(
+  ([, route]) => route !== "/home"
+).slice(0, BASE_PLACEMENT_DEFINITIONS.length - VERIFIED_PLACEMENT_DEFINITIONS.length);
+const ACTIVE_PLACEMENT_DEFINITIONS = [
+  ...VERIFIED_PLACEMENT_DEFINITIONS,
+  ...VERIFIED_PLACEMENT_FILLERS,
+];
+
 const PLACEMENT_DEFINITIONS = Array.from(
   { length: TOTAL_DISCOVERY_STARS },
-  (_, index) => BASE_PLACEMENT_DEFINITIONS[index % BASE_PLACEMENT_DEFINITIONS.length]
+  (_, index) => ACTIVE_PLACEMENT_DEFINITIONS[index % ACTIVE_PLACEMENT_DEFINITIONS.length]
 );
 
 export const DISCOVERY_PLACEMENTS = PLACEMENT_DEFINITIONS.map(
@@ -123,13 +136,9 @@ const LEARNING_GUIDES = {
   profile: { title: "Know your Profile space", description: "Your profile controls how your identity, details, and activity appear on Tengacion.", actionLabel: "Open My Profile", path: "/profile/:username" },
   homeFeed: { title: "Navigate the Home feed", description: "Feed controls help you browse posts and interact through reaction and sharing actions.", actionLabel: "Open Home", path: "/home" },
   findFriends: { title: "Discover people", description: "Find Friends provides filters and suggestions for building new connections.", actionLabel: "Find Friends", path: "/find-friends" },
-  dashboard: { title: "Understand your Dashboard", description: "The professional dashboard brings account insights and useful actions together.", actionLabel: "Open Dashboard", path: "/dashboard" },
-  memories: { title: "Return to Memories", description: "Memories groups earlier posts and moments with helpful date filters.", actionLabel: "Open Memories", path: "/memories" },
-  saved: { title: "Organize Saved content", description: "Saved keeps bookmarked items and collections ready for later.", actionLabel: "Open Saved", path: "/saved" },
   groups: { title: "Explore Groups", description: "Groups brings community navigation, discovery, and membership spaces together.", actionLabel: "Open Groups", path: "/groups" },
   settings: { title: "Control your account settings", description: "The Settings hub links security, privacy, notifications, display, and sound controls.", actionLabel: "Open Settings", path: "/settings" },
   display: { title: "Choose your display experience", description: "Display settings let you change themes and accessibility preferences.", actionLabel: "Open Display Settings", path: "/settings/display" },
-  events: { title: "Discover Events", description: "Events helps you review upcoming activities and community dates.", actionLabel: "Open Events", path: "/events" },
   birthdays: { title: "Remember Birthdays", description: "Birthdays highlights upcoming celebrations and related actions.", actionLabel: "Open Birthdays", path: "/birthdays" },
 };
 

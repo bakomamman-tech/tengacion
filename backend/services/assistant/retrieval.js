@@ -47,8 +47,11 @@ const retrieveAssistantContext = ({ query = "", classification = {}, context = {
           id: feature.id,
           title: feature.title,
           description: feature.safeDescription || feature.description || "",
-          route: feature.route || "",
+          route: feature.assistantEnabled === false ? "" : feature.route || "",
           access: feature.access,
+          lifecycleStatus: feature.lifecycleStatus || "unclassified",
+          assistantEnabled: feature.assistantEnabled !== false,
+          dataAuthority: feature.dataAuthority || "",
           allowedActions: [...(feature.allowedActions || [])],
         }
       : null,

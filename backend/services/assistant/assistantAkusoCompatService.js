@@ -175,6 +175,11 @@ const inferSensitivePendingLabel = (route = "") => {
   return "Secure page";
 };
 
+const isAssistantRouteAvailable = (route = "") => {
+  const feature = findFeatureByRoute(route);
+  return !feature || feature.assistantEnabled !== false;
+};
+
 const buildLegacySources = ({ message = "", akusoBody = {}, assistantMode = "", feature = null }) => {
   const isKnowledgeMode = assistantMode === "knowledge";
   const retrieved = {
@@ -473,12 +478,14 @@ const chat = async ({
     }));
   }
 
-  const actions = (Array.isArray(body.actions) ? body.actions : []).map((action) => ({
-    type: safeText(action.type || "", 40),
-    target: safeText(action.target || action.route || "", 160),
-    state: {},
-    label: safeText(action.label || "", 120),
-  }));
+  const actions = (Array.isArray(body.actions) ? body.actions : [])
+    .map((action) => ({
+      type: safeText(action.type || "", 40),
+      target: safeText(action.target || action.route || "", 160),
+      state: {},
+      label: safeText(action.label || "", 120),
+    }))
+    .filter((action) => isAssistantRouteAvailable(action.target));
 
   if (
     actions.length === 0 &&
@@ -486,7 +493,7 @@ const chat = async ({
     safeText(body.conversationId || conversationId, 80)
   ) {
     const rememberedRoute = safeText(priorMemory?.lastRoute || "", 160);
-    if (rememberedRoute.startsWith("/")) {
+    if (rememberedRoute.startsWith("/") && isAssistantRouteAvailable(rememberedRoute)) {
       const rememberedFeature = findFeatureByRoute(rememberedRoute);
       actions.push({
         type: "navigate",
@@ -540,10 +547,13 @@ const chat = async ({
       route: "",
     }));
 
-  const pendingRoute =
+  const inferredPendingRoute =
     body.category === "SENSITIVE_ACTION_REQUIRES_AUTH"
       ? inferSensitivePendingRoute({ message, feature: legacyFeature })
       : "";
+  const pendingRoute = isAssistantRouteAvailable(inferredPendingRoute)
+    ? inferredPendingRoute
+    : "";
   const confirmationAction =
     pendingRoute
       ? {

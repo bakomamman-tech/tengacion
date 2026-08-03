@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
 
-const NAV_ITEMS = [
+import { decorateNavigationItems } from "../config/routeTruth";
+
+const NAV_ITEMS = decorateNavigationItems([
   {
     key: "news",
     label: "News",
@@ -86,7 +88,7 @@ const NAV_ITEMS = [
     description: "Campaign tools",
     icon: "ads",
   },
-];
+]);
 
 function QuickNavIcon({ name }) {
   switch (name) {
@@ -210,7 +212,12 @@ function QuickNavList({ items, expanded, onToggleExpand, onNavigate }) {
               <QuickNavIcon name={item.icon} />
             </span>
             <span className="quick-nav-item-copy">
-              <b>{item.label}</b>
+              <span className="quick-nav-item-title">
+                <b>{item.label}</b>
+                {item.lifecycleLabel ? (
+                  <span className="feature-lifecycle-badge">{item.lifecycleLabel}</span>
+                ) : null}
+              </span>
               <small>{item.description}</small>
             </span>
           </NavLink>

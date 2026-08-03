@@ -9,6 +9,7 @@ import { Icon } from "./Icon";
 import { useAuth } from "./context/AuthContext";
 import { useNotifications } from "./context/NotificationsContext";
 import { useTheme } from "./context/ThemeContext";
+import { decorateNavigationItems } from "./config/routeTruth";
 import { getNotificationTarget } from "./notificationUtils";
 import { getThemeLabel } from "./themeConfig";
 
@@ -516,6 +517,7 @@ export default function Navbar({
           label: "Ads Manager",
           description: "Create, manage, and monitor Tengacion campaigns.",
           icon: "ads",
+          path: "/ads-manager",
           handler: () => navigate("/ads-manager"),
         },
         {
@@ -523,6 +525,7 @@ export default function Navbar({
           label: "Creator dashboard",
           description: "Manage publishing tools, uploads, and creator growth.",
           icon: "creator",
+          path: "/creator",
           handler: () => navigate("/creator"),
         },
         {
@@ -530,6 +533,7 @@ export default function Navbar({
           label: "Professional dashboard",
           description: "Track audience growth, reach, and performance.",
           icon: "dashboard",
+          path: "/dashboard",
           handler: () => navigate("/dashboard"),
         },
         {
@@ -537,6 +541,7 @@ export default function Navbar({
           label: "Go live",
           description: "Start a live session and stream to your audience.",
           icon: "broadcast",
+          path: "/live/go",
           handler: () => navigate("/live/go"),
         },
       ],
@@ -550,6 +555,7 @@ export default function Navbar({
           label: "Friends",
           description: "See your connections and discover people you may know.",
           icon: "friends",
+          path: "/friends",
           handler: () => navigate("/friends"),
         },
         {
@@ -557,6 +563,7 @@ export default function Navbar({
           label: "Groups",
           description: "Jump back into your creative communities.",
           icon: "groups",
+          path: "/groups",
           handler: () => navigate("/groups"),
         },
         {
@@ -564,6 +571,7 @@ export default function Navbar({
           label: "Events",
           description: "View upcoming sessions, meetups, and launches.",
           icon: "events",
+          path: "/events",
           handler: () => navigate("/events"),
         },
         {
@@ -571,6 +579,7 @@ export default function Navbar({
           label: "Birthdays",
           description: "Celebrate friends and keep up with reminders.",
           icon: "birthdays",
+          path: "/birthdays",
           handler: () => navigate("/birthdays"),
         },
       ],
@@ -584,6 +593,7 @@ export default function Navbar({
           label: "Home",
           description: "Return to your main Tengacion feed.",
           icon: "home",
+          path: "/home",
           handler: () => navigate("/home"),
         },
         {
@@ -591,6 +601,7 @@ export default function Navbar({
           label: "Trending",
           description: "See hot posts, creators, and conversations.",
           icon: "trending",
+          path: "/trending",
           handler: () => navigate("/trending"),
         },
         {
@@ -598,6 +609,7 @@ export default function Navbar({
           label: "News",
           description: "Read trusted local and international news inside Tengacion.",
           icon: "saved",
+          path: "/news",
           handler: () => navigate("/news"),
         },
         {
@@ -605,6 +617,7 @@ export default function Navbar({
           label: "Marketplace",
           description: "Browse trusted products, sellers, and storefronts.",
           icon: "marketplace",
+          path: "/marketplace",
           handler: () => navigate("/marketplace"),
         },
         {
@@ -612,6 +625,7 @@ export default function Navbar({
           label: "Reels",
           description: "Watch short-form video highlights.",
           icon: "reels",
+          path: "/reels",
           handler: () => navigate("/reels"),
         },
         {
@@ -619,6 +633,7 @@ export default function Navbar({
           label: "Live directory",
           description: "Browse active live sessions across Tengacion.",
           icon: "live",
+          path: "/live",
           handler: () => navigate("/live"),
         },
         {
@@ -626,6 +641,7 @@ export default function Navbar({
           label: "Gaming",
           description: "Explore gaming and interactive content.",
           icon: "gaming",
+          path: "/gaming",
           handler: () => navigate("/gaming"),
         },
         {
@@ -633,6 +649,7 @@ export default function Navbar({
           label: "Saved",
           description: "Open your saved posts, videos, and links.",
           icon: "saved",
+          path: "/saved",
           handler: () => navigate("/saved"),
         },
       ],
@@ -646,6 +663,7 @@ export default function Navbar({
           label: "Notifications",
           description: "Review the latest updates from across the app.",
           icon: "notifications",
+          path: "/notifications",
           handler: () => navigate("/notifications"),
         },
         {
@@ -653,6 +671,7 @@ export default function Navbar({
           label: "Messages",
           description: "Open your Messenger conversations.",
           icon: "messages",
+          path: "/messages",
           handler: () => navigate("/messages"),
         },
         {
@@ -660,6 +679,7 @@ export default function Navbar({
           label: "Rooms",
           description: "Join or browse the rooms experience.",
           icon: "rooms",
+          path: "/rooms",
           handler: () => navigate("/rooms"),
         },
         {
@@ -667,6 +687,7 @@ export default function Navbar({
           label: "Security settings",
           description: "Manage password, sessions, and account protection.",
           icon: "security",
+          path: "/settings/security",
           handler: () => navigate("/settings/security"),
         },
         {
@@ -674,18 +695,25 @@ export default function Navbar({
           label: "Privacy settings",
           description: "Control visibility and communication preferences.",
           icon: "privacy",
+          path: "/settings/privacy",
           handler: () => navigate("/settings/privacy"),
         },
       ],
     },
-  ];
+  ]
+    .map((section) => ({
+      ...section,
+      items: decorateNavigationItems(section.items),
+    }))
+    .filter((section) => section.items.length > 0);
 
-  const createActions = [
+  const createActions = decorateNavigationItems([
     {
       id: "create-post",
       label: "Post",
       description: "Share an update to your feed.",
       icon: "post",
+      path: "/home",
       handler: () => openCreateFlow("post"),
     },
     {
@@ -693,6 +721,7 @@ export default function Navbar({
       label: "Story",
       description: "Share a quick visual update.",
       icon: "story",
+      path: "/stories",
       handler: () => openCreateFlow("story"),
     },
     {
@@ -700,6 +729,7 @@ export default function Navbar({
       label: "Reel",
       description: "Create a short-form video post.",
       icon: "reel-create",
+      path: "/reels",
       handler: () => openCreateFlow("reel"),
     },
     {
@@ -707,6 +737,7 @@ export default function Navbar({
       label: "Live session",
       description: "Broadcast to your audience in real time.",
       icon: "broadcast",
+      path: "/live/go",
       handler: () => navigate("/live/go"),
     },
     {
@@ -714,6 +745,7 @@ export default function Navbar({
       label: "Group",
       description: "Start or manage a community.",
       icon: "groups",
+      path: "/groups",
       handler: () => navigate("/groups"),
     },
     {
@@ -721,6 +753,7 @@ export default function Navbar({
       label: "Event",
       description: "Plan and publish an upcoming activity.",
       icon: "events",
+      path: "/events",
       handler: () => navigate("/events"),
     },
     {
@@ -728,6 +761,7 @@ export default function Navbar({
       label: "Ad campaign",
       description: "Launch a promotional campaign.",
       icon: "ads",
+      path: "/ads-manager",
       handler: () => navigate("/ads-manager"),
     },
     {
@@ -735,9 +769,10 @@ export default function Navbar({
       label: "Creator dashboard",
       description: "Open creator tools and publishing controls.",
       icon: "dashboard",
+      path: "/creator",
       handler: () => navigate("/creator"),
     },
-  ];
+  ]);
 
   const normalizeNeedle = (value) => value.trim().toLowerCase();
   const filterItems = (items) => {
@@ -756,7 +791,7 @@ export default function Navbar({
     .filter((section) => section.items.length > 0);
   const filteredCreateActions = filterItems(createActions);
 
-  const navTabs = [
+  const navTabs = decorateNavigationItems([
     { id: "home", label: "Home", path: "/home" },
     { id: "trending", label: "Trending", path: "/trending" },
     { id: "news", label: "News", path: "/news" },
@@ -765,7 +800,7 @@ export default function Navbar({
     { id: "marketplace", label: "Marketplace", path: "/marketplace" },
     { id: "gaming", label: "Gaming", path: "/gaming" },
     { id: "reels", label: "Reels", path: "/reels" },
-  ];
+  ]);
 
   const currentMode = `${getThemeLabel(theme)} is on`;
   const accountMenuPanels = {
@@ -793,14 +828,6 @@ export default function Navbar({
           description: `${currentMode}. Review appearance and accessibility options.`,
           glyph: "DA",
           view: "display",
-          showChevron: true,
-        },
-        {
-          id: "account-feedback",
-          label: "Give feedback",
-          description: "Report a bug, suggest a feature, or share general feedback.",
-          glyph: "GF",
-          view: "feedback",
           showChevron: true,
         },
         ...(canOpenAdmin
@@ -881,13 +908,6 @@ export default function Navbar({
           description: "Read terms covering account ownership and disputes.",
           glyph: "TM",
           path: "/terms",
-        },
-        {
-          id: "help-bug",
-          label: "Report a problem",
-          description: "Open the feedback page with the bug-report flow selected.",
-          glyph: "RP",
-          path: "/feedback?type=bug",
         },
       ],
     },
@@ -973,40 +993,6 @@ export default function Navbar({
           description: "Open the full page for appearance and accessibility information.",
           glyph: "DC",
           path: "/settings/display",
-        },
-      ],
-    },
-    feedback: {
-      title: "Give feedback",
-      description: "Collect feedback flows directly from the account menu.",
-      items: [
-        {
-          id: "feedback-home",
-          label: "Feedback center",
-          description: "Open the main feedback page for general comments.",
-          glyph: "FC",
-          path: "/feedback",
-        },
-        {
-          id: "feedback-bug",
-          label: "Report a problem",
-          description: "Open the feedback page with the bug type selected.",
-          glyph: "RP",
-          path: "/feedback?type=bug",
-        },
-        {
-          id: "feedback-idea",
-          label: "Suggest a feature",
-          description: "Send an improvement idea or product request.",
-          glyph: "SF",
-          path: "/feedback?type=idea",
-        },
-        {
-          id: "feedback-safety",
-          label: "Safety feedback",
-          description: "Open a safety-focused feedback form for sensitive issues.",
-          glyph: "SA",
-          path: "/feedback?type=safety",
         },
       ],
     },
@@ -1165,7 +1151,12 @@ export default function Navbar({
                     }
                   }}
                 >
-                  {tab.label}
+                  <span>{tab.label}</span>
+                  {tab.lifecycleLabel ? (
+                    <span className="feature-lifecycle-badge nav-tab-lifecycle">
+                      {tab.lifecycleLabel}
+                    </span>
+                  ) : null}
                 </NavLink>
               ))}
             </div>

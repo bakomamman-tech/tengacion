@@ -35,6 +35,7 @@ const PRIVACY_SECTIONS = [
     title: "Controls and requests",
     items: [
       "Users can manage profile visibility, messaging permissions, notification preferences, security settings, and account details from settings where available.",
+      "Signed-in users can confirm their current password and download an on-demand JSON snapshot from Privacy Settings. The file includes an explicit scope and completeness manifest, excludes authentication and provider secrets, and identifies any activity section that requires a complete privacy-support archive.",
       "You can permanently delete your account and associated personal content from Settings or the public account deletion page. You can also request access, correction, deletion help, or privacy review through the public contact route.",
       "Limited transaction, accounting, fraud-prevention, dispute, and safety records may be retained where legally required. Tengacion removes profile details from retained records where possible.",
       "Public content, creator pages, marketplace listings, and profile information may remain visible until removed, unpublished, restricted, or deleted under platform controls.",
@@ -69,7 +70,7 @@ export default function PrivacyPolicyPage() {
           This policy explains how Tengacion uses account, creator, marketplace, payment,
           safety, and technical information to operate and protect the platform.
         </p>
-        <small>Last updated: June 27, 2026</small>
+        <small>Last updated: August 4, 2026</small>
       </section>
 
       <section className="public-policy-grid" aria-label="Privacy details">

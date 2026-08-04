@@ -1,4 +1,5 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const upload = require("../middleware/privateUpload");
@@ -22,6 +23,11 @@ const {
 } = require("../utils/profileFields");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
 const { deleteAccount } = require("../services/accountDeletionService");
+const {
+  AccountDataExportError,
+  buildAccountDataExport,
+} = require("../services/accountDataExportService");
+const { writeAuditLog } = require("../services/auditLogService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
 const {
   birthdayFromDob,
@@ -31,6 +37,17 @@ const {
 } = require("../utils/birthday");
 
 const router = express.Router();
+
+const accountDataExportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `user:${req.user.id}`,
+  message: {
+    error: "Too many account data exports requested. Please try again later.",
+  },
+});
 
 const avatarToUrl = (avatar) => {
   return mediaToUrl(avatar);
@@ -349,6 +366,60 @@ router.get("/me", auth, async (req, res) => {
     return res.json(user);
   } catch {
     return res.status(500).json({ error: "Failed to load profile" });
+  }
+});
+
+/* ================= EXPORT MY ACCOUNT DATA ================= */
+router.post("/me/export", auth, accountDataExportLimiter, async (req, res) => {
+  try {
+    const password = String(req.body?.password || "");
+    if (!password) {
+      return res.status(400).set("Cache-Control", "no-store").json({
+        error: "Your current password is required to export account data",
+      });
+    }
+    const account = await User.findById(req.user.id).select("+password isDeleted");
+    if (!account || account.isDeleted) {
+      return res.status(404).set("Cache-Control", "no-store").json({
+        error: "Account not found",
+      });
+    }
+    if (!(await account.comparePassword(password))) {
+      return res.status(403).set("Cache-Control", "no-store").json({
+        error: "Your current password is incorrect",
+      });
+    }
+
+    const payload = await buildAccountDataExport({ userId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "account_data_exported",
+      targetType: "User",
+      targetId: req.user.id,
+      metadata: {
+        schemaVersion: payload.schemaVersion,
+        complete: payload.manifest.complete,
+        sections: payload.manifest.sections,
+      },
+    });
+
+    return res
+      .status(200)
+      .set("Cache-Control", "no-store")
+      .set("Content-Disposition", `attachment; filename="${payload.fileName}"`)
+      .json(payload);
+  } catch (err) {
+    const statusCode = err instanceof AccountDataExportError
+      ? err.statusCode
+      : 500;
+    console.error("Account data export failed:", req.requestId, err);
+    return res.status(statusCode).set("Cache-Control", "no-store").json({
+      error: statusCode === 500
+        ? "Account data could not be exported. Please try again or contact privacy support."
+        : err.message,
+      requestId: req.requestId,
+    });
   }
 });
 

@@ -621,6 +621,18 @@ export const updatePrivacy = (payload) =>
     body: JSON.stringify(payload || {}),
   });
 
+export const exportAccountData = (password) =>
+  request(`${API_BASE}/users/me/export`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ password: String(password || "") }),
+    cache: "no-store",
+    timeoutMs: 45000,
+  });
+
 export const getAudioPreferences = () =>
   request(`${API_BASE}/users/me/audio`, {
     headers: getAuthHeaders(),

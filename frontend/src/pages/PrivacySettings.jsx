@@ -3,6 +3,7 @@ import { useState } from "react";
 import QuickAccessLayout from "../components/QuickAccessLayout";
 import {
   blockUser,
+  exportAccountData,
   hideStoriesFromUser,
   muteUser,
   restrictUser,
@@ -32,6 +33,9 @@ export default function PrivacySettings({ user }) {
   });
   const [targetId, setTargetId] = useState("");
   const [message, setMessage] = useState("");
+  const [exportMessage, setExportMessage] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const [exportPassword, setExportPassword] = useState("");
 
   const save = async () => {
     try {
@@ -53,6 +57,39 @@ export default function PrivacySettings({ user }) {
       setTargetId("");
     } catch (err) {
       setMessage(err?.message || "Action failed");
+    }
+  };
+
+  const downloadAccountData = async () => {
+    if (!exportPassword) {
+      setExportMessage("Enter your current password to export account data.");
+      return;
+    }
+    setExporting(true);
+    setExportMessage("");
+    try {
+      const payload = await exportAccountData(exportPassword);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json;charset=utf-8",
+      });
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = downloadUrl;
+      anchor.download = payload?.fileName || "tengacion-account-data.json";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(downloadUrl);
+      setExportPassword("");
+      setExportMessage(
+        payload?.manifest?.complete
+          ? "Your account data download is ready."
+          : "Your bounded account snapshot downloaded. Its manifest explains which section needs a complete privacy-support export."
+      );
+    } catch (err) {
+      setExportMessage(err?.message || "Failed to export account data");
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -123,6 +160,43 @@ export default function PrivacySettings({ user }) {
               Save privacy
             </button>
             {message ? <span className="account-inline-message">{message}</span> : null}
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Download your data">
+        <div className="account-form-grid">
+          <p>
+            Download a portable JSON snapshot of your profile, preferences, relationship lists,
+            creator profile, authored posts and stories, sent messages, and purchase history.
+            Passwords, token material, multi-factor secrets, provider recipient identifiers, and
+            other people's reactions or private replies are excluded.
+          </p>
+          <p className="account-inline-message">
+            Each activity section is capped at 5,000 records for an on-demand download. The file
+            manifest identifies any capped section and directs you to privacy support for a
+            complete archive.
+          </p>
+          <label>
+            Current password
+            <input
+              className="account-input"
+              type="password"
+              autoComplete="current-password"
+              value={exportPassword}
+              onChange={(event) => setExportPassword(event.target.value)}
+              placeholder="Confirm your password"
+            />
+          </label>
+          <div className="account-button-row">
+            <button type="button" onClick={downloadAccountData} disabled={exporting}>
+              {exporting ? "Preparing download..." : "Download account data"}
+            </button>
+            {exportMessage ? (
+              <span className="account-inline-message" role="status" aria-live="polite">
+                {exportMessage}
+              </span>
+            ) : null}
           </div>
         </div>
       </SectionCard>

@@ -439,11 +439,11 @@
       "access": "authenticated",
       "canonicalPath": "/settings",
       "appPaths": ["/settings", "/settings/security", "/settings/privacy", "/settings/notifications", "/settings/display", "/settings/sound", "/help-support"],
-      "dataAuthority": "Auth, user privacy, notification and audio APIs plus legitimate device display preferences.",
+      "dataAuthority": "Auth, user privacy, notification, audio and account-data export APIs plus legitimate device display preferences. Portable exports are generated server-side from allowlisted account-owned records and audited.",
       "ownerRole": "Trust and Identity Owner",
       "kpi": "Successful settings completion",
       "featureFlag": null,
-      "testEvidence": ["backend/tests/mfaRiskSecurity.test.js", "backend/tests/sessionAuth.test.js", "backend/tests/userSettingsRoutes.test.js", "frontend/src/pages/__tests__/SettingsJourneys.test.jsx"]
+      "testEvidence": ["backend/tests/mfaRiskSecurity.test.js", "backend/tests/sessionAuth.test.js", "backend/tests/userSettingsRoutes.test.js", "backend/tests/accountDataExportService.test.js", "backend/tests/accountDeletion.test.js", "frontend/src/pages/__tests__/SettingsJourneys.test.jsx", "frontend/src/pages/__tests__/PrivacySettingsDataExport.test.jsx"]
     },
     {
       "id": "feedback",

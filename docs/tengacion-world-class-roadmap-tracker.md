@@ -1,6 +1,6 @@
 # Tengacion World-Class Roadmap Implementation Tracker
 
-Last updated: 3 August 2026
+Last updated: 4 August 2026
 
 This document is the authoritative implementation record for the Facebook benchmark roadmap. A work package is marked complete only after its definition of done is implemented and verified. Planning documents and code presence alone do not count as completion.
 
@@ -45,8 +45,17 @@ This document is the authoritative implementation record for the Facebook benchm
 | ID | Work package | Status | Verification record |
 |---|---|---|---|
 | REL-001 | Separate public readiness probes from operator diagnostics | COMPLETE | Public liveness/readiness probes are non-cacheable and reveal only runtime state, degraded readiness returns HTTP 503 with a retry window, and authenticated Admin Settings exposes the full required/advisory dependency checklist. |
+| CONTROL-001 | Provide a self-service portable account snapshot | COMPLETE | Reauthenticated Privacy Settings downloads a server-generated, audited JSON snapshot with an explicit scope/completeness manifest, bounded activity sections and allowlisted fields that exclude authentication/provider secrets and other people's private replies or incoming messages. |
 
 ## Change log
+
+### 4 August 2026
+
+- Completed CONTROL-001 with the authenticated, current-password-confirmed and rate-limited `/api/users/me/export` contract plus a download control in Privacy Settings.
+- The versioned JSON snapshot includes account/profile preferences, relationship and security metadata, creator details, authored posts/stories, genuinely user-authored sent messages and purchases. System-generated reminders, incoming messages, other people's replies/reactions and authentication/provider secrets are excluded.
+- Added a per-section 5,000-record safety bound with truthful completeness metadata and a privacy-support next step, plus an `account_data_exported` audit event containing metadata only.
+- Documented the account export contract, updated the public Privacy Policy, registered its API authority/test evidence in route truth and taught Akuso to direct account-data requests to the real Privacy Settings control.
+- CONTROL-001 verification passed: 3 focused backend test files passed all 15 tests, 3 focused frontend test files passed all 9 tests, backend syntax checks and frontend lint were clean, action and encoding audits passed, and the frontend production build completed successfully.
 
 ### 3 August 2026
 

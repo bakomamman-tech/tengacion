@@ -586,6 +586,13 @@ export default function Sidebar({
         >
           Calculator
         </button>
+
+        <button
+          className={sidebarBtnClass(location.pathname === "/cheque")}
+          onClick={() => navigate("/cheque")}
+        >
+          Cheque
+        </button>
       </div>
 
     </aside>

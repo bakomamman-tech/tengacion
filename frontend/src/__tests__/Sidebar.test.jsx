@@ -85,6 +85,19 @@ describe("Sidebar", () => {
     expect(screen.getByRole("button", { name: /enter millionaire/i })).toBeInTheDocument();
   });
 
+  it("renders Cheque after Calculator and opens its route", () => {
+    setMatchMedia(false);
+
+    render(<Sidebar user={{ _id: "user-1", name: "Ada", username: "ada" }} />);
+
+    const calculatorButton = screen.getByRole("button", { name: "Calculator" });
+    const chequeButton = screen.getByRole("button", { name: "Cheque" });
+
+    expect(calculatorButton.nextElementSibling).toBe(chequeButton);
+    fireEvent.click(chequeButton);
+    expect(navigateMock).toHaveBeenCalledWith("/cheque");
+  });
+
   it("opens the Millionaire registration from the right sidebar", () => {
     setMatchMedia(false);
 

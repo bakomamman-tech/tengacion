@@ -10,6 +10,7 @@ import {
   toggleFollowCreator,
 } from "../../api";
 import CreatorFanPagePreview from "../../components/creator/CreatorFanPagePreview";
+import { triggerFileDownload } from "../../utils/downloadFile";
 import {
   buildCreatorFanPageDataFromPublicPayload,
   resolveCreatorFanPageTabKey,
@@ -256,14 +257,14 @@ export default function CreatorFanPageViewPage() {
 
       try {
         if (item?.downloadUrl) {
-          window.open(item.downloadUrl, "_blank", "noopener,noreferrer");
+          triggerFileDownload(item.downloadUrl);
           return;
         }
         const payload = await getDownloadUrl(itemType, itemId);
         if (!payload?.downloadUrl) {
           throw new Error("Download unavailable");
         }
-        window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
+        triggerFileDownload(payload.downloadUrl);
       } catch (err) {
         toast.error(err?.message || "Could not prepare download.");
       }

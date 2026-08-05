@@ -272,7 +272,8 @@ export default function AlbumDetail() {
                 {track.streamUrl ? (
                   <audio
                     controls
-                    controlsList="nodownload"
+                    controlsList="nodownload noplaybackrate"
+                    disablePictureInPicture
                     src={track.streamUrl}
                     className="mt-2 w-full"
                   />

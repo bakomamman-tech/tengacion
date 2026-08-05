@@ -20,6 +20,7 @@ const {
 } = require("./entitlementService");
 const { buildSignedMediaUrl } = require("./mediaSigner");
 const { resolveBookDownloadMetadata } = require("../utils/bookDownloadMetadata");
+const { resolveTrackDownloadMetadata } = require("../utils/trackDownloadMetadata");
 const {
   buildCreatorIdPath,
   buildCreatorPublicPath,
@@ -99,6 +100,7 @@ const buildSignedUrl = ({
   filename = "",
   contentType = "",
   disposition = "",
+  accessType = "",
   bindToRequest = false,
 }) =>
   sourceUrl
@@ -111,6 +113,7 @@ const buildSignedUrl = ({
         filename,
         contentType,
         disposition,
+        accessType,
         bindToRequest,
         req,
         expiresInSec: 10 * 60,
@@ -261,6 +264,7 @@ const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements, creator
     || creatorSubscriptionActive
     || numberOrZero(track.price) <= 0
     || entitlements.has(entitlementKey);
+  const canDownload = ownerAccess || creatorSubscriptionActive || entitlements.has(entitlementKey);
   const previewSource = buildTrackPreviewSource(track, false);
   const streamSource = buildTrackPreviewSource(track, canAccessFull);
   const itemType = isPodcast ? "podcast" : "track";
@@ -288,6 +292,7 @@ const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements, creator
       itemType: "track",
       itemId: String(track._id),
       userId: viewerId,
+      accessType: "preview",
     }),
     streamUrl: buildSignedUrl({
       req,
@@ -295,8 +300,10 @@ const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements, creator
       itemType: "track",
       itemId: String(track._id),
       userId: viewerId,
+      accessType: canAccessFull ? "stream" : "preview",
+      bindToRequest: canAccessFull,
     }),
-    downloadUrl: canAccessFull
+    downloadUrl: canDownload
       ? buildSignedUrl({
           req,
           sourceUrl: toCleanString(track.audioUrl),
@@ -304,6 +311,10 @@ const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements, creator
           itemId: String(track._id),
           userId: viewerId,
           allowDownload: true,
+          accessType: "download",
+          disposition: "attachment",
+          bindToRequest: true,
+          ...resolveTrackDownloadMetadata(track),
         })
       : "",
     route: `/tracks/${String(track._id)}`,
@@ -312,7 +323,7 @@ const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements, creator
     canAccessFull,
     canPreview: Boolean(previewSource || streamSource),
     canStream: Boolean(streamSource),
-    canDownload: Boolean(canAccessFull && toCleanString(track.audioUrl)),
+    canDownload: Boolean(canDownload && toCleanString(track.audioUrl)),
     canBuy: numberOrZero(track.price) > 0 && !ownerAccess,
     durationSec: numberOrZero(track.durationSec),
     previewStartSec: numberOrZero(track.previewStartSec),

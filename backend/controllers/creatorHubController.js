@@ -22,6 +22,7 @@ const {
 } = require("../services/paymentOpsService");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
 const { resolveBookDownloadMetadata } = require("../utils/bookDownloadMetadata");
+const { resolveTrackDownloadMetadata } = require("../utils/trackDownloadMetadata");
 const {
   listSavedCreatorContent,
   normalizeProgressItemType,
@@ -250,6 +251,8 @@ exports.getContinueListening = asyncHandler(async (req, res) => {
               itemType: "track",
               itemId: row.itemId.toString(),
               userId,
+              accessType: entitled ? "stream" : "preview",
+              bindToRequest: entitled,
               req,
               expiresInSec: 10 * 60,
             })
@@ -496,6 +499,9 @@ exports.getProtectedStream = asyncHandler(async (req, res) => {
     itemType: item.itemType,
     itemId: item.itemId.toString(),
     userId: userId || "",
+    accessType:
+      item.itemType === "track" ? (canAccessFull ? "stream" : "preview") : "",
+    bindToRequest: item.itemType === "track" && canAccessFull,
     req,
     expiresInSec: 10 * 60,
     ...(item.itemType === "book"
@@ -541,18 +547,17 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "Download source not available" });
   }
 
-  const freeAccess = Number(item.price || 0) <= 0;
   const ownerAccess = await checkOwnerAccess({ userId, item });
-  const paidAccess =
-    !freeAccess &&
-    (await hasEntitlement({
-      userId,
-      itemType: item.itemType,
-      itemId: item.itemId,
-      creatorId,
-    }));
+  const freeAccess = Number(item.price || 0) <= 0;
+  const paidAccess = await hasEntitlement({
+    userId,
+    itemType: item.itemType,
+    itemId: item.itemId,
+    creatorId,
+  });
+  const freeDownloadAllowed = item.itemType !== "track" && freeAccess;
 
-  if (!freeAccess && !ownerAccess && !paidAccess) {
+  if (!freeDownloadAllowed && !ownerAccess && !paidAccess) {
     return res.status(402).json({
       error: "Purchase required before download",
       itemType: item.itemType,
@@ -573,6 +578,8 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
         itemId: item.itemId.toString(),
         userId,
         allowDownload: true,
+        accessType: item.itemType === "track" ? "download" : "",
+        bindToRequest: item.itemType === "track",
         req,
         expiresInSec: 10 * 60,
         ...(item.itemType === "book"
@@ -581,6 +588,12 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
               disposition: "inline",
               bindToRequest: true,
             }
+          : item.itemType === "track"
+            ? {
+                ...resolveTrackDownloadMetadata(item.payload),
+                disposition: "attachment",
+                bindToRequest: true,
+              }
           : {}),
       });
 
@@ -601,6 +614,13 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
     itemType: item.itemType,
     itemId: item.itemId.toString(),
     downloadUrl,
-    ...(item.itemType === "book" ? { download: resolveBookDownloadMetadata(item.payload) } : {}),
+    ...(["book", "track"].includes(item.itemType)
+      ? {
+          download:
+            item.itemType === "book"
+              ? resolveBookDownloadMetadata(item.payload)
+              : resolveTrackDownloadMetadata(item.payload),
+        }
+      : {}),
   });
 });

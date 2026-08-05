@@ -243,6 +243,7 @@ const buildStoryMusicCatalog = async ({ req, viewerId = "", page = 1, limit = 30
       itemType: "track",
       itemId,
       userId: viewerId,
+      accessType: "preview",
       req,
       expiresInSec: 10 * 60,
     });
@@ -367,6 +368,10 @@ const hydrateStoryMusicAttachment = async (attachment = {}, { req, viewerId = ""
           itemType: effectiveAttachment.itemType || attachment.itemType || "track",
           itemId: effectiveAttachment.itemId || attachment.itemId || "",
           userId: viewerId,
+          accessType:
+            String(effectiveAttachment.itemType || attachment.itemType || "track").toLowerCase() === "track"
+              ? "preview"
+              : "",
           req,
           expiresInSec: 10 * 60,
         })

@@ -53,6 +53,7 @@ exports.previewTrack = async (req, res) => {
     userId: req.user?.id || "",
     itemType: "track",
     itemId: track._id.toString(),
+    accessType: "preview",
     req,
     expiresInSec: 5 * 60,
   });

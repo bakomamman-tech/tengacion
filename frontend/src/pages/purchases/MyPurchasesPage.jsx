@@ -6,6 +6,7 @@ import {
   normalizePurchaseType,
   resolveOwnedPurchaseLabel,
 } from "../../utils/purchaseUx";
+import { triggerFileDownload } from "../../utils/downloadFile";
 
 const formatMoney = (value = 0, currency = "NGN") => {
   const amount = Number(value || 0);
@@ -82,10 +83,23 @@ const getActionTarget = (purchase, navigate) => {
   const downloadUrl = String(pick(purchase?.downloadUrl, purchase?.fileUrl) || "").trim();
   const creatorId = String(pick(purchase?.creatorId, purchase?.creator?._id) || "").trim();
 
+  if (type === "track" && id) {
+    return {
+      label: "Listen now",
+      onClick: () => navigate(`/tracks/${id}`),
+    };
+  }
+
   if (downloadUrl) {
     return {
       label: type === "book" ? "Read now" : type === "album" ? "Download bundle" : "Download now",
-      onClick: () => window.open(downloadUrl, "_blank", "noopener,noreferrer"),
+      onClick: () => {
+        if (["track", "podcast"].includes(type)) {
+          triggerFileDownload(downloadUrl);
+          return;
+        }
+        window.open(downloadUrl, "_blank", "noopener,noreferrer");
+      },
     };
   }
 
@@ -107,13 +121,6 @@ const getActionTarget = (purchase, navigate) => {
         }
         navigate(route);
       },
-    };
-  }
-
-  if (type === "track" && id) {
-    return {
-      label: "Listen now",
-      onClick: () => navigate(`/tracks/${id}`),
     };
   }
 

@@ -28,7 +28,7 @@ router.get("/:creatorId", getCreatorById);
 router.get("/:creatorId/hub", optionalAuth, getCreatorHub);
 router.get("/:creatorId/public", optionalAuth, getCreatorHub);
 router.put("/:creatorId/follow", auth, toggleFollowCreator);
-router.get("/:creatorId/tracks", getCreatorTracks);
+router.get("/:creatorId/tracks", optionalAuth, getCreatorTracks);
 router.get("/:creatorId/books", getCreatorBooks);
 router.get("/:creatorId/albums", getCreatorAlbums);
 router.get("/:creatorId/videos", getCreatorVideos);

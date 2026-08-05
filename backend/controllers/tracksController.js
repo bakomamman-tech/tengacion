@@ -648,6 +648,8 @@ exports.getTrackStream = asyncHandler(async (req, res) => {
     userId: req.user?.id || "",
     itemType: "track",
     itemId: track._id.toString(),
+    accessType: hasFullAccess ? "stream" : "preview",
+    bindToRequest: hasFullAccess,
     req,
     expiresInSec: 5 * 60,
   });

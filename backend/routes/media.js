@@ -18,6 +18,7 @@ const {
   shouldDeferPublicUserReportCase,
 } = require("../services/moderationService");
 const { verifySignedMediaToken } = require("../services/mediaSigner");
+const { authorizeTrackMediaDelivery } = require("../services/trackMediaAccessService");
 
 const router = express.Router();
 
@@ -59,6 +60,7 @@ const resolvePublicMediaAccess = async ({ mediaId, req }) => {
 
 const serveSignedMedia = async (req, res, { token, headOnly = false }) => {
   const payload = verifySignedMediaToken(token, { req });
+  await authorizeTrackMediaDelivery(payload);
   const sourceUrl = String(payload?.src || "").trim();
   const disposition = String(payload?.disposition || "").trim() || (payload?.dl ? "attachment" : "inline");
   const filename = String(payload?.filename || "").trim();

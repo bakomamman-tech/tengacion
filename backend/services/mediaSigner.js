@@ -62,6 +62,7 @@ const buildSignedMediaUrl = ({
   filename = "",
   contentType = "",
   disposition = "",
+  accessType = "",
   bindToRequest = false,
   req,
 }) => {
@@ -88,6 +89,10 @@ const buildSignedMediaUrl = ({
   const resolvedDisposition = toTokenText(disposition, 24).toLowerCase();
   if (["inline", "attachment"].includes(resolvedDisposition)) {
     payload.disposition = resolvedDisposition;
+  }
+  const resolvedAccessType = toTokenText(accessType, 24).toLowerCase();
+  if (["preview", "stream", "download"].includes(resolvedAccessType)) {
+    payload.accessType = resolvedAccessType;
   }
   if (bindToRequest && req) {
     const binding = buildRequestBindingHash(req);

@@ -96,6 +96,23 @@ const normalizeContentType = (value = "") =>
     .trim()
     .slice(0, 120);
 
+const buildContentDisposition = ({ disposition = "inline", filename = "" } = {}) => {
+  const safeDisposition = String(disposition || "").toLowerCase() === "attachment"
+    ? "attachment"
+    : "inline";
+  const safeFilename = sanitizeFilename(filename, "media");
+  const asciiFallback = safeFilename
+    .normalize("NFKD")
+    .replace(/[^\x20-\x7e]+/g, "")
+    .replace(/["\\]+/g, "")
+    .trim() || "media";
+  const encodedFilename = encodeURIComponent(safeFilename).replace(/[!'()*]/g, (character) =>
+    `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+
+  return `${safeDisposition}; filename="${asciiFallback}"; filename*=UTF-8''${encodedFilename}`;
+};
+
 const extensionFromContentType = (contentType = "") => {
   const normalized = String(contentType || "").split(";")[0].trim().toLowerCase();
   return CONTENT_TYPE_EXTENSION_MAP[normalized] || "";
@@ -290,10 +307,7 @@ const setResponseHeaders = ({
     res.setHeader("Content-Type", mimeType);
   }
   if (filename) {
-    res.setHeader(
-      "Content-Disposition",
-      `${disposition}; filename="${String(filename).replace(/"/g, "")}"`
-    );
+    res.setHeader("Content-Disposition", buildContentDisposition({ disposition, filename }));
   }
   if (cacheControl) {
     res.setHeader("Cache-Control", cacheControl);
@@ -561,6 +575,7 @@ const streamSourceMedia = async ({
 };
 
 module.exports = {
+  buildContentDisposition,
   extractMediaObjectId,
   extensionFromContentType,
   inferContentTypeFromFilename,

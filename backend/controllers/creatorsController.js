@@ -87,14 +87,13 @@ const countCreatorContent = async ({ creatorId, userId }) => {
 };
 
 const mapTrackForHub = async ({ track, req, userId }) => {
-  const canPlayFull = Number(track.price) <= 0 || (userId
-    ? await hasEntitlement({
-        userId,
-        itemType: "track",
-        itemId: track._id,
-        creatorId: track.creatorId,
-      })
-    : false);
+  const paidAccess = Boolean(userId) && (await hasEntitlement({
+    userId,
+    itemType: "track",
+    itemId: track._id,
+    creatorId: track.creatorId,
+  }));
+  const canPlayFull = Number(track.price) <= 0 || paidAccess;
   const streamSource = canPlayFull ? track.audioUrl : track.previewUrl;
   return {
     id: track._id.toString(),
@@ -106,7 +105,7 @@ const mapTrackForHub = async ({ track, req, userId }) => {
     priceUSD: Number(track.priceGlobal || 0),
     isFree: Number(track.price) <= 0,
     canStream: Boolean(streamSource),
-    canDownload: canPlayFull,
+    canDownload: paidAccess,
     previewUrl: track.previewUrl || "",
     previewStartSec: Number(track.previewStartSec || 0),
     previewLimitSec: Number(track.previewLimitSec || 30),
@@ -116,6 +115,8 @@ const mapTrackForHub = async ({ track, req, userId }) => {
           itemType: "track",
           itemId: track._id.toString(),
           userId: userId || "",
+          accessType: canPlayFull ? "stream" : "preview",
+          bindToRequest: canPlayFull,
           req,
           expiresInSec: 10 * 60,
         })
@@ -380,30 +381,78 @@ exports.getCreatorTracks = asyncHandler(async (req, res) => {
   }
   Object.assign(query, ACTIVE_TRACK_FILTER);
 
-  const tracks = await Track.find(query).sort({ createdAt: -1 }).lean();
-  return res.json(
-    tracks.map((track) => ({
-      _id: track._id.toString(),
-      creatorId: track.creatorId?.toString() || "",
-      title: track.title || "",
-      description: track.description || "",
-      price: Number(track.price) || 0,
-      priceGlobal: Number(track.priceGlobal) || 0,
-      previewUrl: track.previewUrl || "",
-      audioUrl: track.audioUrl || "",
-      previewStartSec: Number(track.previewStartSec || 0),
-      previewLimitSec: Number(track.previewLimitSec || 30),
-      coverImageUrl: track.coverImageUrl || "",
-      durationSec: Number(track.durationSec) || 0,
-      kind: track.kind || "music",
-      podcastSeries: track.podcastSeries || "",
-      seasonNumber: Number(track.seasonNumber || 0),
-      episodeNumber: Number(track.episodeNumber || 0),
-      playsCount: Number(track.playsCount || 0),
-      likesCount: Number(track.likesCount || 0),
-      createdAt: track.createdAt,
-    }))
+  const [tracks, creator] = await Promise.all([
+    Track.find(query).sort({ createdAt: -1 }).lean(),
+    CreatorProfile.findById(creatorId).select("userId").lean(),
+  ]);
+  const userId = req.user?.id || "";
+  const ownerAccess = Boolean(userId) && String(creator?.userId || "") === String(userId);
+  const payload = await Promise.all(
+    tracks.map(async (track) => {
+      const paidAccess = Boolean(userId) && (await hasEntitlement({
+        userId,
+        itemType: "track",
+        itemId: track._id,
+        creatorId: track.creatorId,
+      }));
+      const canPlayFull = Number(track.price || 0) <= 0 || ownerAccess || paidAccess;
+      const fullSource = String(track.audioUrl || track.fullAudioUrl || "");
+      const previewSource = String(
+        track.previewUrl || track.previewSampleUrl || (Number(track.price || 0) <= 0 ? fullSource : "")
+      );
+      const streamSource = canPlayFull ? fullSource : previewSource;
+      const signedPreviewUrl = previewSource
+        ? buildSignedMediaUrl({
+            sourceUrl: previewSource,
+            itemType: "track",
+            itemId: track._id.toString(),
+            userId,
+            accessType: "preview",
+            req,
+            expiresInSec: 10 * 60,
+          })
+        : "";
+      const signedStreamUrl = streamSource
+        ? buildSignedMediaUrl({
+            sourceUrl: streamSource,
+            itemType: "track",
+            itemId: track._id.toString(),
+            userId,
+            accessType: canPlayFull ? "stream" : "preview",
+            bindToRequest: canPlayFull,
+            req,
+            expiresInSec: 10 * 60,
+          })
+        : "";
+
+      return {
+        _id: track._id.toString(),
+        creatorId: track.creatorId?.toString() || "",
+        title: track.title || "",
+        description: track.description || "",
+        price: Number(track.price) || 0,
+        priceGlobal: Number(track.priceGlobal || 0),
+        previewUrl: signedPreviewUrl,
+        audioUrl: signedStreamUrl,
+        streamUrl: signedStreamUrl,
+        canPlayFull,
+        previewOnly: !canPlayFull,
+        canDownload: ownerAccess || paidAccess,
+        previewStartSec: Number(track.previewStartSec || 0),
+        previewLimitSec: Number(track.previewLimitSec || 30),
+        coverImageUrl: track.coverImageUrl || "",
+        durationSec: Number(track.durationSec || 0),
+        kind: track.kind || "music",
+        podcastSeries: track.podcastSeries || "",
+        seasonNumber: Number(track.seasonNumber || 0),
+        episodeNumber: Number(track.episodeNumber || 0),
+        playsCount: Number(track.playsCount || 0),
+        likesCount: Number(track.likesCount || 0),
+        createdAt: track.createdAt,
+      };
+    })
   );
+  return res.json(payload);
 });
 
 exports.getCreatorBooks = asyncHandler(async (req, res) => {

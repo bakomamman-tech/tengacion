@@ -159,7 +159,15 @@ const buildViewerState = async (viewerId) => {
   };
 };
 
-const buildSignedPreviewUrl = ({ req, sourceUrl, itemType, itemId, viewerId }) => {
+const buildSignedPreviewUrl = ({
+  req,
+  sourceUrl,
+  itemType,
+  itemId,
+  viewerId,
+  accessType = "preview",
+  bindToRequest = false,
+}) => {
   const cleanSource = toCleanString(sourceUrl);
   if (!cleanSource) {
     return "";
@@ -170,6 +178,10 @@ const buildSignedPreviewUrl = ({ req, sourceUrl, itemType, itemId, viewerId }) =
     itemType,
     itemId,
     userId: viewerId || "",
+    accessType: ["track", "podcast"].includes(String(itemType || "").toLowerCase())
+      ? accessType
+      : "",
+    bindToRequest,
     req,
     expiresInSec: 10 * 60,
   });
@@ -372,6 +384,8 @@ const normalizeSummaryTrack = ({ track, viewerState, viewerId, req }) => {
         itemType: isPodcast ? "podcast" : "track",
         itemId,
         viewerId,
+        accessType: "stream",
+        bindToRequest: true,
       })
     : "";
 

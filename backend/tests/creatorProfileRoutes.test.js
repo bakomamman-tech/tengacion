@@ -1319,4 +1319,164 @@ describe("creator profile routes", () => {
 
     expect(entitlementAfterExpiry.body.entitled).toBe(false);
   });
+
+  test("track downloads require paid access, preserve the upload name, and recheck access at delivery", async () => {
+    const { profile } = await createUserAndProfile({ creatorTypes: ["music"] });
+    const { user: viewer, token: viewerToken } = await createViewer({
+      username: "download_buyer",
+      email: "download-buyer@example.com",
+    });
+    const sourceUrl = toDataUrl("audio/mpeg", "original paid song bytes");
+    const track = await Track.create({
+      creatorId: profile._id,
+      title: "Fallback Song Title",
+      description: "Paid download authorization test",
+      price: 2500,
+      priceNGN: 2500,
+      audioUrl: sourceUrl,
+      fullAudioUrl: sourceUrl,
+      audioMedia: {
+        secureUrl: sourceUrl,
+        url: sourceUrl,
+        provider: "cloudinary",
+        format: "mp3",
+        originalFilename: "Àṣà - Jailer.mp3",
+      },
+      audioFormat: "mp3",
+      previewUrl: toDataUrl("audio/mpeg", "preview bytes only"),
+      kind: "music",
+      creatorCategory: "music",
+      contentType: "track",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+
+    await request(app)
+      .get(`/api/download/track/${track._id}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(402);
+
+    const previewResponse = await request(app)
+      .get(`/api/music/tracks/${track._id}/preview`)
+      .expect(200);
+    const previewPath = new URL(previewResponse.body.streamUrl).pathname;
+    const previewFileResponse = await request(app)
+      .get(previewPath)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks = [];
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => callback(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+    expect(previewFileResponse.body.toString("utf8")).toBe("preview bytes only");
+
+    const purchase = await Purchase.create({
+      userId: viewer._id,
+      creatorId: profile._id,
+      itemType: "track",
+      itemId: track._id,
+      amount: 2500,
+      priceNGN: 2500,
+      currency: "NGN",
+      status: "paid",
+      provider: "paystack",
+      providerRef: "paid_track_download_001",
+      paidAt: new Date(),
+    });
+
+    const downloadResponse = await request(app)
+      .get(`/api/download/track/${track._id}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    expect(downloadResponse.body.download).toEqual({
+      filename: "Àṣà - Jailer.mp3",
+      contentType: "audio/mpeg",
+    });
+
+    const paidProfileResponse = await request(app)
+      .get(`/api/creator/${profile._id}/public-profile`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+    expect(paidProfileResponse.body.music.tracks[0].canDownload).toBe(true);
+
+    const downloadPath = new URL(downloadResponse.body.downloadUrl).pathname;
+    const fileResponse = await request(app)
+      .get(downloadPath)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks = [];
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => callback(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+
+    expect(fileResponse.headers["content-type"]).toContain("audio/mpeg");
+    expect(fileResponse.headers["content-disposition"]).toContain("attachment;");
+    expect(fileResponse.headers["content-disposition"]).toContain(
+      "filename*=UTF-8''%C3%80%E1%B9%A3%C3%A0%20-%20Jailer.mp3"
+    );
+    expect(fileResponse.body.toString("utf8")).toBe("original paid song bytes");
+
+    await Purchase.updateOne({ _id: purchase._id }, { $set: { status: "refunded" } });
+    await request(app).get(downloadPath).expect(403);
+  });
+
+  test("free standalone tracks remain streamable but are not downloadable by listeners", async () => {
+    const { profile } = await createUserAndProfile({ creatorTypes: ["music"] });
+    const { token: viewerToken } = await createViewer({
+      username: "free_track_listener",
+      email: "free-track-listener@example.com",
+    });
+    const sourceUrl = toDataUrl("audio/mpeg", "free stream bytes");
+    const track = await Track.create({
+      creatorId: profile._id,
+      title: "Free Stream Only",
+      description: "Free playback without a download entitlement",
+      price: 0,
+      priceNGN: 0,
+      audioUrl: sourceUrl,
+      fullAudioUrl: sourceUrl,
+      audioMedia: {
+        secureUrl: sourceUrl,
+        url: sourceUrl,
+        provider: "cloudinary",
+        format: "mp3",
+        originalFilename: "Free Stream Only.mp3",
+      },
+      audioFormat: "mp3",
+      kind: "music",
+      creatorCategory: "music",
+      contentType: "track",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+
+    const streamResponse = await request(app)
+      .get(`/api/stream/track/${track._id}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+    expect(streamResponse.body.canAccessFull).toBe(true);
+
+    const publicProfileResponse = await request(app)
+      .get(`/api/creator/${profile._id}/public-profile`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+    expect(publicProfileResponse.body.music.tracks[0].canAccessFull).toBe(true);
+    expect(publicProfileResponse.body.music.tracks[0].canDownload).toBe(false);
+    expect(publicProfileResponse.body.music.tracks[0].downloadUrl).toBe("");
+
+    const legacyTracksResponse = await request(app)
+      .get(`/api/creators/${profile._id}/tracks`)
+      .expect(200);
+    expect(legacyTracksResponse.body[0].audioUrl).toContain("/api/media/delivery/");
+    expect(legacyTracksResponse.body[0].audioUrl).not.toBe(sourceUrl);
+    expect(legacyTracksResponse.body[0].canDownload).toBe(false);
+
+    await request(app)
+      .get(`/api/download/track/${track._id}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(402);
+  });
 });

@@ -1603,7 +1603,8 @@ export default function PostCard({
               ) : null}
               <audio
                 controls
-                controlsList="nodownload"
+                controlsList="nodownload noplaybackrate"
+                disablePictureInPicture
                 src={audioPreviewUrl}
                 className="post-audio-player"
                 preload="metadata"

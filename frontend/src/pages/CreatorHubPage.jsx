@@ -13,6 +13,7 @@ import {
   toggleFollowCreator,
   trackDiscoveryEvents,
 } from "../api";
+import { triggerFileDownload } from "../utils/downloadFile";
 import PaywallModal from "../components/PaywallModal";
 import BookPdfSurface from "../components/creator/BookPdfSurface";
 import CreatorHero from "../components/creator/media/CreatorHero";
@@ -275,7 +276,8 @@ function CreatorPublicAudioPreview({ preview }) {
           ref={audioRef}
           className="creator-public-preview__player"
           controls
-          controlsList="nodownload"
+          controlsList="nodownload noplaybackrate"
+          disablePictureInPicture
           src={preview?.src}
           onLoadedMetadata={handleLoadedMetadata}
           onPlay={handlePlay}
@@ -831,11 +833,11 @@ export default function CreatorHubPage() {
     }
 
     if (item.downloadUrl) {
-      window.open(
-        item.mediaType === "document" ? buildPdfViewerSrc(item.downloadUrl) : item.downloadUrl,
-        "_blank",
-        "noopener,noreferrer"
-      );
+      if (item.mediaType === "document") {
+        window.open(buildPdfViewerSrc(item.downloadUrl), "_blank", "noopener,noreferrer");
+      } else {
+        triggerFileDownload(item.downloadUrl);
+      }
       return;
     }
 
@@ -858,11 +860,11 @@ export default function CreatorHubPage() {
       if (!downloadPayload?.downloadUrl) {
         throw new Error("Download unavailable");
       }
-      window.open(
-        item.mediaType === "document" ? buildPdfViewerSrc(downloadPayload.downloadUrl) : downloadPayload.downloadUrl,
-        "_blank",
-        "noopener,noreferrer"
-      );
+      if (item.mediaType === "document") {
+        window.open(buildPdfViewerSrc(downloadPayload.downloadUrl), "_blank", "noopener,noreferrer");
+      } else {
+        triggerFileDownload(downloadPayload.downloadUrl);
+      }
       await refreshPublicProfile().catch(() => null);
     } catch (err) {
       toast.error(err?.message || "Could not prepare download.");

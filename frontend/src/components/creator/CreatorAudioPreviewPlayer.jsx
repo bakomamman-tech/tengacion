@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { checkEntitlement, getDownloadUrl, initPayment } from "../../api";
+import { triggerFileDownload } from "../../utils/downloadFile";
 import PaymentTrustPanel from "../payments/PaymentTrustPanel";
 import PaymentSummaryPanel from "../payments/PaymentSummaryPanel";
 import PaystackSecureBadge from "../payments/PaystackSecureBadge";
@@ -97,6 +98,9 @@ export default function CreatorAudioPreviewPlayer({
   const [purchaseError, setPurchaseError] = useState("");
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [downloadBusy, setDownloadBusy] = useState(false);
+  const [hasDownloadAccess, setHasDownloadAccess] = useState(
+    Boolean(isCreatorOwner || item?.downloadUrl || item?.canDownload)
+  );
   const [hasFullAccess, setHasFullAccess] = useState(
     Boolean(
       isCreatorOwner ||
@@ -125,7 +129,7 @@ export default function CreatorAudioPreviewPlayer({
     && Boolean(fullSource)
     && Number(item?.price || 0) > 0
     && !(hasFullAccess || isCreatorOwner);
-  const canDownloadRelease = isPublicVariant && canPlayAudio && (hasFullAccess || isCreatorOwner);
+  const canDownloadRelease = isPublicVariant && canPlayAudio && hasDownloadAccess;
   const canRepeatPurchase =
     isPublicVariant
     && canPlayAudio
@@ -217,6 +221,7 @@ export default function CreatorAudioPreviewPlayer({
     setPurchaseError("");
     setCheckoutBusy(false);
     setDownloadBusy(false);
+    setHasDownloadAccess(Boolean(isCreatorOwner || item?.downloadUrl || item?.canDownload));
   }, [
     isCreatorOwner,
     item?.canAccessFull,
@@ -247,6 +252,7 @@ export default function CreatorAudioPreviewPlayer({
         });
         if (!cancelled && entitlement?.entitled) {
           setHasFullAccess(true);
+          setHasDownloadAccess(true);
         }
       } catch {
         // Leave the current state in place; the user can still purchase from this page.
@@ -456,7 +462,7 @@ export default function CreatorAudioPreviewPlayer({
       setPurchaseError("");
 
       if (item?.downloadUrl) {
-        window.open(item.downloadUrl, "_blank", "noopener,noreferrer");
+        triggerFileDownload(item.downloadUrl);
         return;
       }
 
@@ -465,7 +471,7 @@ export default function CreatorAudioPreviewPlayer({
         throw new Error("Download unavailable");
       }
 
-      window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
+      triggerFileDownload(payload.downloadUrl);
     } catch (error) {
       setPurchaseError(error?.message || "Could not prepare download.");
     } finally {

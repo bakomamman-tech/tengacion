@@ -19,12 +19,14 @@ const postsRoutes = require("../../apps/api/routes/posts");
 const storiesRoutes = require("../routes/stories");
 const errorHandler = require("../../apps/api/middleware/errorHandler");
 const User = require("../models/User");
+const CreatorProfile = require("../models/CreatorProfile");
 const Message = require("../models/Message");
 const ModerationAuditLog = require("../models/ModerationAuditLog");
 const ModerationCase = require("../models/ModerationCase");
 const MediaHash = require("../models/MediaHash");
 const Post = require("../models/Post");
 const Story = require("../models/Story");
+const Track = require("../models/Track");
 const UserStrike = require("../models/UserStrike");
 const Video = require("../models/Video");
 const { MODERATION_REPEAT_VIOLATOR_STRIKE_THRESHOLD } = require("../config/moderation");
@@ -1415,6 +1417,11 @@ describe("moderation routes and enforcement", () => {
       workflowState: { $in: ["OPEN", "UNDER_REVIEW", "ESCALATED"] },
     });
     expect(heldCase).toBeTruthy();
+    expect(heldCase).toMatchObject({
+      severity: "MEDIUM",
+      publicWarningLabel: "Media inspection incomplete",
+      internalNotes: expect.stringContaining("Technical inspection incomplete"),
+    });
 
     setAdminMediaInspectorForTests(async (candidate = {}) => {
       const isTarget = String(candidate.targetId || "") === post._id.toString();
@@ -1455,6 +1462,118 @@ describe("moderation routes and enforcement", () => {
       moderationStatus: "ALLOW",
       reviewRequired: false,
       visibility: "public",
+    });
+  });
+
+  test("admin recent scan deduplicates track aliases and excludes audio from visual inspection", async () => {
+    const creatorProfile = await CreatorProfile.create({
+      userId: regularUser._id,
+      displayName: "Track Alias Creator",
+      creatorTypes: ["music"],
+      status: "active",
+    });
+    const coverMediaId = new mongoose.Types.ObjectId().toString();
+    const previewMediaId = new mongoose.Types.ObjectId().toString();
+    const audioMediaId = new mongoose.Types.ObjectId().toString();
+    const coverUrl = `/api/media/${coverMediaId}`;
+    const previewUrl = `/api/media/${previewMediaId}`;
+    const audioUrl = `/api/media/${audioMediaId}`;
+    const track = await Track.create({
+      creatorId: creatorProfile._id,
+      title: "Alias Safe Track",
+      description: "A safe audio track with one cover image",
+      price: 0,
+      audioUrl,
+      fullAudioUrl: audioUrl,
+      audioMedia: {
+        url: audioUrl,
+        secureUrl: audioUrl,
+        secure_url: audioUrl,
+        format: "mp3",
+        resourceType: "video",
+        resource_type: "video",
+        originalFilename: "alias-safe-track.mp3",
+        bytes: 7_758_202,
+      },
+      previewUrl,
+      previewSampleUrl: previewUrl,
+      previewMedia: {
+        url: previewUrl,
+        secureUrl: previewUrl,
+        secure_url: previewUrl,
+        format: "mp3",
+        resourceType: "video",
+        resource_type: "video",
+        originalFilename: "alias-safe-preview.mp3",
+        bytes: 1_000_000,
+      },
+      coverImageUrl: coverUrl,
+      coverUrl,
+      coverMedia: {
+        url: coverUrl,
+        secureUrl: coverUrl,
+        secure_url: coverUrl,
+        format: "jpg",
+        resourceType: "image",
+        resource_type: "image",
+        originalFilename: "alias-safe-cover.jpg",
+        bytes: 3_776_048,
+      },
+      mediaType: "audio",
+      kind: "music",
+      contentType: "track",
+      isPublished: true,
+      publishedStatus: "published",
+      moderationStatus: "ALLOW",
+    });
+
+    let inspectedTrackCandidate = null;
+    setAdminMediaInspectorForTests(async (candidate = {}) => {
+      const isTrack = String(candidate.targetId || "") === track._id.toString();
+      if (isTrack) inspectedTrackCandidate = candidate;
+      const visualAssets = (Array.isArray(candidate.media) ? candidate.media : [])
+        .filter((asset) => ["image", "video"].includes(String(asset.mediaType || "")));
+      return {
+        decision: visualAssets.length > 0
+          ? {
+              decision: "approve",
+              labels: ["provider:test_visual_scan"],
+              reason: "Visual media passed.",
+              confidence: 0.99,
+            }
+          : null,
+        visualAssetCount: visualAssets.length,
+        inspectedAssetCount: visualAssets.length,
+        failedAssetCount: 0,
+        skippedAssetCount: 0,
+      };
+    });
+
+    const response = await request(app)
+      .post("/api/admin/moderation/scan/recent")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ limit: 20 })
+      .expect(200);
+
+    expect(inspectedTrackCandidate).toBeTruthy();
+    expect(inspectedTrackCandidate.media).toHaveLength(3);
+    expect(inspectedTrackCandidate.media.map((asset) => ({
+      role: asset.role,
+      mediaType: asset.mediaType,
+      mimeType: asset.mimeType,
+      mediaId: asset.mediaId,
+    }))).toEqual([
+      { role: "primary", mediaType: "image", mimeType: "image/jpeg", mediaId: coverMediaId },
+      { role: "preview", mediaType: "audio", mimeType: "audio/mpeg", mediaId: previewMediaId },
+      { role: "audio", mediaType: "audio", mimeType: "audio/mpeg", mediaId: audioMediaId },
+    ]);
+    expect(response.body.inspectionFailureCount).toBe(0);
+    expect(response.body.skippedAssetCount).toBe(0);
+    expect(await ModerationCase.countDocuments({ "subject.targetId": track._id.toString() })).toBe(0);
+    await expect(Track.findById(track._id).lean()).resolves.toMatchObject({
+      moderationStatus: "ALLOW",
+      publishedStatus: "published",
+      isPublished: true,
     });
   });
 

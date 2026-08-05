@@ -58,12 +58,7 @@ const normalizeValue = (value = "", maxLength = 1000) =>
 const uniqueStrings = (values = []) => [...new Set(values.filter(Boolean).map((entry) => String(entry)))];
 
 const toFileDescriptor = (file = {}) => {
-  const mime = String(file?.mimetype || "").toLowerCase();
-  const mediaType = mime.startsWith("video/")
-    ? "video"
-    : mime.startsWith("image/")
-      ? "image"
-      : "image";
+  const mediaType = toMediaType(file);
   return {
     role: file?.fieldname || "primary",
     mediaType,
@@ -124,7 +119,12 @@ const analyzeUploadFile = async (file = {}, uploaderId = "") => {
       uploaderId,
     });
   }
-  return analyzeImage({ localPath: file?.path || "", mimeType: mime, uploaderId });
+  return {
+    decision: "approve",
+    labels: [`media_type:${toMediaType(file)}`],
+    reason: "Non-visual media is handled by the applicable metadata and rights checks.",
+    confidence: 0,
+  };
 };
 
 const cleanupFiles = async (files = []) => {

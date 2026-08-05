@@ -526,6 +526,83 @@ const buildScanAsset = (url = "", {
   };
 };
 
+const dedupeScanAssets = (assets = []) => {
+  const seen = new Set();
+  return (Array.isArray(assets) ? assets : []).filter((asset) => {
+    if (!asset) return false;
+    const mediaId = normalizeText(asset.mediaId || extractMediaIdFromSource(asset.sourceUrl), 120);
+    const sourceUrl = normalizeText(asset.sourceUrl || asset.previewUrl || "", 1200);
+    const identityKeys = [
+      mediaId ? `media:${mediaId}` : "",
+      sourceUrl ? `source:${sourceUrl}` : "",
+    ].filter(Boolean);
+    if (identityKeys.some((key) => seen.has(key))) {
+      return false;
+    }
+    identityKeys.forEach((key) => seen.add(key));
+    return true;
+  });
+};
+
+const getStoredMediaUrl = (media = null, fallback = "") =>
+  normalizeText(
+    media?.secureUrl
+      || media?.secure_url
+      || media?.url
+      || media?.legacyPath
+      || fallback,
+    1200
+  );
+
+const inferStoredMediaMimeType = (media = null, mediaType = "file") => {
+  const format = normalizeText(media?.format || "", 32).toLowerCase().replace(/^\./, "");
+  const formats = {
+    aac: "audio/aac",
+    flac: "audio/flac",
+    m4a: "audio/mp4",
+    mp3: "audio/mpeg",
+    oga: "audio/ogg",
+    ogg: mediaType === "video" ? "video/ogg" : "audio/ogg",
+    wav: "audio/wav",
+    weba: "audio/webm",
+    avi: "video/x-msvideo",
+    m4v: "video/x-m4v",
+    mov: "video/quicktime",
+    mp4: "video/mp4",
+    webm: mediaType === "audio" ? "audio/webm" : "video/webm",
+    avif: "image/avif",
+    gif: "image/gif",
+    jpeg: "image/jpeg",
+    jpg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+  };
+  return formats[format]
+    || (mediaType === "video"
+      ? "video/mp4"
+      : mediaType === "audio"
+        ? "audio/mpeg"
+        : mediaType === "image"
+          ? "image/jpeg"
+          : "application/octet-stream");
+};
+
+const buildTrackScanAsset = ({
+  track = {},
+  media = null,
+  fallbackUrl = "",
+  req = null,
+  role = "primary",
+  mediaType = "file",
+} = {}) => buildScanAsset(getStoredMediaUrl(media, fallbackUrl), {
+  req,
+  role,
+  mediaType,
+  mimeType: inferStoredMediaMimeType(media, mediaType),
+  originalFilename: media?.originalFilename || `${track?._id || "track"}-${role}`,
+  fileSizeBytes: media?.bytes || 0,
+});
+
 const buildStoryScanMedia = (story = {}, req = null) => {
   const assets = [];
   const storyMedia = story?.media || {};
@@ -629,26 +706,53 @@ const buildBookScanMedia = (book = {}, req = null) => {
 };
 
 const buildTrackScanMedia = (track = {}, req = null) => {
-  const urls = [
-    track?.coverImageUrl,
-    track?.coverUrl,
-    track?.previewUrl,
-    track?.previewSampleUrl,
-    track?.videoUrl,
-    track?.previewClipUrl,
-    track?.audioUrl,
-    track?.fullAudioUrl,
+  const primaryMediaType = String(track?.mediaType || "audio").toLowerCase() === "video"
+    ? "video"
+    : "audio";
+  const assets = [
+    buildTrackScanAsset({
+      track,
+      media: track?.coverMedia,
+      fallbackUrl: track?.coverImageUrl || track?.coverUrl,
+      req,
+      role: "primary",
+      mediaType: "image",
+    }),
+    buildTrackScanAsset({
+      track,
+      media: track?.videoMedia,
+      fallbackUrl: track?.videoUrl,
+      req,
+      role: "video",
+      mediaType: "video",
+    }),
+    buildTrackScanAsset({
+      track,
+      media: track?.previewClipMedia,
+      fallbackUrl: track?.previewClipUrl,
+      req,
+      role: "preview_clip",
+      mediaType: "video",
+    }),
+    buildTrackScanAsset({
+      track,
+      media: track?.previewMedia,
+      fallbackUrl: track?.previewUrl || track?.previewSampleUrl,
+      req,
+      role: "preview",
+      mediaType: primaryMediaType,
+    }),
+    buildTrackScanAsset({
+      track,
+      media: track?.audioMedia,
+      fallbackUrl: track?.audioUrl || track?.fullAudioUrl,
+      req,
+      role: primaryMediaType === "video" ? "video" : "audio",
+      mediaType: primaryMediaType,
+    }),
   ].filter(Boolean);
 
-  return urls
-    .map((url, index) => buildScanAsset(url, {
-      req,
-      role: index === 0 ? "primary" : `attachment_${index + 1}`,
-      mediaType: String(url || "").match(/\.(mp4|mov|webm|m4v)(\?|$)/i) ? "video" : "image",
-      mimeType: String(url || "").match(/\.(mp4|mov|webm|m4v)(\?|$)/i) ? "video/mp4" : "",
-      originalFilename: `${track?._id || "track"}-${index + 1}`,
-    }))
-    .filter(Boolean);
+  return dedupeScanAssets(assets);
 };
 
 const buildAlbumScanMedia = (album = {}, req = null) => {
@@ -1280,7 +1384,7 @@ const inspectCandidateMediaForModeration = async (candidate = {}, { signal = nul
     return adminMediaInspectorForTests(candidate);
   }
 
-  const visualAssets = (Array.isArray(candidate?.media) ? candidate.media : [])
+  const visualAssets = dedupeScanAssets(candidate?.media)
     .map((asset, candidateIndex) => ({ ...asset, candidateIndex }))
     .filter(isPotentialVisualAsset);
   const assets = visualAssets.slice(0, ADMIN_SCAN_MAX_MEDIA_ASSETS);
@@ -1497,6 +1601,8 @@ const mapMediaInspectionDecisionToPolicy = (decision = null) => {
   const isExplicit = hasLabel("explicit_pornography", "sexual_content_review", "explicit_adult");
   const isGore = hasLabel("graphic_gore");
   const isAnimalCruelty = hasLabel("animal_cruelty");
+  const isTechnicalInspectionFailure = labels.length > 0
+    && labels.every((label) => MEDIA_INSPECTION_FAILURE_LABELS.has(label));
 
   let queue = "upload_moderation";
   if (isSuspectedChild) queue = "suspected_child_exploitation";
@@ -1514,8 +1620,16 @@ const mapMediaInspectionDecisionToPolicy = (decision = null) => {
   return {
     queue,
     status,
-    severity: critical ? "CRITICAL" : status === "HOLD_FOR_REVIEW" ? "HIGH" : "CRITICAL",
-    priorityScore: critical ? Math.max(90, Math.round(confidence * 100)) : Math.max(70, Math.round(confidence * 100)),
+    severity: critical
+      ? "CRITICAL"
+      : isTechnicalInspectionFailure
+        ? "MEDIUM"
+        : status === "HOLD_FOR_REVIEW" ? "HIGH" : "CRITICAL",
+    priorityScore: critical
+      ? Math.max(90, Math.round(confidence * 100))
+      : isTechnicalInspectionFailure
+        ? Math.max(40, Math.round(confidence * 100))
+        : Math.max(70, Math.round(confidence * 100)),
     riskLabels: uniqueStrings(labels),
     quarantineMedia: true,
     neverGeneratePreview: isSuspectedChild || isExplicit,
@@ -1525,8 +1639,12 @@ const mapMediaInspectionDecisionToPolicy = (decision = null) => {
       ? "Explicit adult content blocked"
       : isSuspectedChild
         ? "Suspected child exploitation content blocked"
-        : "Visual media held for safety review",
-    summary: reason,
+        : isTechnicalInspectionFailure
+          ? "Media inspection incomplete"
+          : "Visual media held for safety review",
+    summary: isTechnicalInspectionFailure
+      ? `Technical inspection incomplete: ${reason}`
+      : reason,
   };
 };
 
@@ -3764,7 +3882,7 @@ const scanContentForModeration = async ({
       if (deadlineExceeded) {
         scanDeadlineReached = true;
       }
-      const candidateVisualAssetCount = (Array.isArray(candidate?.media) ? candidate.media : [])
+      const candidateVisualAssetCount = dedupeScanAssets(candidate?.media)
         .filter(isPotentialVisualAsset)
         .length;
       mediaInspection = {
@@ -3806,7 +3924,7 @@ const scanContentForModeration = async ({
         .map((entry) => [Number(entry?.candidateIndex), String(entry?.fileHash || "")])
         .filter(([index, fileHash]) => Number.isInteger(index) && fileHash)
     );
-    const moderationMedia = (Array.isArray(candidate?.media) ? candidate.media : []).map(
+    const moderationMedia = dedupeScanAssets(candidate?.media).map(
       (asset, index) => ({
         ...asset,
         fileHash: inspectedHashByIndex.get(index) || asset?.fileHash || "",
@@ -4242,7 +4360,10 @@ const performModerationAction = async ({
     scope: ["suspend_user", "ban_user"].includes(normalizedAction) ? "user" : "content",
     subjectTitle: moderationCase.subject?.title || moderationCase.queue || "",
     subjectDescription: moderationCase.subject?.description || "",
-    labels: Array.isArray(moderationCase.labels) ? moderationCase.labels : [],
+    labels: uniqueStrings([
+      ...(Array.isArray(moderationCase.labels) ? moderationCase.labels : []),
+      ...(Array.isArray(moderationCase.riskLabels) ? moderationCase.riskLabels : []),
+    ]),
     clientSeed: toId(moderationCase._id),
   }).catch(() => null);
 

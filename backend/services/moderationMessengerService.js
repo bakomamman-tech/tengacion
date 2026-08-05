@@ -5,6 +5,19 @@ const { createNotification } = require("./notificationService");
 const { toIdString } = require("../utils/messagePayload");
 
 const MODERATION_SENDER_ROLES = ["admin", "super_admin", "moderator", "trust_safety_admin"];
+const TECHNICAL_REVIEW_LABELS = new Set([
+  "inspection_failed",
+  "visual_provider_unavailable",
+  "visual_provider_partial_failure",
+  "video_decoder_unavailable",
+  "video_frames_missing",
+  "video_frame_extraction_failed",
+  "media_download_failed",
+  "media_download_timeout",
+  "media_asset_limit_exceeded",
+  "scan_deadline_exceeded",
+  "media_too_large",
+]);
 
 const cleanText = (value = "", maxLength = 2000) =>
   String(value || "")
@@ -94,7 +107,16 @@ const buildModerationMessageText = ({
   subjectDescription = "",
   labels = [],
 } = {}) => {
+  const normalizedAction = String(action || "").trim().toLowerCase();
   const normalizedScope = String(scope || "").trim().toLowerCase() === "user" ? "user" : "content";
+  const normalizedLabels = Array.isArray(labels)
+    ? [...new Set(labels.map((entry) => String(entry || "").trim().toLowerCase()).filter(Boolean))]
+    : [];
+  const technicalReview = normalizedLabels.some((label) => TECHNICAL_REVIEW_LABELS.has(label))
+    && normalizedLabels.every((label) =>
+      TECHNICAL_REVIEW_LABELS.has(label)
+      || ["mime:", "provider:", "uploader:", "media_type:"].some((prefix) => label.startsWith(prefix))
+    );
   const subjectLine = normalizedScope === "user"
     ? "your account"
     : cleanText(subjectTitle || subjectDescription || "your upload", 160);
@@ -108,9 +130,13 @@ const buildModerationMessageText = ({
     labels,
     combinedText: [subjectTitle, subjectDescription, reason, Array.isArray(labels) ? labels.join(" ") : ""].join(" "),
   });
-  const closing = normalizedScope === "user"
-    ? "Please review the community guidelines before posting again. Continued violations can result in further restrictions or a permanent ban."
-    : "Please do not re-upload prohibited content. Continued violations can result in further restrictions or a permanent ban.";
+  const closing = ["approve", "restore_content"].includes(normalizedAction)
+    ? "No further action is required."
+    : technicalReview && ["hold_for_review", "quarantine"].includes(normalizedAction)
+      ? "This is a technical review hold, not a finding that the upload violated a safety rule."
+      : normalizedScope === "user"
+        ? "Please review the community guidelines before posting again. Continued violations can result in further restrictions or a permanent ban."
+        : "Please do not re-upload prohibited content. Continued violations can result in further restrictions or a permanent ban.";
 
   return [
     intro,
@@ -249,7 +275,7 @@ const sendModerationMessengerWarning = async ({
     recipient: receiverRoom,
     sender: senderRoom,
     type: "message",
-    text: "sent you a moderation warning",
+    text: "sent you a moderation update",
     entity: {
       id: payload._id,
       model: "Message",

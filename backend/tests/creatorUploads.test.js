@@ -20,6 +20,9 @@ const {
   classifyRecordMedia,
   LEGACY_MEDIA_SOURCES,
 } = require("../services/mediaAuditService");
+const {
+  setVisualModerationClientForTests,
+} = require("../services/visualModerationProvider");
 
 let mongod;
 let sequence = 0;
@@ -98,6 +101,10 @@ describe("creator upload routes", () => {
 
   beforeEach(async () => {
     await mongoose.connection.db.dropDatabase();
+  });
+
+  afterEach(() => {
+    setVisualModerationClientForTests(null);
   });
 
   afterAll(async () => {
@@ -258,6 +265,39 @@ describe("creator upload routes", () => {
       }),
       expect.any(Function)
     );
+  });
+
+  test("POST /api/creator/music does not send audio files to visual moderation", async () => {
+    const { token } = await createUserAndProfile();
+    const moderationCreate = jest.fn(async () => ({ results: [] }));
+    const responsesCreate = jest.fn(async () => ({ output_text: "" }));
+    setVisualModerationClientForTests({
+      moderations: { create: moderationCreate },
+      responses: { create: responsesCreate },
+    });
+
+    const response = await request(app)
+      .post("/api/creator/music")
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "Audio Is Not An Image")
+      .field("artistName", "Creator Example")
+      .field("genre", "Afrobeats")
+      .field("description", "Audio-only regression coverage")
+      .field("releaseType", "single")
+      .field("price", "0")
+      .field("publishedStatus", "draft")
+      .attach("audio", Buffer.from("audio-only-content"), {
+        filename: "audio-only.mp3",
+        contentType: "audio/mpeg",
+      })
+      .expect(201);
+
+    expect(response.body).toMatchObject({
+      title: "Audio Is Not An Image",
+      publishedStatus: "draft",
+    });
+    expect(moderationCreate).not.toHaveBeenCalled();
+    expect(responsesCreate).not.toHaveBeenCalled();
   });
 
   test("creator albums stay private until submitted and then publish immediately", async () => {

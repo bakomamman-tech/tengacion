@@ -59,6 +59,11 @@ const PUBLIC_STATIC_PATHS = new Set([
 
 const NOINDEX_RULES = [
   {
+    patterns: ["/AI-Professionals-In-Kaduna-State"],
+    title: "AI Professionals in Kaduna State | Tengacion",
+    description: "A private directory of AI professionals and technology leaders in Kaduna State.",
+  },
+  {
     patterns: ["/login", "/kadahive/login"],
     title: "Log In | Tengacion",
     description: "Log in to Tengacion to access your feed, creators, purchases, and messages.",

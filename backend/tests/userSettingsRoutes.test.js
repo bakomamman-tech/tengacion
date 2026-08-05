@@ -143,5 +143,39 @@ describe("user settings API authority", () => {
     expect(fetched.body.audioPrefs).toEqual(response.body.audioPrefs);
     expect(fetched.body.audioPrefs.autoplayEverything).toBeUndefined();
   });
-});
 
+  test("validates and saves phone and date of birth for protected directory access", async () => {
+    const viewer = await createUser({
+      name: "Directory Viewer",
+      username: "directory_viewer",
+      email: "directory-viewer@example.com",
+    });
+
+    await request(app)
+      .put("/api/users/me")
+      .set("Authorization", `Bearer ${viewer.token}`)
+      .send({ phone: "not-a-phone", dob: "1992-08-14" })
+      .expect(400);
+
+    await request(app)
+      .put("/api/users/me")
+      .set("Authorization", `Bearer ${viewer.token}`)
+      .send({ phone: "+234 803 123 4567", dob: new Date().toISOString().slice(0, 10) })
+      .expect(400);
+
+    const response = await request(app)
+      .put("/api/users/me")
+      .set("Authorization", `Bearer ${viewer.token}`)
+      .send({ phone: "+234 803 123 4567", dob: "1992-08-14" })
+      .expect(200);
+
+    expect(response.body.phone).toBe("+234 803 123 4567");
+    expect(response.body.dob).toBe("1992-08-14T00:00:00.000Z");
+    expect(response.body.birthday).toMatchObject({
+      day: 14,
+      month: 8,
+      year: 1992,
+      visibility: "private",
+    });
+  });
+});

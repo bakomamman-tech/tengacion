@@ -21,6 +21,7 @@ const {
   sanitizeCountryValue,
   sanitizePhoneValue,
 } = require("../utils/profileFields");
+const { isValidPhoneNumber, normalizePhoneNumber } = require("../utils/phone");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
 const { deleteAccount } = require("../services/accountDeletionService");
 const {
@@ -486,6 +487,8 @@ router.put("/me", auth, async (req, res) => {
       education,
       website,
       birthday,
+      phone,
+      dob,
     } = req.body;
 
     if (avatar !== undefined || cover !== undefined) {
@@ -504,6 +507,45 @@ router.put("/me", auth, async (req, res) => {
     if (workplace !== undefined) updates.workplace = trimTextValue(workplace);
     if (education !== undefined) updates.education = trimTextValue(education);
     if (website !== undefined) updates.website = trimTextValue(website);
+    if (phone !== undefined) {
+      const normalizedPhone = normalizePhoneNumber(sanitizePhoneValue(phone));
+      if (!isValidPhoneNumber(normalizedPhone)) {
+        return res.status(400).json({
+          error: "Please enter a valid international mobile number",
+        });
+      }
+      updates.phone = normalizedPhone;
+    }
+    if (dob !== undefined) {
+      const dobText = String(dob || "").trim();
+      const parsedDob = new Date(`${dobText}T00:00:00.000Z`);
+      const today = new Date();
+      let age = today.getUTCFullYear() - parsedDob.getUTCFullYear();
+      const birthdayHasPassed =
+        today.getUTCMonth() > parsedDob.getUTCMonth()
+        || (today.getUTCMonth() === parsedDob.getUTCMonth()
+          && today.getUTCDate() >= parsedDob.getUTCDate());
+      if (!birthdayHasPassed) age -= 1;
+
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(dobText)
+        || Number.isNaN(parsedDob.getTime())
+        || parsedDob > today
+      ) {
+        return res.status(400).json({ error: "Please enter a valid date of birth" });
+      }
+      if (age < 13) {
+        return res.status(400).json({
+          error: "You must be at least 13 years old to create an account",
+        });
+      }
+
+      updates.dob = parsedDob;
+      updates.birthday = birthdayFromDob(
+        dobText,
+        user?.birthday?.visibility || "private"
+      );
+    }
     if (birthday !== undefined && birthday && typeof birthday === "object") {
       updates.birthday = {
         day: Number(birthday.day) || 0,

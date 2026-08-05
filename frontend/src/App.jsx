@@ -29,6 +29,7 @@ const InvestorPitchPage = lazy(() => import("./pages/InvestorPitchPage"));
 const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
 const TovidoAnthonyFoundationPage = lazy(() => import("./pages/TovidoAnthonyFoundationPage"));
 const NehezeFarmsPage = lazy(() => import("./pages/NehezeFarmsPage"));
+const AIProfessionalsKadunaPage = lazy(() => import("./pages/AIProfessionalsKadunaPage"));
 const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
 const TeacherTrainingPage = lazy(() => import("./pages/TeacherTrainingPage"));
 const Register = lazy(() => import("./pages/Register"));
@@ -189,6 +190,8 @@ export default function App() {
   const navigate = useNavigate();
   usePageTracking();
   const isFocusedGameRoute = pathname === "/millionaire";
+  const isAIProfessionalsRoute =
+    pathname.toLowerCase() === "/ai-professionals-in-kaduna-state";
   const isKadahiveRoute =
     pathname === "/kadahive" ||
     pathname.startsWith("/kadahive/") ||
@@ -204,7 +207,7 @@ export default function App() {
 
   return (
     <>
-      <WelcomeVoiceController user={isKadahiveRoute ? null : user} />
+      <WelcomeVoiceController user={isKadahiveRoute || isAIProfessionalsRoute ? null : user} />
       <RouteSeoController />
       <Suspense fallback={<AppShellFallback />}>
         <Routes>
@@ -260,6 +263,10 @@ export default function App() {
           <Route path="/neheze-farms" element={<NehezeFarmsPage />} />
           <Route path="/neheze_farms" element={<NehezeFarmsPage />} />
           <Route path="/farms/neheze-farms" element={<NehezeFarmsPage />} />
+          <Route
+            path="/AI-Professionals-In-Kaduna-State"
+            element={<AIProfessionalsKadunaPage />}
+          />
           <Route
             path="/schools/kurahtechandartsacademy"
             element={<Navigate to="/kurahtechandartsacademy" replace />}
@@ -1065,7 +1072,7 @@ export default function App() {
           />
         </Routes>
       </Suspense>
-      {user && !isFocusedGameRoute && !isKadahiveRoute ? (
+      {user && !isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute ? (
         <TopUpPromoDiscovery
           user={user}
           onExploreTip={(tip) => {
@@ -1083,8 +1090,10 @@ export default function App() {
           }}
         />
       ) : null}
-      {!isFocusedGameRoute && !isKadahiveRoute ? <InstallPrompt /> : null}
-      {!isFocusedGameRoute && !isKadahiveRoute ? <TengacionAssistantDock /> : null}
+      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute ? <InstallPrompt /> : null}
+      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute ? (
+        <TengacionAssistantDock />
+      ) : null}
     </>
   );
 }

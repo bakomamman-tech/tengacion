@@ -413,6 +413,27 @@ export const register = (payload) =>
     }),
   });
 
+export const requestRegistrationOtp = (email) =>
+  request(`${API_BASE}/auth/request-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    skipAuthRefresh: true,
+    suppressAuthFailure: true,
+    body: JSON.stringify({ email: String(email || "").trim().toLowerCase() }),
+  });
+
+export const verifyRegistrationOtp = ({ email, otp }) =>
+  request(`${API_BASE}/auth/verify-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    skipAuthRefresh: true,
+    suppressAuthFailure: true,
+    body: JSON.stringify({
+      email: String(email || "").trim().toLowerCase(),
+      otp: String(otp || "").trim(),
+    }),
+  });
+
 export const restoreSession = () =>
   request(`${API_BASE}/auth/refresh`, {
     method: "POST",

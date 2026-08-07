@@ -9,24 +9,28 @@ import {
 
 import "./investor-pitch.css";
 
-const PDF_PATH = "/assets/investors/Tengacion-Investor-Pitch-June-2026.pdf?v=2";
+const PDF_PATH = "/assets/investors/Tengacion-Investor-Pitch-August-2026.pdf?v=1";
+const PPTX_PATH = "/assets/investors/Tengacion-Investor-Pitch-August-2026.pptx?v=1";
+const PDF_FILENAME = "Tengacion-Investor-Pitch-August-2026.pdf";
+const PPTX_FILENAME = "Tengacion-Investor-Pitch-August-2026.pptx";
 const PAGE_TITLE = "Investor Pitch | Tengacion";
 const PAGE_DESCRIPTION =
-  "Download the Tengacion investor pitch and explore the market opportunity, creator-commerce model, revenue strategy, financial outlook, and seed investment ask.";
+  "Download the August 2026 Tengacion investor pitch in PDF or editable PowerPoint format and explore the market, creator-commerce model, team, growth plan, financial outlook, and seed ask.";
 
 const INVESTMENT_SIGNALS = [
-  { value: "47.8m", label: "Nigeria social media identities" },
-  { value: "$29.84bn", label: "Projected African creator economy by 2032" },
-  { value: "5", label: "Complementary revenue streams" },
+  { value: "109m", label: "Internet users in Nigeria" },
+  { value: "$17.84bn", label: "Projected African creator economy by 2030" },
+  { value: "14", label: "Focused investor slides" },
   { value: "18 months", label: "Focused seed execution runway" },
 ];
 
 const DECK_TOPICS = [
   "The creator monetization gap Tengacion is built to solve",
   "A unified social, creator, marketplace, and AI product ecosystem",
-  "African creator-economy market sizing and initial Nigeria wedge",
-  "Transaction-led revenue model and five-year base-case projection",
-  "Seed investment ask, use of funds, and 18-month milestones",
+  "Updated 2026 market evidence and Tengacion's initial Nigeria wedge",
+  "Multi-series audience growth and five-year financial charts",
+  "Founder, functional leads, regional support team, and interns",
+  "Seed investment ask, use of funds, and milestone-gated execution",
 ];
 
 export default function InvestorPitchPage() {
@@ -64,7 +68,7 @@ export default function InvestorPitchPage() {
 
       <section className="investor-pitch__hero" aria-labelledby="investor-pitch-title">
         <div className="investor-pitch__hero-copy">
-          <p className="investor-pitch__eyebrow">Investor resources / June 2026</p>
+          <p className="investor-pitch__eyebrow">Investor resources / August 2026</p>
           <h1 id="investor-pitch-title">Tengacion Investor Pitch</h1>
           <p>
             See how Tengacion is building an Africa-first platform that turns social
@@ -74,18 +78,26 @@ export default function InvestorPitchPage() {
             <a
               className="investor-pitch__button investor-pitch__button--primary"
               href={PDF_PATH}
-              download="Tengacion-Investor-Pitch-June-2026.pdf"
+              download={PDF_FILENAME}
               type="application/pdf"
             >
-              Download free PDF
+              Download PDF
+            </a>
+            <a
+              className="investor-pitch__button investor-pitch__button--powerpoint"
+              href={PPTX_PATH}
+              download={PPTX_FILENAME}
+              type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            >
+              Download PowerPoint
             </a>
             <a className="investor-pitch__button" href="#pitch-preview">
               Preview the deck
             </a>
           </div>
           <div className="investor-pitch__file-meta" aria-label="Pitch deck file details">
-            <span>PDF format</span>
-            <span>9 pages</span>
+            <span>PDF + editable PPTX</span>
+            <span>14 slides</span>
             <span>No sign-up required</span>
           </div>
         </div>
@@ -101,7 +113,7 @@ export default function InvestorPitchPage() {
             <p>Africa-first social creator-commerce.</p>
           </div>
           <div className="investor-pitch__cover-footer">
-            <span>Prepared June 2026</span>
+            <span>Updated August 2026</span>
             <span>tengacion.com</span>
           </div>
         </div>
@@ -139,9 +151,18 @@ export default function InvestorPitchPage() {
             Capital for product polish, creator acquisition, payments, infrastructure,
             trust and safety, and 18 months of disciplined execution.
           </p>
-          <a href={PDF_PATH} download="Tengacion-Investor-Pitch-June-2026.pdf">
-            Get the investor brief
-          </a>
+          <div className="investor-pitch__ask-actions">
+            <a href={PDF_PATH} download={PDF_FILENAME}>
+              Download PDF
+            </a>
+            <a
+              className="investor-pitch__ask-powerpoint"
+              href={PPTX_PATH}
+              download={PPTX_FILENAME}
+            >
+              Download PowerPoint
+            </a>
+          </div>
         </aside>
       </section>
 
@@ -155,9 +176,14 @@ export default function InvestorPitchPage() {
             <p className="investor-pitch__eyebrow">Document preview</p>
             <h2 id="pitch-preview-title">Read before you download</h2>
           </div>
-          <a href={PDF_PATH} download="Tengacion-Investor-Pitch-June-2026.pdf">
-            Download PDF
-          </a>
+          <div className="investor-pitch__preview-actions">
+            <a href={PDF_PATH} download={PDF_FILENAME}>
+              Download PDF
+            </a>
+            <a href={PPTX_PATH} download={PPTX_FILENAME}>
+              Download PowerPoint
+            </a>
+          </div>
         </div>
 
         <div className="investor-pitch__viewer">
@@ -166,7 +192,7 @@ export default function InvestorPitchPage() {
               <img src="/tengacion_logo_256.png" alt="" />
               <h3>PDF preview unavailable in this browser</h3>
               <p>The full investor brief is still available as a free download.</p>
-              <a href={PDF_PATH} download="Tengacion-Investor-Pitch-June-2026.pdf">
+              <a href={PDF_PATH} download={PDF_FILENAME}>
                 Download the pitch
               </a>
             </div>
@@ -186,8 +212,11 @@ export default function InvestorPitchPage() {
           <Link to="/leadership">Leadership</Link>
           <Link to="/about">About</Link>
           <Link to="/contact">Investor contact</Link>
-          <a href={PDF_PATH} download="Tengacion-Investor-Pitch-June-2026.pdf">
-            Download pitch
+          <a href={PDF_PATH} download={PDF_FILENAME}>
+            PDF deck
+          </a>
+          <a href={PPTX_PATH} download={PPTX_FILENAME}>
+            PowerPoint deck
           </a>
         </div>
       </footer>

@@ -31,6 +31,8 @@
 .investor-pitch__brand,
 .investor-pitch__nav-links,
 .investor-pitch__actions,
+.investor-pitch__ask-actions,
+.investor-pitch__preview-actions,
 .investor-pitch__file-meta,
 .investor-pitch__footer-links {
   display: flex;
@@ -134,8 +136,8 @@
 }
 
 .investor-pitch__button,
-.investor-pitch__ask a,
-.investor-pitch__preview-head > a,
+.investor-pitch__ask-actions a,
+.investor-pitch__preview-actions a,
 .investor-pitch__viewer-fallback a {
   min-height: 48px;
   display: inline-flex;
@@ -151,8 +153,8 @@
 }
 
 .investor-pitch__button--primary,
-.investor-pitch__ask a,
-.investor-pitch__preview-head > a,
+.investor-pitch__ask-actions a:first-child,
+.investor-pitch__preview-actions a:first-child,
 .investor-pitch__viewer-fallback a {
   border-color: #d7b46a;
   background: #d7b46a;
@@ -162,10 +164,10 @@
 
 .investor-pitch__button:hover,
 .investor-pitch__button:focus-visible,
-.investor-pitch__ask a:hover,
-.investor-pitch__ask a:focus-visible,
-.investor-pitch__preview-head > a:hover,
-.investor-pitch__preview-head > a:focus-visible,
+.investor-pitch__ask-actions a:hover,
+.investor-pitch__ask-actions a:focus-visible,
+.investor-pitch__preview-actions a:hover,
+.investor-pitch__preview-actions a:focus-visible,
 .investor-pitch__viewer-fallback a:hover,
 .investor-pitch__viewer-fallback a:focus-visible {
   transform: translateY(-2px);
@@ -388,9 +390,21 @@
   line-height: 1.65;
 }
 
-.investor-pitch__ask a {
-  width: 100%;
+.investor-pitch__ask-actions {
+  display: grid;
+  gap: 10px;
   margin-top: 26px;
+}
+
+.investor-pitch__ask-actions a {
+  width: 100%;
+}
+
+.investor-pitch__ask-actions a:last-child {
+  border-color: #f0c56b;
+  background: transparent;
+  color: #f0c56b;
+  box-shadow: none;
 }
 
 .investor-pitch__preview-section {
@@ -405,8 +419,9 @@
   margin-bottom: 28px;
 }
 
-.investor-pitch__preview-head > a {
+.investor-pitch__preview-actions {
   flex: 0 0 auto;
+  gap: 10px;
 }
 
 .investor-pitch__viewer {
@@ -589,7 +604,12 @@
     flex-direction: column;
   }
 
-  .investor-pitch__preview-head > a {
+  .investor-pitch__preview-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .investor-pitch__preview-actions a {
     width: 100%;
   }
 

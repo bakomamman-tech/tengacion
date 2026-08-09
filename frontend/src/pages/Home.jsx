@@ -980,6 +980,8 @@ export function PostComposerModal({
 
         <textarea
           className="pc-textarea composer-textarea"
+          rows={12}
+          aria-label={isReelMode ? "Reel caption" : "Post text"}
           placeholder={
             isReelMode
               ? `Write a caption for your reel, ${user?.username || ""}...`

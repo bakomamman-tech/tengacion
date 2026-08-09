@@ -17090,11 +17090,11 @@ html.dark-mode .comments-v2--panel .comment-v2-children {
   border: none;
   border-radius: 0;
   background: transparent;
-  min-height: clamp(110px, 18vh, 180px);
-  max-height: 34vh;
-  padding: 0 16px 8px;
-  font-size: 15px;
-  line-height: 1.45;
+  min-height: clamp(240px, 40dvh, 420px);
+  max-height: 48dvh;
+  padding: 6px 20px 16px;
+  font-size: 17px;
+  line-height: 1.5;
   font-weight: 400;
   color: #1f2937;
   overflow-y: auto;
@@ -25345,8 +25345,10 @@ html.dark-mode .password-toggle-btn:hover {
   }
 
   .composer-textarea {
-    min-height: 140px;
-    font-size: 14px;
+    min-height: clamp(180px, 30dvh, 260px);
+    max-height: 38dvh;
+    padding-inline: 16px;
+    font-size: 16px;
   }
 
   .composer-grid {

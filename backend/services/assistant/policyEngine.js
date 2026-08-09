@@ -67,6 +67,7 @@ const SENSITIVE_ACCOUNT_PATTERNS = [
   /transfer money/i,
   /send money/i,
   /delete my account/i,
+  /\b(?:block|unblock|mute|unmute|restrict|unrestrict)\s+(?:an?\s+)?(?:account|user|person|@[\w.]+)/i,
   /change (?:my )?(?:security|payment|bank)/i,
   /change (?:my )?password/i,
 ];
@@ -186,6 +187,7 @@ const classifyAssistantRequest = ({ message = "", context = {}, user = null, pre
     const routeHint =
       featureMatch?.route ||
       (/\b(messages?|inbox|chat)\b/.test(normalizedMessage) ? "/messages" : "") ||
+      (/\b(block|unblock|mute|unmute|restrict|unrestrict|blocked accounts?)\b/.test(normalizedMessage) ? "/settings/privacy" : "") ||
       (/\bprivacy\b/.test(normalizedMessage) ? "/settings/privacy" : "") ||
       (/\bsecurity\b/.test(normalizedMessage) || /\bpassword\b/.test(normalizedMessage) ? "/settings/security" : "") ||
       (/\bcreator\b/.test(normalizedMessage) && /\bpayout/i.test(normalizedMessage) ? "/creator/payouts" : "");

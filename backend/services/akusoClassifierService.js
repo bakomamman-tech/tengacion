@@ -259,6 +259,7 @@ const SENSITIVE_PATTERNS = [
   /\btransfer money\b/i,
   /\bwithdraw\b/i,
   /\bdelete (?:my )?account\b/i,
+  /\b(?:block|unblock|mute|unmute|restrict|unrestrict)\s+(?:an?\s+)?(?:account|user|person|@[\w.]+)/i,
 ];
 
 const normalize = (value = "") =>
@@ -420,6 +421,9 @@ const classifyAkusoRequest = ({
       hasPattern(normalizedMessage, APP_HELP_PATTERNS)
     );
   const sensitive = hasPattern(normalizedMessage, SENSITIVE_PATTERNS);
+  const accountSafetyControlRequested = /\b(?:block|unblock|mute|unmute|restrict|unrestrict|blocked accounts?)\b/i.test(
+    normalizedMessage
+  );
 
   let inferredMode = AKUSO_MODES.KNOWLEDGE_LEARNING;
   if (creatorWritingRequested) {
@@ -449,7 +453,8 @@ const classifyAkusoRequest = ({
     currentRoute: route,
     currentPage: sanitizePlainText(currentPage, 120),
     feature,
-    routeHint: feature?.routePattern || route,
+    routeHint:
+      feature?.routePattern || (accountSafetyControlRequested ? "/settings/privacy" : route),
     promptInjection,
     disallowed,
     emergency,

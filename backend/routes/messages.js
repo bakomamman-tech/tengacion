@@ -19,6 +19,11 @@ const {
   normalizeMessage,
 } = require("../utils/messagePayload");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
+const {
+  canSendDirectMessage,
+  getBlockedUserIds,
+  isBlockedBetween,
+} = require("../services/userSafetyService");
 
 const router = express.Router();
 
@@ -43,27 +48,6 @@ const resolveChatAttachmentResourceType = (mimetype = "") => {
   if (type === "image") return "image";
   if (type === "video" || type === "audio") return "video";
   return "raw";
-};
-
-const canSendDirectMessage = ({ sender, receiver }) => {
-  if (!sender || !receiver) return false;
-  const senderId = toIdString(sender._id);
-  const receiverId = toIdString(receiver._id);
-  if (!senderId || !receiverId || senderId === receiverId) return false;
-
-  const senderBlocksReceiver = (sender.blocks || []).some((id) => toIdString(id) === receiverId);
-  const receiverBlocksSender = (receiver.blocks || []).some((id) => toIdString(id) === senderId);
-  if (senderBlocksReceiver || receiverBlocksSender) return false;
-
-  const permission = String(receiver?.privacy?.allowMessagesFrom || "everyone");
-  if (permission === "no_one") {
-    return false;
-  }
-  if (permission === "friends") {
-    const isFriend = (receiver.friends || []).some((id) => toIdString(id) === senderId);
-    return isFriend;
-  }
-  return true;
 };
 
 router.post(
@@ -120,14 +104,23 @@ router.post(
 router.post("/share/followers", auth, async (req, res) => {
   try {
     const senderId = req.user.id;
-    const me = await User.findById(senderId).select("followers");
+    const me = await User.findById(senderId).select("_id followers blocks blockedUsers");
     if (!me) {
       return res.status(404).json({ error: "User not found" });
     }
 
+    const inboundBlockers = await User.find({
+      $or: [{ blocks: me._id }, { blockedUsers: me._id }],
+    })
+      .select("_id")
+      .lean();
+    const blockedIds = new Set([
+      ...getBlockedUserIds(me),
+      ...inboundBlockers.map((entry) => toIdString(entry._id)),
+    ]);
     const followerIds = (me.followers || [])
       .map((id) => toIdString(id))
-      .filter((id) => id && id !== toIdString(senderId));
+      .filter((id) => id && id !== toIdString(senderId) && !blockedIds.has(id));
 
     if (followerIds.length === 0) {
       return res.json({ success: true, sent: 0 });
@@ -201,7 +194,7 @@ router.post("/share/followers", auth, async (req, res) => {
 router.get("/contacts", auth, async (req, res) => {
   try {
     const meId = req.user.id;
-    const me = await User.findById(meId).select("friends");
+    const me = await User.findById(meId).select("_id friends blocks blockedUsers");
 
     if (!me) {
       return res.status(404).json({ error: "User not found" });
@@ -251,13 +244,22 @@ router.get("/contacts", auth, async (req, res) => {
       unreadRows: unreadMessages.length,
     });
 
-    const contactIds = new Set(friendIds);
+    const inboundBlockers = await User.find({
+      $or: [{ blocks: me._id }, { blockedUsers: me._id }],
+    })
+      .select("_id")
+      .lean();
+    const blockedIds = new Set([
+      ...getBlockedUserIds(me),
+      ...inboundBlockers.map((entry) => toIdString(entry._id)),
+    ]);
+    const contactIds = new Set(friendIds.filter((id) => !blockedIds.has(id)));
     for (const row of latestMessages) {
       const msg = row?.message || {};
       const senderId = toIdString(msg.senderId);
       const receiverId = toIdString(msg.receiverId);
       const otherId = senderId === meId ? receiverId : senderId;
-      if (otherId) {
+      if (otherId && !blockedIds.has(otherId)) {
         contactIds.add(otherId);
       }
     }
@@ -266,7 +268,7 @@ router.get("/contacts", auth, async (req, res) => {
     const contactQuery =
       contactIdList.length > 0
         ? { _id: { $in: contactIdList } }
-        : { _id: { $ne: meId } };
+        : { _id: { $nin: [meId, ...blockedIds] } };
 
     const contactSearch = User.find(contactQuery, "_id name username avatar status");
     if (contactIdList.length === 0) {
@@ -534,13 +536,18 @@ router.post("/:otherUserId", auth, async (req, res) => {
       return res.status(400).json({ error: "Invalid user id" });
     }
     const [sender, receiver] = await Promise.all([
-      User.findById(me).select("_id blocks friends"),
-      User.findById(other).select("_id blocks friends privacy.allowMessagesFrom"),
+      User.findById(me).select("_id blocks blockedUsers friends"),
+      User.findById(other).select("_id blocks blockedUsers friends privacy.allowMessagesFrom"),
     ]);
     if (!sender || !receiver) {
       return res.status(404).json({ error: "User not found" });
     }
-    if (!canSendDirectMessage({ sender, receiver })) {
+    const senderIsTrustedAdmin = ["admin", "super_admin", "moderator", "trust_safety_admin"]
+      .includes(String(req.user?.role || "").trim().toLowerCase());
+    if (
+      !canSendDirectMessage({ sender, receiver })
+      && !(senderIsTrustedAdmin && !isBlockedBetween(sender, receiver))
+    ) {
       return res.status(403).json({ error: "Messaging is restricted for this user" });
     }
 

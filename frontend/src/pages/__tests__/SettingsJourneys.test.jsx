@@ -3,7 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  blockUser,
   getNotificationPreferences,
+  getPrivacySafetyLists,
+  getUsers,
   updateNotificationPreferences,
   updatePrivacy,
 } from "../../api";
@@ -13,6 +16,8 @@ import PrivacySettings from "../PrivacySettings";
 vi.mock("../../api", () => ({
   blockUser: vi.fn(),
   getNotificationPreferences: vi.fn(),
+  getPrivacySafetyLists: vi.fn(),
+  getUsers: vi.fn(),
   hideStoriesFromUser: vi.fn(),
   muteUser: vi.fn(),
   restrictUser: vi.fn(),
@@ -41,6 +46,12 @@ describe("account settings persistence journeys", () => {
         reports: true,
         system: true,
       },
+    });
+    vi.mocked(getPrivacySafetyLists).mockResolvedValue({
+      blocked: [],
+      muted: [],
+      restricted: [],
+      hiddenStoriesFrom: [],
     });
   });
 
@@ -96,5 +107,43 @@ describe("account settings persistence journeys", () => {
       expect(screen.getByText("Privacy save rejected")).toBeInTheDocument();
     });
   });
-});
 
+  it("finds an account, confirms the relationship impact, and records a server-backed block", async () => {
+    const user = userEvent.setup();
+    const candidate = { _id: "user-2", name: "Safety Target", username: "safety_target" };
+    vi.mocked(getUsers).mockResolvedValue([candidate]);
+    vi.mocked(blockUser).mockResolvedValue({ success: true, blocked: true });
+    vi.mocked(getPrivacySafetyLists)
+      .mockResolvedValueOnce({
+        blocked: [],
+        muted: [],
+        restricted: [],
+        hiddenStoriesFrom: [],
+      })
+      .mockResolvedValue({
+        blocked: [candidate],
+        muted: [],
+        restricted: [],
+        hiddenStoriesFrom: [],
+      });
+
+    render(<PrivacySettings user={{ privacy: {} }} />);
+
+    await user.type(screen.getByLabelText("Find an account"), "safety");
+    await user.click(screen.getByRole("button", { name: "Search accounts" }));
+    expect(await screen.findByText("@safety_target")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Block" }));
+    expect(blockUser).not.toHaveBeenCalled();
+    expect(screen.getByRole("alertdialog", { name: "Confirm block" })).toHaveTextContent(
+      /Existing relationship links are removed/i
+    );
+
+    await user.click(screen.getByRole("button", { name: "Confirm block" }));
+    await waitFor(() => {
+      expect(blockUser).toHaveBeenCalledWith("user-2");
+      expect(screen.getByText("Blocked @safety_target.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Unblock @safety_target" })).toBeInTheDocument();
+    });
+  });
+});

@@ -1050,6 +1050,10 @@ router.delete(
           followers: target._id,
           following: target._id,
           blockedUsers: target._id,
+          blocks: target._id,
+          mutes: target._id,
+          restricts: target._id,
+          hiddenStoriesFrom: target._id,
         },
       }
     );

@@ -18,6 +18,13 @@ vi.mock("../../components/QuickAccessLayout", () => ({
 vi.mock("../../api", () => ({
   blockUser: vi.fn(),
   exportAccountData: vi.fn(),
+  getPrivacySafetyLists: vi.fn(() => Promise.resolve({
+    blocked: [],
+    muted: [],
+    restricted: [],
+    hiddenStoriesFrom: [],
+  })),
+  getUsers: vi.fn(),
   hideStoriesFromUser: vi.fn(),
   muteUser: vi.fn(),
   restrictUser: vi.fn(),

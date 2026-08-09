@@ -65,6 +65,7 @@ Backend architecture, safety boundaries, and extension guidance live here:
 Account data-rights contracts:
 - [`docs/tengacion-account-data-export.md`](docs/tengacion-account-data-export.md) - portable, allowlisted account snapshots
 - [`docs/tengacion-account-deletion.md`](docs/tengacion-account-deletion.md) - permanent deletion, retention handling, and Akuso boundaries
+- [`docs/tengacion-account-safety-controls.md`](docs/tengacion-account-safety-controls.md) - authoritative block semantics, limited-account lists, and Akuso boundaries
 
 Execution roadmaps for the marketplace and Akuso build cycles:
 - [`docs/tengacion-30-60-90-roadmap.md`](docs/tengacion-30-60-90-roadmap.md) - foundation cycle for commerce, creator activation, discovery, analytics, and Akuso evals

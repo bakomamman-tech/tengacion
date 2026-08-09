@@ -234,6 +234,7 @@ const sendModerationMessengerWarning = async ({
     result = await persistChatMessage({
       senderId,
       receiverId,
+      bypassUserSafety: true,
       payload: {
         text,
         type: "text",

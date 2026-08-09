@@ -292,6 +292,34 @@ describe("Akuso services", () => {
     );
   });
 
+  it("routes account safety guidance without allowing Akuso to block for the user", () => {
+    const feature = findFeatureByIntent("blocked accounts");
+    const policy = evaluateAkusoPolicy({
+      input: { message: "Block user @unsafe_account", mode: "app_help" },
+      user: { id: userId },
+    });
+
+    expect(feature).toEqual(
+      expect.objectContaining({
+        featureKey: "settings_privacy",
+        routePattern: "/settings/privacy",
+      })
+    );
+    expect(policy).toEqual(
+      expect.objectContaining({
+        categoryBucket: POLICY_BUCKETS.SENSITIVE_ACTION_REQUIRES_AUTH,
+        shouldCallModel: false,
+        requiresAuth: true,
+      })
+    );
+    expect(policy.classification).toEqual(
+      expect.objectContaining({
+        sensitive: true,
+        routeHint: "/settings/privacy",
+      })
+    );
+  });
+
   it("returns grounded hints for live and creator membership flows", () => {
     expect(
       getAkusoHints({

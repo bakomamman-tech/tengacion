@@ -642,6 +642,12 @@ export const updatePrivacy = (payload) =>
     body: JSON.stringify(payload || {}),
   });
 
+export const getPrivacySafetyLists = () =>
+  request(`${API_BASE}/users/me/safety-lists`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
 export const exportAccountData = (password) =>
   request(`${API_BASE}/users/me/export`, {
     method: "POST",

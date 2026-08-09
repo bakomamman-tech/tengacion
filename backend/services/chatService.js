@@ -8,6 +8,7 @@ const {
   normalizeIncomingMessagePayload,
   normalizeMessage,
 } = require("../utils/messagePayload");
+const { canSendDirectMessage, isBlockedBetween } = require("./userSafetyService");
 
 const ensureContentCardMetadata = async (metadata) => {
   if (!metadata) {
@@ -73,7 +74,7 @@ const buildReplyReference = async ({ conversationId, replyToMessageId }) => {
   };
 };
 
-const persistChatMessage = async ({ senderId, receiverId, payload }) => {
+const persistChatMessage = async ({ senderId, receiverId, payload, bypassUserSafety = false }) => {
   if (
     !mongoose.Types.ObjectId.isValid(senderId) ||
     !mongoose.Types.ObjectId.isValid(receiverId)
@@ -105,12 +106,27 @@ const persistChatMessage = async ({ senderId, receiverId, payload }) => {
   });
 
   const [sender, receiver] = await Promise.all([
-    User.findById(senderId).select("name"),
-    User.findById(receiverId).select("_id"),
+    User.findById(senderId).select("name role friends blocks blockedUsers"),
+    User.findById(receiverId).select(
+      "_id friends blocks blockedUsers privacy.allowMessagesFrom"
+    ),
   ]);
 
   if (!sender || !receiver) {
     throw new Error("User not found");
+  }
+  const senderIsTrustedAdmin = ["admin", "super_admin", "moderator", "trust_safety_admin"]
+    .includes(String(sender.role || "").trim().toLowerCase());
+  const trustedAdminPrivacyBypass = senderIsTrustedAdmin && !isBlockedBetween(sender, receiver);
+  if (
+    !bypassUserSafety
+    && !canSendDirectMessage({ sender, receiver })
+    && !trustedAdminPrivacyBypass
+  ) {
+    const error = new Error("Messaging is restricted for this user");
+    error.statusCode = 403;
+    error.code = "DIRECT_MESSAGE_RESTRICTED";
+    throw error;
   }
 
   const conversationId = buildConversationId(senderId, receiverId);

@@ -24,6 +24,7 @@ const {
 } = require("../services/creatorDiscoveryService");
 const { createPublicModerationFilter } = require("../utils/publicModeration");
 const { getMediaUrl } = require("../utils/userMedia");
+const { isBlockedBetween } = require("../services/userSafetyService");
 
 const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
 const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
@@ -692,11 +693,14 @@ exports.toggleFollowCreator = asyncHandler(async (req, res) => {
   }
 
   const [me, creatorUser] = await Promise.all([
-    User.findById(req.user.id).select("following"),
-    User.findById(profile.userId).select("followers"),
+    User.findById(req.user.id).select("following blocks blockedUsers"),
+    User.findById(profile.userId).select("followers blocks blockedUsers"),
   ]);
   if (!me || !creatorUser) {
     return res.status(404).json({ error: "User not found" });
+  }
+  if (isBlockedBetween(me, creatorUser)) {
+    return res.status(404).json({ error: "Creator not found" });
   }
 
   const creatorUserId = creatorUser._id.toString();

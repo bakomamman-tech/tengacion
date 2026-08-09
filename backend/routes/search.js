@@ -6,6 +6,7 @@ const Room = require("../models/Room");
 const PostService = require("../../apps/api/services/postService");
 const { normalizeMediaValue } = require("../utils/userMedia");
 const { createLegacyCompatiblePublicModerationFilter } = require("../utils/publicModeration");
+const { getBlockedUserIds } = require("../services/userSafetyService");
 
 const router = express.Router();
 
@@ -13,6 +14,27 @@ const sanitizeQuery = (value = "") => String(value || "").trim().slice(0, 80);
 const normalizeAccountQuery = (value = "") => sanitizeQuery(value).replace(/^@+\s*/, "");
 const avatarToUrl = (avatar) => normalizeMediaValue(avatar).url;
 const ACTIVE_USER_FILTER = { isDeleted: { $ne: true } };
+
+const getSearchSafetyContext = async (userId) => {
+  const me = await User.findById(userId)
+    .select("_id following friends interests blocks blockedUsers")
+    .lean();
+  if (!me) return null;
+  const inboundBlockers = await User.find({
+    $or: [{ blocks: me._id }, { blockedUsers: me._id }],
+  })
+    .select("_id")
+    .lean();
+  return {
+    me,
+    excludedBlockIds: Array.from(
+      new Set([
+        ...getBlockedUserIds(me),
+        ...inboundBlockers.map((entry) => String(entry._id)),
+      ])
+    ),
+  };
+};
 
 router.get("/", auth, async (req, res) => {
   try {
@@ -26,9 +48,12 @@ router.get("/", auth, async (req, res) => {
         return res.json({ type, data: [] });
       }
 
+      const safety = await getSearchSafetyContext(req.user.id);
+      if (!safety) return res.status(404).json({ error: "User not found" });
       const users = await User.find(
         {
           ...ACTIVE_USER_FILTER,
+          _id: { $nin: [safety.me._id, ...safety.excludedBlockIds] },
           $or: [
             { username: { $regex: accountQuery, $options: "i" } },
             { name: { $regex: accountQuery, $options: "i" } },
@@ -161,12 +186,14 @@ router.get("/trending/hashtags", auth, async (_req, res) => {
 
 router.get("/suggestions", auth, async (req, res) => {
   try {
-    const me = await User.findById(req.user.id).select("following friends interests").lean();
-    if (!me) return res.status(404).json({ error: "User not found" });
+    const safety = await getSearchSafetyContext(req.user.id);
+    if (!safety) return res.status(404).json({ error: "User not found" });
+    const { me, excludedBlockIds } = safety;
     const excluded = [
       req.user.id,
       ...(me.following || []).map((id) => String(id)),
       ...(me.friends || []).map((id) => String(id)),
+      ...excludedBlockIds,
     ];
     const people = await User.find(
       {

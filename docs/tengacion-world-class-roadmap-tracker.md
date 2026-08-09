@@ -15,7 +15,7 @@ This document is the authoritative implementation record for the Facebook benchm
 
 | ID | Work package | Status | Verification record |
 |---|---|---|---|
-| TRUTH-001 | Create the route truth registry | COMPLETE | One shared registry classifies all 181 App paths exactly once and records lifecycle, access, authority, owner role, KPI, flag and test evidence. |
+| TRUTH-001 | Create the route truth registry | COMPLETE | One shared registry classifies all 182 App paths exactly once and records lifecycle, access, authority, owner role, KPI, flag and test evidence. |
 | TRUTH-002 | Contain deceptive Preview routes | COMPLETE | Dashboard, Memories, Saved, Events and Ads Manager show honest Preview states; Feedback's former fabricated browser-only success was removed before FEEDBACK-001 introduced server submission. |
 | TRUTH-003 | Make navigation status-aware | COMPLETE | Navbar, Create menu and Quick Access derive visibility and Beta/Experimental labels from the shared registry; Preview routes are not promoted. |
 | TRUTH-004 | Make Akuso capability-aware | COMPLETE | Akuso derives availability from the registry, excludes Preview recommendations/actions and explains Preview requests without a navigation path. |
@@ -35,7 +35,7 @@ This document is the authoritative implementation record for the Facebook benchm
 | Phase | Objective | Status |
 |---|---|---|
 | Phase 1 | Reliability, measurement and user control | IN PROGRESS |
-| Phase 2 | Trust, data rights and server authority | NOT STARTED |
+| Phase 2 | Trust, data rights and server authority | IN PROGRESS |
 | Phase 3 | Complete high-value product loops | NOT STARTED |
 | Phase 4 | Recommendation quality and responsible monetization | NOT STARTED |
 | Phase 5 | Regional ecosystem scale | NOT STARTED |
@@ -48,10 +48,24 @@ This document is the authoritative implementation record for the Facebook benchm
 | CONTROL-001 | Provide a self-service portable account snapshot | COMPLETE | Reauthenticated Privacy Settings downloads a server-generated, audited JSON snapshot with an explicit scope/completeness manifest, bounded activity sections and allowlisted fields that exclude authentication/provider secrets and other people's private replies or incoming messages. |
 | CONTROL-002 | Make permanent account deletion a verified user-controlled journey | COMPLETE | Authenticated non-admin users can review retention, reauthenticate, explicitly confirm and permanently delete their account; failed reauthentication preserves the valid session, completion revokes every session and is minimally audited, and Akuso can navigate but cannot perform the action. |
 
+### Phase 2 work packages
+
+| ID | Work package | Status | Verification record |
+|---|---|---|---|
+| SAFETY-001 | Make account blocking authoritative and user-manageable | COMPLETE | Privacy Settings now provides searchable, server-confirmed limited-account lists; canonical blocks remove relationship links and are enforced mutually across people discovery, profiles, feeds, creator follows, contacts, friend requests and every direct-message write transport, while unblocking never fabricates restored relationships. |
+
 ## Change log
 
 ### 9 August 2026
 
+- Completed SAFETY-001 by replacing the raw user-ID privacy form with account search, explicit block-impact confirmation, and reviewable blocked, muted, restricted and story-hidden lists populated by the authenticated User API.
+- Established `User.blocks` as the canonical block authority. Startup maintenance and safety-list reads migrate legacy `blockedUsers` identifiers, while compatibility reads remain in place during rollout.
+- Confirmed blocks now remove friendship, pending-request, close-friend, following and follower links in both directions. Mutual blocks are excluded from people search, directory, friend hubs, profiles, feeds, creator follows and message contacts without revealing who blocked whom.
+- Moved direct-message authorization into the shared persistence service so REST, compatibility, follower-share and Socket.IO writes cannot bypass blocks and ordinary writes honor recipient message preferences; trusted admin follow-ups retain their existing privacy exception unless the user has blocked the admin, while moderation notices use an explicit internal bypass.
+- Grounded Akuso in the real Privacy Settings controls and classified block, unblock, mute and restrict requests as sensitive actions that Akuso may explain or navigate to but cannot perform.
+- Reconciled the existing AI Professionals in Kaduna State route into route truth, restoring exact coverage across all 182 declared App paths.
+- Documented canonical authority, block/unblock semantics, migration behavior and AI boundaries in `docs/tengacion-account-safety-controls.md`.
+- SAFETY-001 verification: focused backend safety and Akuso service tests, focused Privacy Settings tests, backend syntax checks, frontend lint, action and encoding audits, route-truth tests, and a production frontend build.
 - Completed CONTROL-002 around the existing retention-aware deletion service and public `/account-deletion` page.
 - Corrected failed password reauthentication from `401` to `403`, preventing a mistyped password from revoking an otherwise valid login; all deletion responses are now non-cacheable.
 - Added a bounded `account_deleted` completion audit event after deletion while keeping audit failure from misreporting an already completed destructive action as failed.

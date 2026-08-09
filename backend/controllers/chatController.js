@@ -26,7 +26,9 @@ exports.sendChatMessage = asyncHandler(async (req, res) => {
       },
     });
   } catch (error) {
-    return res.status(400).json({ error: error.message || "Failed to send message" });
+    return res
+      .status(Number(error?.statusCode) || 400)
+      .json({ error: error.message || "Failed to send message", code: error?.code || undefined });
   }
 
   const io = req.app.get("io");

@@ -31,6 +31,10 @@ const {
 const { writeAuditLog } = require("../services/auditLogService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
 const {
+  getBlockedUserIds,
+  isBlockedBetween,
+} = require("../services/userSafetyService");
+const {
   birthdayFromDob,
   getDatePartsInTimeZone,
   hasBirthdayDate,
@@ -70,6 +74,25 @@ const withActiveUsers = (query = {}) => ({
   ...query,
   ...ACTIVE_USER_FILTER,
 });
+
+const getMutualBlockIds = async (user) => {
+  const userId = toIdString(user?._id);
+  if (!userId) return [];
+
+  const inboundBlockers = await User.find({
+    _id: { $ne: user._id },
+    $or: [{ blocks: user._id }, { blockedUsers: user._id }],
+  })
+    .select("_id")
+    .lean();
+
+  return Array.from(
+    new Set([
+      ...getBlockedUserIds(user),
+      ...inboundBlockers.map((entry) => toIdString(entry?._id)).filter(Boolean),
+    ])
+  );
+};
 const PRIVACY_VALUES = ["public", "friends", "private"];
 const MESSAGE_PERMISSION_VALUES = ["everyone", "friends", "no_one"];
 const AUDIENCE_VALUES = ["public", "friends", "close_friends"];
@@ -627,7 +650,12 @@ router.get("/profile/:username", auth, async (req, res) => {
     }
 
     const viewerId = req.user.id?.toString();
-    const viewer = await User.findById(viewerId).select("friends friendRequests").lean();
+    const viewer = await User.findById(viewerId)
+      .select("_id friends friendRequests blocks blockedUsers")
+      .lean();
+    if (!viewer || isBlockedBetween(viewer, user)) {
+      return res.status(404).json({ error: "Profile not found" });
+    }
     const followers = Array.isArray(user.followers) ? user.followers : [];
     const following = Array.isArray(user.following) ? user.following : [];
     const friends = Array.isArray(user.friends) ? user.friends : [];
@@ -727,7 +755,14 @@ router.get("/", auth, async (req, res) => {
       ];
     }
 
-    const me = await User.findById(req.user.id).select("friends friendRequests").lean();
+    const me = await User.findById(req.user.id)
+      .select("_id friends friendRequests blocks blockedUsers")
+      .lean();
+    if (!me) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const blockedIds = await getMutualBlockIds(me);
+    query._id = { $nin: [me._id, ...blockedIds] };
 
     const users = await User.find(withActiveUsers(query))
       .select("_id name username avatar friendRequests friends")
@@ -736,9 +771,7 @@ router.get("/", auth, async (req, res) => {
       .lean();
 
     const viewerId = req.user.id.toString();
-    const payload = users
-      .filter((u) => u._id.toString() !== viewerId)
-      .map((entry) => ({
+    const payload = users.map((entry) => ({
         ...userListPayload(entry),
         relationship: buildRelationship({
           viewerId,
@@ -783,15 +816,7 @@ router.get("/directory", auth, async (req, res) => {
       ? me.friendRequests.map((entry) => toIdString(entry)).filter(Boolean)
       : [];
     const excludedIds = Array.from(
-      new Set(
-        [
-          viewerId,
-          ...(Array.isArray(me.blocks) ? me.blocks : []),
-          ...(Array.isArray(me.blockedUsers) ? me.blockedUsers : []),
-        ]
-          .map((entry) => toIdString(entry))
-          .filter(Boolean)
-      )
+      new Set([viewerId, ...(await getMutualBlockIds(me))])
     );
 
     const query = withActiveUsers(excludedIds.length > 0 ? { _id: { $nin: excludedIds } } : {});
@@ -903,9 +928,11 @@ router.post("/:id/request", auth, async (req, res) => {
       return res.status(400).json({ error: "Invalid user id" });
     }
 
-    const me = await User.findById(req.user.id).select("_id name username");
+    const me = await User.findById(req.user.id).select(
+      "_id name username friends friendRequests blocks blockedUsers"
+    );
     const user = await User.findOne(withActiveUsers({ _id: req.params.id })).select(
-      "_id name username friends friendRequests"
+      "_id name username friends friendRequests blocks blockedUsers"
     );
 
     if (!me || !user) {
@@ -915,6 +942,9 @@ router.post("/:id/request", auth, async (req, res) => {
     const meId = me._id.toString();
     if (user._id.toString() === meId) {
       return res.status(400).json({ error: "Cannot friend yourself" });
+    }
+    if (isBlockedBetween(me, user)) {
+      return res.status(404).json({ error: "User not found" });
     }
 
     const hasIncomingFromUser = (me.friendRequests || []).some(
@@ -1044,6 +1074,9 @@ router.post("/:id/accept", auth, async (req, res) => {
     if (me._id.toString() === user._id.toString()) {
       return res.status(400).json({ error: "Cannot friend yourself" });
     }
+    if (isBlockedBetween(me, user)) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
     const requesterId = user._id.toString();
     const hasPendingRequest = (me.friendRequests || []).some(
@@ -1172,13 +1205,19 @@ router.delete("/:id/friend", auth, async (req, res) => {
 /* ================= LIST FRIEND REQUESTS ================= */
 router.get("/requests", auth, async (req, res) => {
   try {
-    const me = await User.findById(req.user.id).select("friendRequests");
+    const me = await User.findById(req.user.id)
+      .select("_id friendRequests blocks blockedUsers")
+      .lean();
     if (!me) {
       return res.status(404).json({ error: "User not found" });
     }
+    const mutualBlockIds = await getMutualBlockIds(me);
+    const visibleRequestIds = (me.friendRequests || []).filter(
+      (id) => !mutualBlockIds.includes(toIdString(id))
+    );
 
     const users = await User.find(
-      withActiveUsers({ _id: { $in: me.friendRequests || [] } }),
+      withActiveUsers({ _id: { $in: visibleRequestIds } }),
       "_id name username avatar"
     ).lean();
     console.log("[FRIEND FETCH]", {
@@ -1220,12 +1259,13 @@ router.get("/me/friends-hub", auth, async (req, res) => {
         .map((entry) => toIdString(entry))
         .filter(Boolean)
     );
+    const mutualBlockIds = await getMutualBlockIds(me);
+    const mutualBlockIdSet = new Set(mutualBlockIds);
     const excludedSuggestionIds = [
       viewerId,
       ...viewerFriendIds,
       ...incomingRequestIds,
-      ...(Array.isArray(me.blocks) ? me.blocks : []),
-      ...(Array.isArray(me.blockedUsers) ? me.blockedUsers : []),
+      ...mutualBlockIds,
     ]
       .map((entry) => toIdString(entry))
       .filter(Boolean);
@@ -1259,7 +1299,11 @@ router.get("/me/friends-hub", auth, async (req, res) => {
     const friendIdSet = new Set(viewerFriendIds);
     const outgoingUsers = outgoingUsersRaw.filter((entry) => {
       const id = toIdString(entry?._id);
-      return Boolean(id) && !friendIdSet.has(id) && !incomingRequestIdSet.has(id) && id !== viewerId;
+      return Boolean(id)
+        && !mutualBlockIdSet.has(id)
+        && !friendIdSet.has(id)
+        && !incomingRequestIdSet.has(id)
+        && id !== viewerId;
     });
     const outgoingRequestIdSet = new Set(
       outgoingUsers.map((entry) => toIdString(entry?._id)).filter(Boolean)
@@ -1290,7 +1334,9 @@ router.get("/me/friends-hub", auth, async (req, res) => {
       })
       .slice(0, 24);
 
-    const incomingRequests = incomingUsers.map((entry) =>
+    const incomingRequests = incomingUsers
+      .filter((entry) => !mutualBlockIdSet.has(toIdString(entry?._id)))
+      .map((entry) =>
       buildFriendsHubCard({
         entry,
         viewerId,
@@ -1310,7 +1356,9 @@ router.get("/me/friends-hub", auth, async (req, res) => {
       })
     );
 
-    const friends = friendUsers.map((entry) =>
+    const friends = friendUsers
+      .filter((entry) => !mutualBlockIdSet.has(toIdString(entry?._id)))
+      .map((entry) =>
       buildFriendsHubCard({
         entry,
         viewerId,
@@ -1704,6 +1752,189 @@ router.put("/me/audio", auth, async (req, res) => {
   }
 });
 
+const safetyProfilePayload = (user) => ({
+  _id: toIdString(user?._id),
+  name: user?.name || "",
+  username: user?.username || "",
+  avatar: avatarToUrl(user?.avatar),
+});
+
+router.get("/me/safety-lists", auth, async (req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    const user = await User.findById(req.user.id)
+      .select("_id blocks blockedUsers mutes restricts hiddenStoriesFrom")
+      .lean();
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const blockedIds = getBlockedUserIds(user);
+    const listIds = {
+      blocked: blockedIds,
+      muted: (user.mutes || []).map((entry) => toIdString(entry)).filter(Boolean),
+      restricted: (user.restricts || []).map((entry) => toIdString(entry)).filter(Boolean),
+      hiddenStoriesFrom: (user.hiddenStoriesFrom || [])
+        .map((entry) => toIdString(entry))
+        .filter(Boolean),
+    };
+    const allIds = Array.from(new Set(Object.values(listIds).flat()));
+    const profiles = allIds.length
+      ? await User.find(withActiveUsers({ _id: { $in: allIds } }))
+          .select("_id name username avatar")
+          .lean()
+      : [];
+    const profileById = new Map(
+      profiles.map((entry) => [toIdString(entry._id), safetyProfilePayload(entry)])
+    );
+    const hydrate = (ids) => ids.map((id) => profileById.get(id)).filter(Boolean);
+
+    if ((user.blockedUsers || []).length > 0) {
+      await User.updateOne(
+        { _id: user._id },
+        {
+          $addToSet: { blocks: { $each: blockedIds } },
+          $set: { blockedUsers: [] },
+        }
+      );
+    }
+
+    return res.json({
+      blocked: hydrate(listIds.blocked),
+      muted: hydrate(listIds.muted),
+      restricted: hydrate(listIds.restricted),
+      hiddenStoriesFrom: hydrate(listIds.hiddenStoriesFrom),
+    });
+  } catch (err) {
+    console.error("Safety lists fetch failed:", err);
+    return res.status(500).json({ error: "Failed to load safety controls" });
+  }
+});
+
+router.put("/me/block/:userId", auth, async (req, res) => {
+  try {
+    if (!isValidId(req.params.userId)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+    const meId = toIdString(req.user.id);
+    const targetId = toIdString(req.params.userId);
+    if (meId === targetId) {
+      return res.status(400).json({ error: "You cannot block yourself" });
+    }
+
+    const [me, target] = await Promise.all([
+      User.findById(meId).select("_id blocks blockedUsers"),
+      User.findOne(withActiveUsers({ _id: targetId })).select("_id name username avatar"),
+    ]);
+    if (!me || !target) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const created = !getBlockedUserIds(me).includes(targetId);
+    await User.bulkWrite([
+      {
+        updateOne: {
+          filter: { _id: me._id },
+          update: {
+            $addToSet: { blocks: target._id },
+            $pull: {
+              blockedUsers: target._id,
+              friends: target._id,
+              friendRequests: target._id,
+              closeFriends: target._id,
+              followers: target._id,
+              following: target._id,
+            },
+          },
+        },
+      },
+      {
+        updateOne: {
+          filter: { _id: target._id },
+          update: {
+            $pull: {
+              friends: me._id,
+              friendRequests: me._id,
+              closeFriends: me._id,
+              followers: me._id,
+              following: me._id,
+            },
+          },
+        },
+      },
+    ]);
+
+    await writeAuditLog({
+      req,
+      actorId: me._id,
+      action: "user.safety.block",
+      targetType: "User",
+      targetId,
+      metadata: { created },
+    }).catch(() => null);
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user:${meId}`).to(`user:${targetId}`).emit("user:safety_changed", {
+        userId: meId,
+        targetUserId: targetId,
+      });
+    }
+
+    return res.status(created ? 201 : 200).json({
+      success: true,
+      blocked: true,
+      created,
+      user: safetyProfilePayload(target),
+      relationshipsRemoved: true,
+    });
+  } catch (err) {
+    console.error("Block user failed:", err);
+    return res.status(500).json({ error: "Failed to block user" });
+  }
+});
+
+router.put("/me/unblock/:userId", auth, async (req, res) => {
+  try {
+    if (!isValidId(req.params.userId)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+    const meId = toIdString(req.user.id);
+    const targetId = toIdString(req.params.userId);
+    if (meId === targetId) {
+      return res.status(400).json({ error: "You cannot unblock yourself" });
+    }
+
+    const me = await User.findById(meId).select("_id blocks blockedUsers");
+    if (!me) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const existed = getBlockedUserIds(me).includes(targetId);
+    await User.updateOne(
+      { _id: me._id },
+      { $pull: { blocks: targetId, blockedUsers: targetId } }
+    );
+    await writeAuditLog({
+      req,
+      actorId: me._id,
+      action: "user.safety.unblock",
+      targetType: "User",
+      targetId,
+      metadata: { existed },
+    }).catch(() => null);
+
+    return res.json({
+      success: true,
+      blocked: false,
+      existed,
+      relationshipsRestored: false,
+    });
+  } catch (err) {
+    console.error("Unblock user failed:", err);
+    return res.status(500).json({ error: "Failed to unblock user" });
+  }
+});
+
 const updateIdListField = (field, operation = "add") => async (req, res) => {
   try {
     if (!isValidId(req.params.userId)) {
@@ -1715,8 +1946,13 @@ const updateIdListField = (field, operation = "add") => async (req, res) => {
       return res.status(400).json({ error: "You cannot update yourself" });
     }
 
-    const user = await User.findById(meId);
-    if (!user) {
+    const [user, target] = await Promise.all([
+      User.findById(meId),
+      operation === "remove"
+        ? Promise.resolve(null)
+        : User.findOne(withActiveUsers({ _id: targetId })).select("_id"),
+    ]);
+    if (!user || (operation !== "remove" && !target)) {
       return res.status(404).json({ error: "User not found" });
     }
     user[field] = Array.isArray(user[field]) ? user[field] : [];
@@ -1738,8 +1974,6 @@ const updateIdListField = (field, operation = "add") => async (req, res) => {
   }
 };
 
-router.put("/me/block/:userId", auth, updateIdListField("blocks", "add"));
-router.put("/me/unblock/:userId", auth, updateIdListField("blocks", "remove"));
 router.put("/me/mute/:userId", auth, updateIdListField("mutes", "add"));
 router.put("/me/unmute/:userId", auth, updateIdListField("mutes", "remove"));
 router.put("/me/restrict/:userId", auth, updateIdListField("restricts", "add"));
@@ -1771,12 +2005,23 @@ router.get("/:id", auth, async (req, res) => {
       return res.status(400).json({ error: "Invalid user id" });
     }
     const viewerId = toIdString(req.user.id);
-    const user = await User.findOne(withActiveUsers({ _id: req.params.id }))
-      .select("-password")
-      .lean();
+    const [viewer, user] = await Promise.all([
+      User.findById(viewerId).select("_id blocks blockedUsers").lean(),
+      User.findOne(withActiveUsers({ _id: req.params.id }))
+        .select(
+          "-password -sessions -trustedDevices -twoFactor -tokenVersion -passwordChangedAt "
+          + "-forceLogoutAt -mustReauth -mutes -restricts -hiddenStoriesFrom"
+        )
+        .lean(),
+    ]);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
+    if (!viewer || isBlockedBetween(viewer, user)) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    delete user.blocks;
+    delete user.blockedUsers;
     const isOwner = viewerId === toIdString(user._id);
     const isFriend = (user.friends || []).some((id) => toIdString(id) === viewerId);
     const profileVisibility = String(user?.privacy?.profileVisibility || "public");

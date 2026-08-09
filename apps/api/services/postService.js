@@ -1864,9 +1864,15 @@ class PostService {
       const closeFriendIds = uniqueIds((viewer.closeFriends || []).map((id) => toIdString(id))).filter(
         (id) => id && id !== viewerId
       );
+      const inboundBlockers = await User.find({
+        $or: [{ blocks: viewerId }, { blockedUsers: viewerId }],
+      })
+        .select("_id")
+        .lean();
       blockedIds = uniqueIds([
         ...(viewer.blocks || []).map((id) => toIdString(id)),
         ...(viewer.blockedUsers || []).map((id) => toIdString(id)),
+        ...inboundBlockers.map((entry) => toIdString(entry?._id)),
       ]);
 
       visibilityScopes.push({ author: viewerId });

@@ -403,9 +403,9 @@ describe("chat + friend request flow", () => {
     userA.friends = [userB._id];
     userB.friends = [userA._id];
     userB.birthday = futureBirthday(4);
-    userC.birthday = futureBirthday(1);
-    userD.birthday = futureBirthday(7);
-    userE.birthday = futureBirthday(2);
+    userC.birthday = { ...futureBirthday(1), visibility: "public" };
+    userD.birthday = { ...futureBirthday(7), visibility: "private" };
+    userE.birthday = { ...futureBirthday(2), visibility: "public" };
     await Promise.all([userA.save(), userB.save(), userC.save(), userD.save(), userE.save()]);
 
     const response = await request(app)

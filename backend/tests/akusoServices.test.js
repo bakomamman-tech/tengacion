@@ -264,6 +264,34 @@ describe("Akuso services", () => {
     );
   });
 
+  it("routes account deletion guidance without allowing Akuso to perform it", () => {
+    const feature = findFeatureByIntent("delete my account");
+    const policy = evaluateAkusoPolicy({
+      input: { message: "Delete my account", mode: "app_help" },
+      user: { id: userId },
+    });
+
+    expect(feature).toEqual(
+      expect.objectContaining({
+        featureKey: "account_deletion",
+        routePattern: "/account-deletion",
+      })
+    );
+    expect(policy).toEqual(
+      expect.objectContaining({
+        categoryBucket: POLICY_BUCKETS.SENSITIVE_ACTION_REQUIRES_AUTH,
+        shouldCallModel: false,
+        requiresAuth: true,
+      })
+    );
+    expect(policy.classification).toEqual(
+      expect.objectContaining({
+        sensitive: true,
+        routeHint: "/account-deletion",
+      })
+    );
+  });
+
   it("returns grounded hints for live and creator membership flows", () => {
     expect(
       getAkusoHints({

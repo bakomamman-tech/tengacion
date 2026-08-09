@@ -258,6 +258,7 @@ const SENSITIVE_PATTERNS = [
   /\bpayout details?\b/i,
   /\btransfer money\b/i,
   /\bwithdraw\b/i,
+  /\bdelete (?:my )?account\b/i,
 ];
 
 const normalize = (value = "") =>

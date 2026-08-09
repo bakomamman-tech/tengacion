@@ -62,6 +62,10 @@ Akuso-specific configuration:
 Backend architecture, safety boundaries, and extension guidance live here:
 - [`docs/akuso-backend-engine.md`](docs/akuso-backend-engine.md)
 
+Account data-rights contracts:
+- [`docs/tengacion-account-data-export.md`](docs/tengacion-account-data-export.md) - portable, allowlisted account snapshots
+- [`docs/tengacion-account-deletion.md`](docs/tengacion-account-deletion.md) - permanent deletion, retention handling, and Akuso boundaries
+
 Execution roadmaps for the marketplace and Akuso build cycles:
 - [`docs/tengacion-30-60-90-roadmap.md`](docs/tengacion-30-60-90-roadmap.md) - foundation cycle for commerce, creator activation, discovery, analytics, and Akuso evals
 - [`docs/tengacion-next-30-60-90-roadmap.md`](docs/tengacion-next-30-60-90-roadmap.md) - next cycle for reliability, payout operations, creator growth, fan retention, trust, and governance

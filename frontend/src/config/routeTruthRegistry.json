@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "lastReviewed": "2026-08-03",
+  "lastReviewed": "2026-08-09",
   "routeAnalyticsContract": {
     "eventType": "route_viewed",
     "version": 1,
@@ -54,11 +54,11 @@
       "access": "public",
       "canonicalPath": "/account-deletion",
       "appPaths": ["/account-deletion"],
-      "dataAuthority": "Account deletion API and retention-aware deletion service.",
+      "dataAuthority": "Password-reauthenticated Account Deletion API and retention-aware deletion service; the server disables the account, revokes every session, removes user-owned content, anonymizes retained financial records and records completion without storing deleted content.",
       "ownerRole": "Trust and Identity Owner",
       "kpi": "Verified deletion completion rate",
       "featureFlag": null,
-      "testEvidence": ["backend/tests/accountDeletion.test.js"]
+      "testEvidence": ["backend/tests/accountDeletion.test.js", "frontend/src/pages/__tests__/AccountDeletion.test.jsx", "backend/tests/akusoServices.test.js"]
     },
     {
       "id": "public_profiles",

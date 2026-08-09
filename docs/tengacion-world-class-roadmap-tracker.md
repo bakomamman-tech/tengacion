@@ -1,6 +1,6 @@
 # Tengacion World-Class Roadmap Implementation Tracker
 
-Last updated: 4 August 2026
+Last updated: 9 August 2026
 
 This document is the authoritative implementation record for the Facebook benchmark roadmap. A work package is marked complete only after its definition of done is implemented and verified. Planning documents and code presence alone do not count as completion.
 
@@ -46,8 +46,18 @@ This document is the authoritative implementation record for the Facebook benchm
 |---|---|---|---|
 | REL-001 | Separate public readiness probes from operator diagnostics | COMPLETE | Public liveness/readiness probes are non-cacheable and reveal only runtime state, degraded readiness returns HTTP 503 with a retry window, and authenticated Admin Settings exposes the full required/advisory dependency checklist. |
 | CONTROL-001 | Provide a self-service portable account snapshot | COMPLETE | Reauthenticated Privacy Settings downloads a server-generated, audited JSON snapshot with an explicit scope/completeness manifest, bounded activity sections and allowlisted fields that exclude authentication/provider secrets and other people's private replies or incoming messages. |
+| CONTROL-002 | Make permanent account deletion a verified user-controlled journey | COMPLETE | Authenticated non-admin users can review retention, reauthenticate, explicitly confirm and permanently delete their account; failed reauthentication preserves the valid session, completion revokes every session and is minimally audited, and Akuso can navigate but cannot perform the action. |
 
 ## Change log
+
+### 9 August 2026
+
+- Completed CONTROL-002 around the existing retention-aware deletion service and public `/account-deletion` page.
+- Corrected failed password reauthentication from `401` to `403`, preventing a mistyped password from revoking an otherwise valid login; all deletion responses are now non-cacheable.
+- Added a bounded `account_deleted` completion audit event after deletion while keeping audit failure from misreporting an already completed destructive action as failed.
+- Registered account deletion as a grounded Akuso capability and classified deletion prompts as sensitive, so Akuso can open the secure page but cannot perform or model-execute the request.
+- Documented deletion scope, retained-record handling, administrator restrictions and AI boundaries in `docs/tengacion-account-deletion.md`.
+- CONTROL-002 verification: backend deletion integration tests, the frontend account-deletion journey tests, focused Akuso service coverage, syntax checks, frontend lint, action and encoding audits, and a production frontend build.
 
 ### 4 August 2026
 

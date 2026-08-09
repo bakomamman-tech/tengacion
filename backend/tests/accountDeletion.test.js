@@ -102,7 +102,13 @@ describe("self-service account controls", () => {
       .delete("/api/users/me")
       .set("Authorization", `Bearer ${token}`)
       .send({ password: "wrong-password", confirmation: "DELETE" })
-      .expect(401);
+      .expect(403)
+      .expect("Cache-Control", "no-store");
+
+    await request(app)
+      .get("/api/users/me")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
   });
 
   test("exports a bounded portable snapshot without authentication secrets or others' replies", async () => {
@@ -220,6 +226,7 @@ describe("self-service account controls", () => {
       .send({ password: "Password123!", confirmation: "DELETE" })
       .expect(200);
 
+    expect(response.headers["cache-control"]).toBe("no-store");
     expect(response.body).toMatchObject({ success: true, deleted: true });
 
     const deletedUser = await User.findById(user._id).select("+password").lean();
@@ -238,6 +245,17 @@ describe("self-service account controls", () => {
     const updatedFriend = await User.findById(friend._id).lean();
     expect(updatedFriend.friends.map(String)).not.toContain(String(user._id));
     expect(updatedFriend.followers.map(String)).not.toContain(String(user._id));
+
+    expect(
+      await AuditLog.findOne({
+        actorId: user._id,
+        action: "account_deleted",
+      }).lean()
+    ).toMatchObject({
+      targetType: "User",
+      targetId: String(user._id),
+      metadata: { retainedFinancialRecords: true },
+    });
 
     await request(app)
       .get("/api/users/me")

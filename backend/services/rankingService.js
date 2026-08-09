@@ -29,12 +29,10 @@ const getRelationshipBoost = (candidate, affinity) => {
   if (sets.closeFriendUserIds?.has(authorUserId) || sets.closeFriendCreatorIds?.has(creatorId)) {
     score += 18;
     reasons.push(buildReason("close_connection", 18));
-  }
-  if (sets.friendUserIds?.has(authorUserId) || sets.friendCreatorIds?.has(creatorId)) {
+  } else if (sets.friendUserIds?.has(authorUserId) || sets.friendCreatorIds?.has(creatorId)) {
     score += 14;
     reasons.push(buildReason("friend_connection", 14));
-  }
-  if (sets.followingUserIds?.has(authorUserId) || sets.followingCreatorIds?.has(creatorId)) {
+  } else if (sets.followingUserIds?.has(authorUserId) || sets.followingCreatorIds?.has(creatorId)) {
     score += 12;
     reasons.push(buildReason("following_connection", 12));
   }
@@ -90,6 +88,37 @@ const getFreshnessBoost = (candidate, surface) => {
   return {
     score: freshness,
     reasons: freshness >= 2 ? [buildReason("fresh_content", freshness)] : [],
+  };
+};
+
+const getHomeAgePenalty = (candidate, surface) => {
+  if (surface !== "home") {
+    return { score: 0, reasons: [] };
+  }
+
+  const ageHours = hoursSince(candidate?.createdAt);
+  const score = Math.min(32, 4 * Math.log2(1 + ageHours / 6));
+  return {
+    score,
+    reasons: score >= 2 ? [buildReason("older_content", score)] : [],
+  };
+};
+
+const getRecentImpressionPenalty = (candidate, recentImpressions) => {
+  const entityId = normalizeId(candidate?.entityId);
+  const impression = recentImpressions?.get(entityId);
+  if (!impression) {
+    return { score: 0, reasons: [] };
+  }
+
+  const count = Math.max(1, Number(impression?.count || 0));
+  const lastSeenHours = hoursSince(impression?.lastSeenAt);
+  const recencyFactor = 1 / (1 + lastSeenHours / 24);
+  const score = Math.min(18, (6 + log1p(count) * 4) * recencyFactor);
+
+  return {
+    score,
+    reasons: score >= 1 ? [buildReason("recently_seen", score)] : [],
   };
 };
 
@@ -251,7 +280,35 @@ const getFallbackMode = ({ affinity, rankedCount }) => {
 
 const normalizeLimit = (limit) => Math.max(1, Math.min(50, Number(limit) || 20));
 
-const rankCandidatesWithDiagnostics = ({ surface, candidates = [], affinity, creatorQualityMap, limit = 20 } = {}) => {
+const getCandidateCreatedAt = (candidate) => {
+  const timestamp = new Date(candidate?.createdAt || candidate?.payload?.createdAt || 0).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
+const compareCandidates = (surface) => (left, right) => {
+  const scoreDifference = Number(right?.score || 0) - Number(left?.score || 0);
+  if (scoreDifference !== 0) {
+    return scoreDifference;
+  }
+
+  if (surface === "home") {
+    const createdAtDifference = getCandidateCreatedAt(right) - getCandidateCreatedAt(left);
+    if (createdAtDifference !== 0) {
+      return createdAtDifference;
+    }
+  }
+
+  return String(left?.candidateId || "").localeCompare(String(right?.candidateId || ""));
+};
+
+const rankCandidatesWithDiagnostics = ({
+  surface,
+  candidates = [],
+  affinity,
+  creatorQualityMap,
+  recentImpressions,
+  limit = 20,
+} = {}) => {
   const candidateList = Array.isArray(candidates) ? candidates : [];
   const cappedLimit = normalizeLimit(limit);
   const diversityCap = surface === "home" ? 3 : 2;
@@ -284,6 +341,8 @@ const rankCandidatesWithDiagnostics = ({ surface, candidates = [], affinity, cre
     const relationship = getRelationshipBoost(candidate, affinity);
     const affinityBoost = getAffinityBoost(candidate, affinity);
     const freshness = getFreshnessBoost(candidate, surface);
+    const agePenalty = getHomeAgePenalty(candidate, surface);
+    const impressionPenalty = getRecentImpressionPenalty(candidate, recentImpressions);
     const popularity = getPopularityBoost(candidate, surface);
     const exploration = getExplorationBonus(candidate, affinity);
     const featuredCollection = getFeaturedCollectionBoost(candidate, { isColdStart });
@@ -306,6 +365,8 @@ const rankCandidatesWithDiagnostics = ({ surface, candidates = [], affinity, cre
       + popularity.score
       + exploration.score
       + featuredCollection.score
+      - agePenalty.score
+      - impressionPenalty.score
       - trustPenalty.score;
 
     ranked.push({
@@ -319,15 +380,16 @@ const rankCandidatesWithDiagnostics = ({ surface, candidates = [], affinity, cre
         ...popularity.reasons,
         ...exploration.reasons,
         ...featuredCollection.reasons,
+        ...agePenalty.reasons.map((entry) => ({ ...entry, penalty: true })),
+        ...impressionPenalty.reasons.map((entry) => ({ ...entry, penalty: true })),
         ...trustPenalty.reasons.map((entry) => ({ ...entry, penalty: true })),
       ],
     });
   }
 
-  const items = diversify(
-    ranked.sort((a, b) => Number(b.score || 0) - Number(a.score || 0)),
-    diversityCap
-  ).slice(0, cappedLimit);
+  const sorted = ranked.sort(compareCandidates(surface));
+  const ordered = diversify(sorted, diversityCap);
+  const items = ordered.slice(0, cappedLimit);
 
   meta.rankedCount = items.length;
   meta.fallbackMode = getFallbackMode({ affinity, rankedCount: items.length });

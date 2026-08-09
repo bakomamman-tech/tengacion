@@ -244,8 +244,12 @@ const seedScenario = async () => {
 };
 
 describe("Discovery endpoints", () => {
-  test("GET /api/discovery/home ranks follow-graph content first and logs the request", async () => {
-    const { token } = await seedScenario();
+  test("GET /api/discovery/home balances relevance with freshness and logs the request", async () => {
+    const { token, viewer, creatorTwoUser } = await seedScenario();
+    await User.updateOne(
+      { _id: viewer._id },
+      { $addToSet: { friends: creatorTwoUser._id } }
+    );
 
     const response = await request(app)
       .get("/api/discovery/home")
@@ -259,7 +263,11 @@ describe("Discovery endpoints", () => {
       entityType: "post",
       reason: expect.any(String),
     });
-    expect(response.body.items[0].payload.username).toBe("creator_one");
+    expect(response.body.items[0].payload.username).toBe("creator_two");
+    expect(new Date(response.body.items[0].payload.createdAt).getTime()).toBeGreaterThan(
+      new Date(response.body.items[1].payload.createdAt).getTime()
+    );
+    expect(response.body.meta.diversityCap).toBe(3);
 
     const log = await RecommendationLog.findOne({ requestId: response.body.requestId }).lean();
     expect(log).toBeTruthy();
@@ -267,6 +275,64 @@ describe("Discovery endpoints", () => {
     expect(log.rankedIds.length).toBeGreaterThan(0);
     expect(log.creatorIds.length).toBeGreaterThan(0);
     expect(log.creatorExposures.length).toBeGreaterThan(0);
+  });
+
+  test("GET /api/discovery/home remains personalized instead of strictly chronological", async () => {
+    const { token, viewer, creatorOneUser, creatorTwoUser } = await seedScenario();
+    await User.updateOne(
+      { _id: viewer._id },
+      { $addToSet: { friends: creatorTwoUser._id } }
+    );
+    await Post.create({
+      author: creatorOneUser._id,
+      text: "Relevant update from a close connection",
+      privacy: "public",
+      visibility: "public",
+      audience: "public",
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+    });
+
+    const response = await request(app)
+      .get("/api/discovery/home")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.items[0].payload.username).toBe("creator_one");
+    expect(new Date(response.body.items[0].payload.createdAt).getTime()).toBeLessThan(
+      new Date(response.body.items[1].payload.createdAt).getTime()
+    );
+  });
+
+  test("GET /api/discovery/home rotates a repeatedly viewed post below fresh content", async () => {
+    const { token, viewer, creatorOneUser, creatorTwoUser } = await seedScenario();
+    await User.updateOne(
+      { _id: viewer._id },
+      { $addToSet: { friends: creatorTwoUser._id } }
+    );
+    const repeatedPost = await Post.create({
+      author: creatorOneUser._id,
+      text: "A relevant post already shown several times",
+      privacy: "public",
+      visibility: "public",
+      audience: "public",
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+    });
+    await AnalyticsEvent.create(
+      Array.from({ length: 5 }, () => ({
+        type: "feed_impression",
+        userId: viewer._id,
+        targetId: repeatedPost._id.toString(),
+        targetType: "post",
+        contentType: "home",
+      }))
+    );
+
+    const response = await request(app)
+      .get("/api/discovery/home")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.items[0].payload.username).toBe("creator_two");
   });
 
   test("GET discovery creators, live, and creator-hub return ranked payloads", async () => {

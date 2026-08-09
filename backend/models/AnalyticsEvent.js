@@ -68,6 +68,13 @@ const AnalyticsEventSchema = new mongoose.Schema(
 
 AnalyticsEventSchema.index({ createdAt: -1, type: 1 });
 AnalyticsEventSchema.index({ userId: 1, createdAt: -1 });
+AnalyticsEventSchema.index({
+  userId: 1,
+  type: 1,
+  targetType: 1,
+  contentType: 1,
+  createdAt: -1,
+});
 AnalyticsEventSchema.index({ targetType: 1, createdAt: -1 });
 AnalyticsEventSchema.index({ targetType: 1, targetId: 1, createdAt: -1 });
 AnalyticsEventSchema.index({ contentType: 1, createdAt: -1 });

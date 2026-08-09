@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const mongoose = require("mongoose");
+const AnalyticsEvent = require("../models/AnalyticsEvent");
 const RecommendationLog = require("../models/RecommendationLog");
 const { logAnalyticsEvent } = require("./analyticsService");
 const {
@@ -55,6 +56,44 @@ const toObjectId = (value = "") => {
 
 const makeEntityKey = (entityType = "", entityId = "") =>
   `${normalizeText(entityType, 40)}:${String(entityId || "").trim().slice(0, 120)}`;
+
+const loadRecentImpressionSignals = async ({
+  userId,
+  surface,
+  lookbackHours = 7 * 24,
+} = {}) => {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return new Map();
+  }
+
+  const cutoff = new Date(Date.now() - Math.max(1, Number(lookbackHours) || 1) * 60 * 60 * 1000);
+  const rows = await AnalyticsEvent.find({
+    userId,
+    type: "feed_impression",
+    targetType: "post",
+    contentType: normalizeText(surface, 40),
+    createdAt: { $gte: cutoff },
+  })
+    .sort({ createdAt: -1 })
+    .limit(500)
+    .select("targetId createdAt")
+    .lean();
+
+  const signals = new Map();
+  for (const row of rows) {
+    const entityId = normalizeId(row?.targetId);
+    if (!entityId) continue;
+
+    const current = signals.get(entityId) || {
+      count: 0,
+      lastSeenAt: row?.createdAt || null,
+    };
+    current.count += 1;
+    signals.set(entityId, current);
+  }
+
+  return signals;
+};
 
 const buildRankedItemRefs = (rankedItems = []) =>
   limitArray(Array.isArray(rankedItems) ? rankedItems : [], 40)
@@ -307,5 +346,6 @@ const trackDiscoveryEvents = async ({
 
 module.exports = {
   createRecommendationLog,
+  loadRecentImpressionSignals,
   trackDiscoveryEvents,
 };

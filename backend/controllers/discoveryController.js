@@ -10,7 +10,11 @@ const {
 } = require("../services/candidateService");
 const { rankCandidatesWithDiagnostics } = require("../services/rankingService");
 const { decorateRankedItems } = require("../services/explanationService");
-const { createRecommendationLog, trackDiscoveryEvents } = require("../services/discoveryEventService");
+const {
+  createRecommendationLog,
+  loadRecentImpressionSignals,
+  trackDiscoveryEvents,
+} = require("../services/discoveryEventService");
 
 const parseLimit = (value, fallback = 12) =>
   Math.max(1, Math.min(50, Number.parseInt(value, 10) || fallback));
@@ -28,20 +32,28 @@ const serveDiscoverySurface = async ({ req, res, surface, candidateLoader, loade
   const limit = parseLimit(req.query?.limit, 12);
   const userId = req.user.id;
 
-  const affinity = await buildUserAffinityProfile({ userId });
-  const candidates = await candidateLoader({
-    userId,
-    limit,
-    ...loaderOptions,
-  });
-  const creatorQualityMap = await loadCreatorQualityProfiles({
-    creatorIds: collectCreatorIds(candidates),
-  });
+  const [affinity, candidates] = await Promise.all([
+    buildUserAffinityProfile({ userId }),
+    candidateLoader({
+      userId,
+      limit,
+      ...loaderOptions,
+    }),
+  ]);
+  const [creatorQualityMap, recentImpressions] = await Promise.all([
+    loadCreatorQualityProfiles({
+      creatorIds: collectCreatorIds(candidates),
+    }),
+    surface === "home"
+      ? loadRecentImpressionSignals({ userId, surface })
+      : Promise.resolve(new Map()),
+  ]);
   const { items: ranked, meta: recommendationMeta } = rankCandidatesWithDiagnostics({
     surface,
     candidates,
     affinity,
     creatorQualityMap,
+    recentImpressions,
     limit,
   });
   const items = decorateRankedItems({ items: ranked });

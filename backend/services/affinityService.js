@@ -104,6 +104,7 @@ const getRelationshipSignals = async (user) => {
 };
 
 const EVENT_WEIGHTS = {
+  feed_impression: 0,
   recommendation_clicked: 2,
   recommendation_hidden: -1.5,
   recommendation_dismissed: -2,
@@ -245,7 +246,9 @@ const computeAffinityProfile = async (user) => {
   }
 
   for (const event of events) {
-    const weight = Number(EVENT_WEIGHTS[event?.type] || 0.75);
+    const weight = Object.prototype.hasOwnProperty.call(EVENT_WEIGHTS, event?.type)
+      ? Number(EVENT_WEIGHTS[event.type])
+      : 0.75;
     const creatorId = normalizeId(event?.metadata?.creatorId)
       || (normalizeText(event?.targetType, 40) === "creator" ? normalizeId(event?.targetId) : "");
     const contentType = normalizeContentType(event?.contentType || event?.targetType || event?.metadata?.itemType);

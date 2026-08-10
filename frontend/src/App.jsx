@@ -163,6 +163,12 @@ const KadahiveSuperAdminPage = lazy(
 const KadahiveProgrammeArchive = lazy(
   () => import("./features/kadahive/KadahiveProgrammeArchive")
 );
+const GsiJournalOnboardingPage = lazy(
+  () => import("./features/gsi/GsiJournalOnboardingPage")
+);
+const GsiPublicRecordPage = lazy(
+  () => import("./features/gsi/GsiPublicRecordPage")
+);
 
 function AppShellFallback({ message = "Loading Tengacion..." }) {
   return (
@@ -196,7 +202,9 @@ export default function App() {
     pathname === "/kadahive" ||
     pathname.startsWith("/kadahive/") ||
     pathname === "/admin/institutions/kadahive";
-  const isAuthOptionalRoute = pathname === "/" || pathname.startsWith("/kadahive");
+  const isGsiRoute = pathname === "/gsi" || pathname.startsWith("/gsi/");
+  const isAuthOptionalRoute =
+    pathname === "/" || pathname.startsWith("/kadahive") || isGsiRoute;
 
   // The public landing page must remain useful while a slow mobile connection
   // checks for an existing session. Authenticated visitors are redirected as
@@ -207,12 +215,14 @@ export default function App() {
 
   return (
     <>
-      <WelcomeVoiceController user={isKadahiveRoute || isAIProfessionalsRoute ? null : user} />
+      <WelcomeVoiceController user={isKadahiveRoute || isAIProfessionalsRoute || isGsiRoute ? null : user} />
       <RouteSeoController />
       <Suspense fallback={<AppShellFallback />}>
         <Routes>
           <Route path="/" element={user ? <Navigate to="/home" replace /> : <PublicHomePage />} />
           <Route path="/kadahive" element={<KadahiveLanding />} />
+          <Route path="/gsi" element={<GsiJournalOnboardingPage />} />
+          <Route path="/gsi/records/:recordId" element={<GsiPublicRecordPage />} />
           <Route
             path="/kadahive/programmes/kids-code"
             element={<KadahiveProgrammeArchive programme="kids" />}
@@ -1072,7 +1082,7 @@ export default function App() {
           />
         </Routes>
       </Suspense>
-      {user && !isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute ? (
+      {user && !isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isGsiRoute ? (
         <TopUpPromoDiscovery
           user={user}
           onExploreTip={(tip) => {
@@ -1090,8 +1100,8 @@ export default function App() {
           }}
         />
       ) : null}
-      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute ? <InstallPrompt /> : null}
-      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute ? (
+      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isGsiRoute ? <InstallPrompt /> : null}
+      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isGsiRoute ? (
         <TengacionAssistantDock />
       ) : null}
     </>

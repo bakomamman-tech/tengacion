@@ -55,6 +55,7 @@ const PUBLIC_STATIC_PATHS = new Set([
   "/contact",
   "/developer-contact",
   "/marketplace",
+  "/gsi",
 ]);
 
 const NOINDEX_RULES = [
@@ -165,12 +166,16 @@ const isPublicDetailRoute = (pathname) =>
 const isPublicMarketplaceRoute = (pathname) =>
   /^\/marketplace\/(?:product|store)\/[^/]+$/i.test(pathname);
 
+const isPublicGsiRecordRoute = (pathname) =>
+  /^\/gsi\/records\/[a-zA-Z0-9_-]+$/i.test(pathname);
+
 const isHandledPublicRoute = (pathname) =>
   PUBLIC_STATIC_PATHS.has(pathname)
   || isPublicCreatorRoute(pathname)
   || isPublicCreatorAliasRoute(pathname)
   || isPublicDetailRoute(pathname)
-  || isPublicMarketplaceRoute(pathname);
+  || isPublicMarketplaceRoute(pathname)
+  || isPublicGsiRecordRoute(pathname);
 
 export default function RouteSeoController() {
   const location = useLocation();

@@ -21,6 +21,21 @@ This repo now supports an MVP where users can:
 - `apps/web/` (feature-based React modules, shared API client)
 - `.env.example` / `.env.test` env templates
 
+## GSI Buildathon 2026 — TEAM ARCHIVE
+
+The public journal-onboarding prototype lives at `/gsi`. It searches live OpenAlex journal data, imports and normalizes publications, calculates the transparent `GSI-Archive-1.0` score, lets an editor review journal-level details, and publishes a content-addressed public record through a server-managed IPFS pin.
+
+Required production configuration:
+
+- `OPENALEX_API_KEY` — server-side OpenAlex API key
+- `PINATA_JWT` — server-side, least-privilege JSON pinning key
+
+Buildathon documentation:
+
+- [`docs/gsi-team-archive-architecture.md`](docs/gsi-team-archive-architecture.md)
+- [`docs/gsi-scoring-model.md`](docs/gsi-scoring-model.md)
+- [`docs/gsi-demo-script.md`](docs/gsi-demo-script.md)
+
 ## Akuso Assistant
 Akuso is Tengacion's in-app AI assistant. The current production-minded backend foundation is exposed through `backend/routes/akuso.js` and keeps model access on the server only.
 

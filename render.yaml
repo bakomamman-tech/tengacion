@@ -55,3 +55,7 @@ services:
         value: stephen@tengacion.com
       - key: VITE_ADMIN_NOTIFICATION_EMAIL
         value: stephen@tengacion.com
+      - key: OPENALEX_API_KEY
+        sync: false
+      - key: PINATA_JWT
+        sync: false

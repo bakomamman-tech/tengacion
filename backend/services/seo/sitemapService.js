@@ -35,6 +35,7 @@ const MAX_URLS_PER_SITEMAP = 1000;
 
 const STATIC_PUBLIC_ROUTES = [
   { path: "/" },
+  { path: "/gsi" },
   { path: "/kadahive" },
   { path: "/kadahive/programmes/kids-code" },
   { path: "/kadahive/programmes/cyber-smart" },

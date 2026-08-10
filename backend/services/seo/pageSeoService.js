@@ -69,6 +69,15 @@ const HOME_DESCRIPTION =
   "Create, connect, sell, stream, and earn on Tengacion, Africa's social commerce and creator monetization platform.";
 
 const PUBLIC_INFO_PAGES = {
+  "/gsi": {
+    title: "GSI Journal Registry | Team Archive",
+    description:
+      "Import real OpenAlex publication data, understand a transparent GSI Score, and create a permanent academic journal record.",
+    canonicalPath: "/gsi",
+    previewTitle: "Global South Index Journal Registry",
+    previewDescription:
+      "A clear journal-editor workflow for discovery, publication review, transparent evaluation, and permanent indexing.",
+  },
   "/kadahive": {
     title: "KADA Hive Innovation & Tech Hub | Kaduna",
     description:

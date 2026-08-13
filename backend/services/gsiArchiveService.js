@@ -47,7 +47,6 @@ const buildArchivalRecord = ({ source, publications, importSummary, score, edito
         id: institution.id || null,
         displayName: institution.displayName,
         countryCode: institution.countryCode || null,
-        isGlobalSouth: institution.isGlobalSouth,
       })),
     })),
     topics: (work.topics || []).map((topic) => topic.displayName).filter(Boolean),

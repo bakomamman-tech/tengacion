@@ -42,7 +42,6 @@ describe("GSI OpenAlex service", () => {
               id: "https://openalex.org/I9",
               display_name: "Institution",
               country_code: "ng",
-              is_global_south: true,
             },
           ],
         },
@@ -51,7 +50,11 @@ describe("GSI OpenAlex service", () => {
 
     expect(source).toMatchObject({ id: "S123", displayName: "Journal Name", worksCount: 12 });
     expect(work).toMatchObject({ id: "W456", isOpenAccess: true, hasAbstract: true });
-    expect(work.authors[0].institutions[0]).toMatchObject({ countryCode: "NG", isGlobalSouth: true });
+    expect(work.authors[0].institutions[0]).toEqual({
+      id: "I9",
+      displayName: "Institution",
+      countryCode: "NG",
+    });
   });
 
   test("returns a helpful service state when the required API key is absent", async () => {

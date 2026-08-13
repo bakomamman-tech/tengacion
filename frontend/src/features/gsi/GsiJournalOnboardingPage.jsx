@@ -7,6 +7,7 @@ import {
   publishGsiJournal,
   searchGsiJournals,
 } from "./gsiApi";
+import { formatCountry, formatNumber } from "./gsiFormatters";
 import "./gsi.css";
 
 const STEPS = [
@@ -17,20 +18,6 @@ const STEPS = [
   { label: "Record saved", short: "Saved" },
 ];
 
-const COUNTRY_NAMES = new Intl.DisplayNames(["en"], { type: "region" });
-
-const countryName = (code) => {
-  if (!code) {
-    return "Country not listed";
-  }
-  try {
-    return COUNTRY_NAMES.of(code) || code;
-  } catch {
-    return code;
-  }
-};
-
-const formatNumber = (value) => new Intl.NumberFormat("en").format(Number(value) || 0);
 const formatDate = (value) => {
   if (!value) {
     return "Date unavailable";
@@ -212,7 +199,7 @@ function SearchStep({ onImported }) {
                 </div>
                 <dl>
                   <div><dt>ISSN</dt><dd>{source.issnL || source.issns?.[0] || "Not listed"}</dd></div>
-                  <div><dt>Country</dt><dd>{countryName(source.countryCode)}</dd></div>
+                  <div><dt>Country</dt><dd>{formatCountry(source.countryCode)}</dd></div>
                   <div><dt>Works indexed</dt><dd>{formatNumber(source.worksCount)}</dd></div>
                 </dl>
               </div>
@@ -250,7 +237,7 @@ function ReviewStep({ data, editorialReview, setEditorialReview, onBack, onConti
         <p>Correct the journal-level details if needed. Publication evidence remains linked to its source record.</p>
       </div>
       <Notice type="success" title="Import complete">
-        We found {formatNumber(data.importSummary.totalWorks)} publications and reviewed the {data.importSummary.reviewedWorks} most recent records for scoring.
+        We found {formatNumber(data.importSummary.totalWorks)} publications and reviewed the {formatNumber(data.importSummary.reviewedWorks)} most recent records as evidence. Research publication types will form the scoring sample.
       </Notice>
 
       <div className="gsi-journal-summary">
@@ -332,7 +319,8 @@ function ScoreStep({ data, onBack, onContinue }) {
           <span>GSI Score · {score.version}</span>
           <h2>{editorialTitle(data)}</h2>
           <p>{score.summary}</p>
-          <div className="gsi-score-context"><span><GsiIcon name="file" size={16} /> {score.sampleSize} records reviewed</span><span><GsiIcon name="globe" size={16} /> {score.context.countries.length || 0} countries identified</span></div>
+          <div className="gsi-score-context"><span><GsiIcon name="file" size={16} /> {formatNumber(score.sampleSize)} research records scored</span><span><GsiIcon name="globe" size={16} /> {formatNumber(score.context.countries.length || 0)} countries identified</span></div>
+          {score.context.excludedPublications ? <p className="gsi-score-methodology">{formatNumber(score.context.excludedPublications)} non-research {score.context.excludedPublications === 1 ? "record was" : "records were"} retained as evidence but excluded from scoring.</p> : null}
         </div>
       </div>
 
@@ -409,7 +397,7 @@ function ConfirmStep({ data, editorialReview, onBack, onPublished }) {
           <div className="gsi-confirm-title"><span className="gsi-summary-monogram">{editorialReview.displayName.charAt(0).toUpperCase()}</span><div><span>Journal record</span><h2>{editorialReview.displayName}</h2><p>{editorialReview.publisher || "Publisher not listed"}</p></div></div>
           <dl>
             <div><dt>Primary ISSN</dt><dd>{editorialReview.issnL || "Not listed"}</dd></div>
-            <div><dt>Country</dt><dd>{countryName(editorialReview.countryCode)}</dd></div>
+            <div><dt>Country</dt><dd>{formatCountry(editorialReview.countryCode)}</dd></div>
             <div><dt>OpenAlex works</dt><dd>{formatNumber(data.importSummary.totalWorks)}</dd></div>
             <div><dt>GSI Score</dt><dd><strong>{data.score.total}/100</strong></dd></div>
           </dl>

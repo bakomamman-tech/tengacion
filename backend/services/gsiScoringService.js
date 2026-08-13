@@ -7,8 +7,20 @@ const round = (value, digits = 0) => {
 };
 const percent = (value) => round(clamp(value) * 100);
 
+const SCORABLE_WORK_TYPES = new Set([
+  "article",
+  "review",
+  "book-chapter",
+  "proceedings-article",
+]);
+
+const normalizedWorkType = (work) => String(work?.type || "article").trim().toLowerCase();
+const isScorableWork = (work) => SCORABLE_WORK_TYPES.has(normalizedWorkType(work));
+
 const scoreJournal = ({ source = {}, publications = [], now = new Date() } = {}) => {
-  const works = Array.isArray(publications) ? publications : [];
+  const reviewedWorks = Array.isArray(publications) ? publications : [];
+  const works = reviewedWorks.filter(isScorableWork);
+  const excludedWorks = reviewedWorks.filter((work) => !isScorableWork(work));
   const workCount = works.length;
   const allAuthors = works.flatMap((work) => (Array.isArray(work.authors) ? work.authors : []));
   const allInstitutions = allAuthors.flatMap((author) =>
@@ -87,9 +99,6 @@ const scoreJournal = ({ source = {}, publications = [], now = new Date() } = {})
   const countries = [
     ...new Set(allInstitutions.map((institution) => institution.countryCode).filter(Boolean)),
   ];
-  const globalSouthInstitutions = allInstitutions.filter(
-    (institution) => institution.isGlobalSouth
-  ).length;
 
   const doiCount = works.filter((work) => work.doi).length;
   const doiCoverage = ratio(doiCount, workCount);
@@ -184,24 +193,30 @@ const scoreJournal = ({ source = {}, publications = [], now = new Date() } = {})
   const opportunity = [...ranked].reverse()[0];
 
   return {
-    version: "GSI-Archive-1.0",
+    version: "GSI-Archive-1.1",
     total,
     maximum: 100,
     sampleSize: workCount,
+    methodologyNote:
+      "The score uses research publication types (articles, reviews, book chapters, and proceedings articles). Other OpenAlex records remain archived as evidence but do not affect the score.",
     components,
     summary: workCount
       ? `The journal is strongest in ${strongest.label.toLowerCase()}. The clearest opportunity is ${opportunity.label.toLowerCase()}, based only on the metadata currently available from OpenAlex.`
-      : "No publications were returned, so the score reflects missing indexed evidence rather than journal quality.",
+      : reviewedWorks.length
+        ? "OpenAlex returned records, but none were eligible research publication types, so they were retained as evidence without affecting the score."
+        : "No publications were returned, so the score reflects missing indexed evidence rather than journal quality.",
     fairnessNote:
       "This score evaluates record visibility and metadata coverage. It does not use impact factor, publisher prestige, language, or country income, and it should not be read as a judgment of research quality.",
     context: {
       countries,
-      globalSouthInstitutions,
-      reviewedPublications: workCount,
+      reviewedPublications: reviewedWorks.length,
+      scoredPublications: workCount,
+      excludedPublications: excludedWorks.length,
+      excludedWorkTypes: [...new Set(excludedWorks.map(normalizedWorkType))].sort(),
       totalIndexedPublications: Math.max(Number(source.worksCount) || 0, workCount),
       latestPublicationYear: latestYear || null,
     },
   };
 };
 
-module.exports = { scoreJournal };
+module.exports = { SCORABLE_WORK_TYPES, isScorableWork, scoreJournal };

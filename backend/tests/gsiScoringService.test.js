@@ -5,6 +5,7 @@ const completeWork = (overrides = {}) => ({
   title: "A complete research record",
   publicationDate: "2025-01-10",
   publicationYear: 2025,
+  type: "article",
   doi: "https://doi.org/10.1000/example",
   citedByCount: 10,
   isOpenAccess: true,
@@ -19,7 +20,6 @@ const completeWork = (overrides = {}) => ({
           id: "I1",
           displayName: "University of Example",
           countryCode: "NG",
-          isGlobalSouth: true,
         },
       ],
     },
@@ -47,6 +47,7 @@ describe("GSI scoring service", () => {
     expect(score.components.reduce((sum, component) => sum + component.score, 0)).toBe(100);
     expect(score.components.every((component) => component.explanation.length > 20)).toBe(true);
     expect(score.fairnessNote).toMatch(/does not use impact factor/i);
+    expect(score.version).toBe("GSI-Archive-1.1");
   });
 
   test("reports missing evidence instead of inventing a placeholder score", () => {
@@ -76,5 +77,33 @@ describe("GSI scoring service", () => {
     expect(identity.score).toBe(15);
     expect(score.context.countries).toEqual(["NG"]);
     expect(identity.explanation).toMatch(/not prestige/i);
+  });
+
+  test("retains non-research records as context without letting them inflate the score", () => {
+    const score = scoreJournal({
+      source: { issnL: "1234-5678", worksCount: 2 },
+      publications: [
+        completeWork({ citedByCount: 1 }),
+        completeWork({ id: "W2", type: "paratext", citedByCount: 4543 }),
+      ],
+      now: new Date("2026-08-10T00:00:00.000Z"),
+    });
+    const discoverability = score.components.find(
+      (component) => component.key === "discoverability"
+    );
+    const averageCitations = discoverability.metrics.find(
+      (metric) => metric.label === "Average citations"
+    );
+
+    expect(score.sampleSize).toBe(1);
+    expect(score.context).toMatchObject({
+      reviewedPublications: 2,
+      scoredPublications: 1,
+      excludedPublications: 1,
+      excludedWorkTypes: ["paratext"],
+    });
+    expect(score.context).not.toHaveProperty("globalSouthInstitutions");
+    expect(averageCitations.value).toBe(1);
+    expect(score.methodologyNote).toMatch(/remain archived/i);
   });
 });

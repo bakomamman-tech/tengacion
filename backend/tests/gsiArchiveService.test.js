@@ -19,7 +19,7 @@ const makeWork = (index) => ({
       id: `A${index}`,
       displayName: `Author ${index}`,
       institutions: [
-        { id: "I1", displayName: "Example University", countryCode: "NG", isGlobalSouth: true },
+        { id: "I1", displayName: "Example University", countryCode: "NG" },
       ],
     },
   ],
@@ -46,7 +46,7 @@ describe("GSI archival records", () => {
         reviewedWorks: 100,
         isSample: true,
       },
-      score: { version: "GSI-Archive-1.0", total: 80, components: [] },
+      score: { version: "GSI-Archive-1.1", total: 80, components: [] },
       editorialReview: {
         displayName: "Editor-confirmed title",
         publisher: "Confirmed publisher",
@@ -61,6 +61,9 @@ describe("GSI archival records", () => {
     expect(record.provenance.provider).toBe("OpenAlex");
     expect(record.provenance.archivedPublications).toBe(record.publications.length);
     expect(record.publications.length).toBeGreaterThan(0);
+    expect(record.publications[0].authors[0].institutions[0]).not.toHaveProperty(
+      "isGlobalSouth"
+    );
     expect(Buffer.byteLength(serialized, "utf8")).toBeLessThanOrEqual(95000);
     expect(serialized).toBe(serializeRecord(JSON.parse(serialized)));
   });

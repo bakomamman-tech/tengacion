@@ -80,7 +80,6 @@ const normalizeWork = (work = {}) => {
             id: entityId(institution?.id, "I"),
             displayName: cleanText(institution?.display_name, 220),
             countryCode: cleanText(institution?.country_code, 4).toUpperCase(),
-            isGlobalSouth: Boolean(institution?.is_global_south),
           }))
           .filter((institution) => institution.id || institution.displayName),
         (institution) => institution.id || `${institution.displayName}:${institution.countryCode}`

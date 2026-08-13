@@ -227,6 +227,7 @@
 .gsi-score-narrative p { color: #c8dbd4; font-size: 12px; line-height: 1.65; margin: 10px 0 16px; }
 .gsi-score-context { display: flex; gap: 17px; }
 .gsi-score-context span { display: flex; align-items: center; gap: 5px; color: #bdd2c9; font-size: 9px; }
+.gsi-score-narrative .gsi-score-methodology { margin: 10px 0 0; padding-left: 10px; border-left: 2px solid rgba(215, 173, 120, .65); color: #dbe8e3; font-size: 10px; }
 .gsi-score-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 15px; align-items: start; }
 .gsi-score-breakdown { overflow: hidden; }
 .gsi-score-breakdown > .gsi-card-heading { padding: 20px 22px; border-bottom: 1px solid #e8ece7; }
@@ -348,6 +349,10 @@
 .gsi-public-component span { color: var(--gsi-muted); font-size: 8px; line-height: 1.45; }
 .gsi-public-component > b { color: var(--gsi-forest); font-family: Georgia, "Times New Roman", serif; font-size: 15px; }
 .gsi-public-component b small { color: var(--gsi-muted); font-size: 8px; }
+.gsi-public-methodology { display: flex; gap: 9px; padding: 14px 22px; color: #4d6759; border-bottom: 1px solid #e9ede8; background: #fbfaf6; }
+.gsi-public-methodology > div { display: grid; gap: 3px; }
+.gsi-public-methodology strong { font-size: 9px; }
+.gsi-public-methodology p { margin: 0; color: var(--gsi-muted); font-size: 8px; line-height: 1.55; }
 .gsi-public-fairness { display: flex; gap: 9px; padding: 14px 22px; color: #4d6759; background: var(--gsi-mint); }
 .gsi-public-fairness p { margin: 0; font-size: 8px; line-height: 1.55; }
 .gsi-record-certificate { padding: 24px; color: #fff; border-radius: 14px; background: var(--gsi-forest); }

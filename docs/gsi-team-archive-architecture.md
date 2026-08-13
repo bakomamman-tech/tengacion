@@ -21,7 +21,7 @@ React onboarding flow at tengacion.com/gsi
     ↓ same-origin JSON
 Express /api/gsi routes
     ├── OpenAlex source + works requests
-    ├── normalization and GSI-Archive-1.0 scoring
+    ├── normalization and GSI-Archive-1.1 scoring
     └── server-managed IPFS pinning
              ↓
       permanent content identifier

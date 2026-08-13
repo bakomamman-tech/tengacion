@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import SeoHead from "../../components/seo/SeoHead";
 import GsiIcon from "./GsiIcons";
 import { getGsiRecord } from "./gsiApi";
+import { formatCountry, formatNumber } from "./gsiFormatters";
 import "./gsi.css";
 
 const formatDate = (value) => {
@@ -53,7 +54,7 @@ export default function GsiPublicRecordPage() {
           <>
             <div className="gsi-record-verified"><GsiIcon name="shield" size={17} /> Verified permanent journal record</div>
             <section className="gsi-public-record-hero">
-              <div><span>Global South Index · Journal record</span><h1>{record.journal.displayName}</h1><p>{record.journal.publisher || "Publisher not listed"}</p><dl><div><dt>ISSN</dt><dd>{record.journal.issnL || "Not listed"}</dd></div><div><dt>Country</dt><dd>{record.journal.countryCode || "Not listed"}</dd></div><div><dt>Indexed works</dt><dd>{record.provenance.totalWorks}</dd></div></dl></div>
+              <div><span>Global South Index · Journal record</span><h1>{record.journal.displayName}</h1><p>{record.journal.publisher || "Publisher not listed"}</p><dl><div><dt>ISSN</dt><dd>{record.journal.issnL || "Not listed"}</dd></div><div><dt>Country</dt><dd>{formatCountry(record.journal.countryCode)}</dd></div><div><dt>Indexed works</dt><dd>{formatNumber(record.provenance.totalWorks)}</dd></div></dl></div>
               <div className="gsi-public-score"><strong>{record.gsiScore.total}</strong><span>out of 100</span><small>GSI Score</small></div>
             </section>
 
@@ -61,11 +62,12 @@ export default function GsiPublicRecordPage() {
               <div className="gsi-score-breakdown gsi-public-score-breakdown">
                 <div className="gsi-card-heading"><div><span>Transparent score</span><h2>Evidence breakdown</h2></div><b>{record.gsiScore.total}/100</b></div>
                 {record.gsiScore.components.map((component) => <div className="gsi-public-component" key={component.key}><div><strong>{component.label}</strong><span>{component.explanation}</span></div><b>{component.score}<small>/{component.weight}</small></b></div>)}
+                {record.gsiScore.methodologyNote ? <div className="gsi-public-methodology"><GsiIcon name="info" size={17} /><div><strong>Scoring sample</strong><p>{record.gsiScore.methodologyNote}{record.gsiScore.context?.excludedPublications ? ` ${formatNumber(record.gsiScore.context.excludedPublications)} non-research ${record.gsiScore.context.excludedPublications === 1 ? "record was" : "records were"} excluded.` : ""}</p></div></div> : null}
                 <div className="gsi-public-fairness"><GsiIcon name="shield" /><p>{record.gsiScore.fairnessNote}</p></div>
               </div>
               <aside className="gsi-record-certificate">
                 <span><GsiIcon name="archive" size={23} /></span><small>Record certificate</small><h2>Source and integrity</h2>
-                <dl><div><dt>Created</dt><dd>{formatDate(record.createdAt)}</dd></div><div><dt>OpenAlex source</dt><dd>{record.journal.openAlexId}</dd></div><div><dt>Publications retained</dt><dd>{record.provenance.archivedPublications}</dd></div><div><dt>Integrity reference</dt><dd>{payload.contentHash}</dd></div></dl>
+                <dl><div><dt>Created</dt><dd>{formatDate(record.createdAt)}</dd></div><div><dt>OpenAlex source</dt><dd>{record.journal.openAlexId}</dd></div><div><dt>Publications retained</dt><dd>{formatNumber(record.provenance.archivedPublications)}</dd></div><div><dt>Integrity reference</dt><dd>{payload.contentHash}</dd></div></dl>
                 <a href={payload.permanentUrl} target="_blank" rel="noreferrer">View independent copy <GsiIcon name="external" size={15} /></a>
               </aside>
             </section>

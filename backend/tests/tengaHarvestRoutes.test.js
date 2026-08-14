@@ -145,7 +145,7 @@ describe("TengaHarvest routes", () => {
     });
 
     const activation = await request(app)
-      .patch(`/api/tengaharvest/admin/services/${service._id}/status`)
+      .post(`/api/tengaharvest/admin/services/${service._id}/status`)
       .set("Authorization", `Bearer ${adminToken}`)
       .send({ status: "active", verificationNote: "Provider and equipment checked." })
       .expect(200);
@@ -168,7 +168,7 @@ describe("TengaHarvest routes", () => {
 
     const booking = await Booking.findOne({ reference: bookingResponse.body.booking.reference });
     const completion = await request(app)
-      .patch(`/api/tengaharvest/admin/bookings/${booking._id}/status`)
+      .post(`/api/tengaharvest/admin/bookings/${booking._id}/status`)
       .set("Authorization", `Bearer ${adminToken}`)
       .send({ status: "completed", operationsNote: "Service delivered and confirmed." })
       .expect(200);

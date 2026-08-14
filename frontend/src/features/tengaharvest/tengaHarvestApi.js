@@ -10,16 +10,16 @@ const parseResponse = async (response) => {
 };
 
 const request = async (path, options = {}) => {
-  const token = options.auth ? getSessionAccessToken() : "";
+  const { auth = false, ...fetchOptions } = options;
+  const token = auth ? getSessionAccessToken() : "";
   const response = await fetch(`${API_BASE}/tengaharvest${path}`, {
-    ...options,
-    auth: undefined,
+    ...fetchOptions,
     credentials: "include",
     headers: {
       Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(fetchOptions.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
+      ...fetchOptions.headers,
     },
   });
   return parseResponse(response);
@@ -49,21 +49,21 @@ export const getTengaHarvestAdminOverview = () =>
 
 export const updateTengaHarvestParticipantStatus = (participantId, status) =>
   request(`/admin/participants/${encodeURIComponent(participantId)}/status`, {
-    method: "PATCH",
+    method: "POST",
     auth: true,
     body: JSON.stringify({ status }),
   });
 
 export const updateTengaHarvestServiceStatus = (serviceId, payload) =>
   request(`/admin/services/${encodeURIComponent(serviceId)}/status`, {
-    method: "PATCH",
+    method: "POST",
     auth: true,
     body: JSON.stringify(payload),
   });
 
 export const updateTengaHarvestBookingStatus = (bookingId, payload) =>
   request(`/admin/bookings/${encodeURIComponent(bookingId)}/status`, {
-    method: "PATCH",
+    method: "POST",
     auth: true,
     body: JSON.stringify(payload),
   });

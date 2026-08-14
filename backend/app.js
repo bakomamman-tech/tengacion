@@ -81,8 +81,6 @@ app.use(
       useDefaults: true,
       directives: {
         baseUri: ["'self'"],
-        // Required for LiveKit Cloud: region discovery fetch (/settings/regions)
-        // and RTC signaling over WebSocket (/rtc/v1).
         connectSrc: [
           "'self'",
           "https://*.livekit.cloud",
@@ -257,6 +255,7 @@ app.use("/api/schools", require("./routes/schools"));
 app.use("/api/teacher-training", require("./routes/teacherTraining"));
 app.use("/api/kadahive", require("./routes/kadahive"));
 app.use("/api/gsi", require("./routes/gsi"));
+app.use("/api/tengaharvest", require("./routes/tengaharvest"));
 
 app.use((req, res, next) => {
   if (req.path.startsWith("/api")) {

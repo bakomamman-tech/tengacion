@@ -32,13 +32,13 @@
     "country-region-data": "^4.1.0",
     "framer-motion": "^12.29.2",
     "livekit-client": "^2.17.2",
-    "pdfjs-dist": "^5.6.205",
+    "pdfjs-dist": "5.5.207",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.71.1",
     "react-hot-toast": "^2.6.0",
-    "react-router-dom": "^7.12.0",
+    "react-router-dom": "^7.18.2",
     "recharts": "^3.7.0",
     "socket.io-client": "^4.8.3",
     "tengacion": "file:..",
@@ -57,22 +57,23 @@
     "eslint-plugin-react-refresh": "^0.4.0",
     "globals": "^15.0.0",
     "jsdom": "^29.0.2",
-    "postcss": "^8.5.12",
+    "postcss": "^8.5.26",
     "tailwindcss": "^3.4.17",
     "vite": "^7.3.2",
     "vitest": "^4.0.18"
   },
   "overrides": {
     "form-data": "4.0.6",
-    "js-yaml": "4.3.0",
-    "tar": "7.5.20",
-    "undici": "7.28.0",
+    "js-yaml": "4.3.1",
+    "nanoid": "3.3.18",
+    "tar": "7.5.22",
+    "undici": "7.29.0",
     "ws": "8.21.0",
     "flat-cache": {
       "flatted": "3.4.2"
     },
     "socket.io-client": {
-      "socket.io-parser": "4.2.6",
+      "socket.io-parser": "4.2.7",
       "engine.io-client": {
         "ws": "8.21.0"
       }
@@ -100,7 +101,7 @@
       "picomatch": "2.3.2"
     },
     "jsdom": {
-      "undici": "7.28.0"
+      "undici": "7.29.0"
     },
     "esbuild": "0.28.1"
   }

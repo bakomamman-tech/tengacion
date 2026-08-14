@@ -1,20 +1,24 @@
 import { API_BASE } from "../../config/apiBase";
+import { getSessionAccessToken } from "../../authSession";
 
 const parseResponse = async (response) => {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || "We could not complete that request. Please try again.");
+    throw new Error(payload?.message || payload?.error || "We could not complete that request. Please try again.");
   }
   return payload;
 };
 
 const request = async (path, options = {}) => {
+  const token = options.auth ? getSessionAccessToken() : "";
   const response = await fetch(`${API_BASE}/tengaharvest${path}`, {
     ...options,
-    credentials: "same-origin",
+    auth: undefined,
+    credentials: "include",
     headers: {
       Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
@@ -39,3 +43,27 @@ export const submitTengaHarvestService = (payload) =>
 
 export const createTengaHarvestBooking = (payload) =>
   request("/bookings", { method: "POST", body: JSON.stringify(payload) });
+
+export const getTengaHarvestAdminOverview = () =>
+  request("/admin/overview", { auth: true });
+
+export const updateTengaHarvestParticipantStatus = (participantId, status) =>
+  request(`/admin/participants/${encodeURIComponent(participantId)}/status`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify({ status }),
+  });
+
+export const updateTengaHarvestServiceStatus = (serviceId, payload) =>
+  request(`/admin/services/${encodeURIComponent(serviceId)}/status`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(payload),
+  });
+
+export const updateTengaHarvestBookingStatus = (bookingId, payload) =>
+  request(`/admin/bookings/${encodeURIComponent(bookingId)}/status`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(payload),
+  });

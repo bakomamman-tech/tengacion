@@ -250,7 +250,7 @@ router.get("/admin/overview", async (_req, res, next) => {
   }
 });
 
-router.patch("/admin/participants/:participantId/status", async (req, res, next) => {
+router.post("/admin/participants/:participantId/status", async (req, res, next) => {
   try {
     const participantId = cleanText(req.params.participantId, 80);
     const status = cleanText(req.body.status, 40);
@@ -275,7 +275,7 @@ router.patch("/admin/participants/:participantId/status", async (req, res, next)
   }
 });
 
-router.patch("/admin/services/:serviceId/status", async (req, res, next) => {
+router.post("/admin/services/:serviceId/status", async (req, res, next) => {
   try {
     const serviceId = cleanText(req.params.serviceId, 80);
     const status = cleanText(req.body.status, 40);
@@ -290,8 +290,10 @@ router.patch("/admin/services/:serviceId/status", async (req, res, next) => {
       status,
       verificationNote: cleanText(req.body.verificationNote, 1000),
       verifiedBy: req.user.id,
-      verifiedAt: status === "active" ? new Date() : null,
     };
+    if (status === "active") {
+      update.verifiedAt = new Date();
+    }
 
     const service = await TengaHarvestService.findByIdAndUpdate(
       serviceId,
@@ -307,7 +309,7 @@ router.patch("/admin/services/:serviceId/status", async (req, res, next) => {
   }
 });
 
-router.patch("/admin/bookings/:bookingId/status", async (req, res, next) => {
+router.post("/admin/bookings/:bookingId/status", async (req, res, next) => {
   try {
     const bookingId = cleanText(req.params.bookingId, 80);
     const status = cleanText(req.body.status, 40);
@@ -322,10 +324,17 @@ router.patch("/admin/bookings/:bookingId/status", async (req, res, next) => {
       status,
       operationsNote: cleanText(req.body.operationsNote, 1000),
       updatedBy: req.user.id,
-      confirmedAt: status === "confirmed" || status === "completed" ? new Date() : null,
-      completedAt: status === "completed" ? new Date() : null,
-      cancelledAt: status === "cancelled" ? new Date() : null,
     };
+    if (status === "confirmed") {
+      update.confirmedAt = new Date();
+    }
+    if (status === "completed") {
+      update.confirmedAt = new Date();
+      update.completedAt = new Date();
+    }
+    if (status === "cancelled") {
+      update.cancelledAt = new Date();
+    }
 
     const booking = await TengaHarvestBooking.findByIdAndUpdate(
       bookingId,

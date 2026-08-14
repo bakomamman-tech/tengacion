@@ -12,8 +12,19 @@ export const isTengaHarvestPath = (pathname = "") =>
   pathname === "/admin/tengaharvest";
 
 export default function TengaHarvestRootRoutes() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
+  const isAdminRoute = location.pathname === "/admin/tengaharvest";
+
+  if (isAdminRoute && loading) {
+    return (
+      <div className="th-page">
+        <div className="th-admin-shell">
+          <p>Restoring your Tengacion admin session…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Routes location={location}>

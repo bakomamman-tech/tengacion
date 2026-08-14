@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
 import App from "./App";
@@ -11,6 +11,7 @@ import { CreatorPlayerProvider } from "./context/CreatorPlayerContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { DialogProvider } from "./components/ui/DialogProvider";
 import { initAnalytics } from "./lib/analytics";
+import TengaHarvestRootRoutes, { isTengaHarvestPath } from "./features/tengaharvest/TengaHarvestRootRoutes";
 import {
   DEFAULT_THEME,
   LEGACY_THEME_KEY,
@@ -47,6 +48,11 @@ const initializeThemeEarly = () => {
   applyThemeToDocument(theme, document.documentElement);
 };
 
+function RootApplication() {
+  const { pathname } = useLocation();
+  return isTengaHarvestPath(pathname) ? <TengaHarvestRootRoutes /> : <App />;
+}
+
 initializeThemeEarly();
 void initAnalytics();
 
@@ -59,7 +65,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <BrowserRouter>
               <CreatorPlayerProvider>
                 <DialogProvider>
-                  <App />
+                  <RootApplication />
                   <Toaster
                     position="top-center"
                     containerStyle={{ zIndex: 30000 }}

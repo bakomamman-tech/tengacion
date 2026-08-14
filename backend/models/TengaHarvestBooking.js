@@ -24,10 +24,20 @@ const TengaHarvestBookingSchema = new mongoose.Schema(
       default: "requested",
       index: true,
     },
+    operationsNote: { type: String, default: "", trim: true, maxlength: 1000 },
+    confirmedAt: { type: Date, default: null },
+    completedAt: { type: Date, default: null },
+    cancelledAt: { type: Date, default: null },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   { timestamps: true }
 );
 
 TengaHarvestBookingSchema.index({ status: 1, createdAt: -1 });
+TengaHarvestBookingSchema.index({ service: 1, startDate: 1 });
 
 module.exports = mongoose.model("TengaHarvestBooking", TengaHarvestBookingSchema);

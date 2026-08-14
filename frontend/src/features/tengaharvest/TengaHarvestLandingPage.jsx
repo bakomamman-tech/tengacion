@@ -44,7 +44,13 @@ export default function TengaHarvestLandingPage() {
       />
       <header className="th-nav">
         <Link className="th-brand" to="/tengaharvest"><span>TH</span><div><strong>TengaHarvest</strong><small>by Tengacion</small></div></Link>
-        <nav><a href="#how">How it works</a><a href="#services">Services</a><a href="#impact">Impact</a></nav>
+        <nav aria-label="TengaHarvest navigation">
+          <a href="#how">How it works</a>
+          <a href="#services">Services</a>
+          <a href="#impact">Impact</a>
+          <a href="/leadership">Leadership</a>
+          <a href="/contact">Contact</a>
+        </nav>
         <Link className="th-btn th-btn-small" to="/tengaharvest/farmer">Join the Kaduna pilot</Link>
       </header>
 

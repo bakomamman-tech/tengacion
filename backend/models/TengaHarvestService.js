@@ -6,7 +6,7 @@ const TengaHarvestServiceSchema = new mongoose.Schema(
     participant: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "TengaHarvestParticipant",
-      default: null,
+      required: true,
       index: true,
     },
     type: {
@@ -35,10 +35,18 @@ const TengaHarvestServiceSchema = new mongoose.Schema(
       default: "pending_review",
       index: true,
     },
+    verificationNote: { type: String, default: "", trim: true, maxlength: 1000 },
+    verifiedAt: { type: Date, default: null },
+    verifiedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   { timestamps: true }
 );
 
 TengaHarvestServiceSchema.index({ status: 1, type: 1, state: 1, lga: 1 });
+TengaHarvestServiceSchema.index({ participant: 1, createdAt: -1 });
 
 module.exports = mongoose.model("TengaHarvestService", TengaHarvestServiceSchema);

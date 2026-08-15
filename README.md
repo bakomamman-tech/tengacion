@@ -23,7 +23,7 @@ This repo now supports an MVP where users can:
 
 ## GSI Buildathon 2026 — TEAM ARCHIVE
 
-The public journal-onboarding prototype lives at `/gsi`. It searches live OpenAlex journal data, imports and normalizes publications, calculates the transparent `GSI-Archive-1.0` score, lets an editor review journal-level details, and publishes a content-addressed public record through a server-managed IPFS pin.
+The public journal-onboarding prototype lives at `/gsi`. It searches live OpenAlex journal data, imports and normalizes publications, calculates the transparent `GSI-Archive-1.2` score, lets an editor review journal-level details, and publishes a content-addressed public record through a server-managed IPFS pin.
 
 Required production configuration:
 

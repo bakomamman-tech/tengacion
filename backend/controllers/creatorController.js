@@ -11,6 +11,10 @@ const {
   buildCreatorDashboardConsole,
 } = require("../services/creatorDashboardConsoleService");
 const {
+  listCreatorGrowthExperimentEvents,
+  recordCreatorGrowthExperimentEvent,
+} = require("../services/creatorGrowthExperimentService");
+const {
   buildCreatorDiscoveryContentInsightsForUser,
   buildCreatorDiscoveryInsights,
   buildCreatorDiscoveryInsightsForUser,
@@ -474,9 +478,12 @@ const getDashboardPayload = async ({ profile, user }) => {
     .sort({ paidAt: -1, createdAt: -1, _id: -1 })
     .lean();
 
-  const walletSnapshot = await buildCreatorWalletSnapshot({
-    creatorId: profile._id,
-  });
+  const [walletSnapshot, growthEvents] = await Promise.all([
+    buildCreatorWalletSnapshot({
+      creatorId: profile._id,
+    }),
+    listCreatorGrowthExperimentEvents({ userId: user?._id || profile.userId }),
+  ]);
   const earningsByKey = walletSnapshot.itemEarningsMap || new Map();
 
   const musicTracks = content.musicTracks.map((entry) =>
@@ -605,9 +612,11 @@ const getDashboardPayload = async ({ profile, user }) => {
   const operatingConsole = buildCreatorDashboardConsole({
     activation,
     content: dashboardContent,
+    growthEvents,
     payoutReadiness,
     profile,
     purchases,
+    user,
   });
   const discoveryInsights = await buildCreatorDiscoveryInsights({
     profile,
@@ -1137,4 +1146,14 @@ exports.getCreatorDashboard = asyncHandler(async (req, res) => {
 
   const payload = await getDashboardPayload({ profile, user });
   return res.json(payload);
+});
+
+exports.recordCreatorGrowthExperiment = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const result = await recordCreatorGrowthExperimentEvent({
+    userId: req.user.id,
+    promptKey: req.body?.promptKey,
+    eventType: req.body?.eventType,
+  });
+  return res.status(202).json(result);
 });

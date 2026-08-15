@@ -5,6 +5,7 @@ const { writeAuditLog } = require("../services/auditLogService");
 const { buildAkusoAdminMetrics } = require("../services/assistant/adminMetricsService");
 const { buildAssistantEvalCandidates } = require("../services/assistant/evalCandidateService");
 const { listAssistantReviews, updateAssistantReview } = require("../services/assistant/reviewQueue");
+const { buildAkusoReleaseGate } = require("../services/assistant/releaseGateService");
 
 const router = express.Router();
 
@@ -57,6 +58,15 @@ router.get("/eval-candidates", requirePermissions(["view_audit_logs"]), async (r
     });
   } catch (error) {
     return res.status(500).json({ error: error?.message || "Failed to load assistant eval candidates" });
+  }
+});
+
+router.get("/release-gate", requirePermissions(["view_audit_logs"]), async (_req, res) => {
+  try {
+    const result = await buildAkusoReleaseGate();
+    return res.set("Cache-Control", "no-store").json({ ok: true, ...result });
+  } catch (error) {
+    return res.status(500).json({ error: error?.message || "Failed to evaluate the Akuso release gate" });
   }
 });
 

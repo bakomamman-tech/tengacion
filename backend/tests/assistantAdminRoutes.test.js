@@ -12,6 +12,7 @@ const akusoRoutes = require("../routes/akuso");
 const adminRoutes = require("../routes/admin");
 const errorHandler = require("../../apps/api/middleware/errorHandler");
 const AnalyticsEvent = require("../models/AnalyticsEvent");
+const AssistantReviewItem = require("../models/AssistantReviewItem");
 const CreatorProfile = require("../models/CreatorProfile");
 const PaymentWebhookEvent = require("../models/PaymentWebhookEvent");
 const Purchase = require("../models/Purchase");
@@ -114,6 +115,35 @@ afterAll(async () => {
 });
 
 describe("Assistant admin review routes", () => {
+  it("blocks the Akuso release gate when a high-risk review remains unresolved", async () => {
+    await AssistantReviewItem.create({
+      userId: viewerId,
+      category: "safety",
+      severity: "high",
+      status: "open",
+      reason: "Unsafe guidance needs an eval fixture before release.",
+    });
+
+    const response = await request(app)
+      .get("/api/admin/assistant/release-gate")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.headers["cache-control"]).toContain("no-store");
+    expect(response.body).toMatchObject({
+      ok: true,
+      decision: "blocked",
+      releaseReady: false,
+      reviewBacklog: {
+        checked: true,
+        highRisk: 1,
+      },
+    });
+    expect(response.body.checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "review_backlog", passed: false }),
+    ]));
+  });
+
   it("queues negative assistant feedback for admin review", async () => {
     await request(app)
       .post("/api/assistant/feedback")

@@ -1083,6 +1083,16 @@ export const getCreatorDashboardSummary = () =>
     cache: "no-store",
   });
 
+export const recordCreatorGrowthExperiment = ({ promptKey, eventType } = {}) =>
+  request(`${API_BASE}/creator/growth-experiments/events`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ promptKey, eventType }),
+  });
+
 export const getCreatorPayoutRequests = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -2856,6 +2866,12 @@ export const adminGetAssistantEvalCandidates = (params = {}) => {
   });
 };
 
+export const adminGetAssistantReleaseGate = () =>
+  request(`${API_BASE}/admin/assistant/release-gate`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+
 export const adminUpdateAssistantReview = (reviewId, payload = {}) =>
   request(`${API_BASE}/admin/assistant/reviews/${encodeURIComponent(reviewId || "")}`, {
     method: "PATCH",
@@ -2935,6 +2951,49 @@ export const adminGetAnalyticsProductScorecard = (params = {}) => {
     timeoutMs: 45000,
   });
 };
+
+export const adminGetAnalyticsFanRetention = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/analytics/fan-retention?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminGetAnalyticsRecommendations = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/analytics/recommendations?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminGetExecutiveOperatingDashboard = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/analytics/executive-operating-dashboard?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminUpdateRecommendationPolicy = (payload = {}) =>
+  request(`${API_BASE}/admin/analytics/recommendations/policy`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
 
 export const adminGetAnalyticsEngagement = (params = {}) => {
   const query = new URLSearchParams();

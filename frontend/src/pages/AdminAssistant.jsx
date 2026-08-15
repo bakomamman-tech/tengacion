@@ -5,6 +5,7 @@ import AdminShell from "../components/AdminShell";
 import {
   adminGetAssistantEvalCandidates,
   adminGetAssistantMetrics,
+  adminGetAssistantReleaseGate,
   adminGetAssistantReviews,
   adminUpdateAssistantReview,
 } from "../api";
@@ -145,6 +146,44 @@ function InsightList({ title, meta = "", items = [] }) {
             {item.note ? <div className="adminx-muted">{item.note}</div> : null}
           </article>
         ))}
+      </div>
+    </section>
+  );
+}
+
+function AkusoReleaseGate({ gate }) {
+  if (!gate) {
+    return null;
+  }
+  const checks = Array.isArray(gate.checks) ? gate.checks : [];
+  return (
+    <section className="adminx-panel adminx-panel--span-12">
+      <div className="adminx-panel-head">
+        <div>
+          <h2 className="adminx-panel-title">Akuso Release Gate</h2>
+          <span className="adminx-section-meta">
+            {gate.reportId || "Current eval report"} | generated {dateTime(gate.generatedAt)}
+          </span>
+        </div>
+        <span className={`adminx-badge ${gate.releaseReady ? "adminx-badge--good" : "adminx-badge--danger"}`}>
+          {titleCase(gate.decision || "blocked")}
+        </span>
+      </div>
+      <div className="adminx-leaderboard" style={{ marginTop: 12 }}>
+        {checks.map((check) => (
+          <article key={check.key} className="adminx-leaderboard-item">
+            <div className="adminx-row" style={{ gap: 12 }}>
+              <strong>{check.label}</strong>
+              <span className={`adminx-badge ${check.passed ? "adminx-badge--good" : "adminx-badge--danger"}`}>
+                {check.passed ? "Pass" : "Block"}
+              </span>
+            </div>
+            <div className="adminx-muted" style={{ marginTop: 8 }}>{check.detail}</div>
+          </article>
+        ))}
+      </div>
+      <div className="adminx-muted" style={{ marginTop: 12 }}>
+        Run <code>{gate.command}</code> and attach its JSON report before deploying an assistant change.
       </div>
     </section>
   );
@@ -425,6 +464,8 @@ export default function AdminAssistantPage({ user }) {
   const [metricsPayload, setMetricsPayload] = useState(null);
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [metricsError, setMetricsError] = useState("");
+  const [releaseGate, setReleaseGate] = useState(null);
+  const [releaseGateError, setReleaseGateError] = useState("");
   const [reviewsPayload, setReviewsPayload] = useState(EMPTY_REVIEWS);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewsError, setReviewsError] = useState("");
@@ -478,6 +519,17 @@ export default function AdminAssistantPage({ user }) {
     }
   }, [reviewCategory, reviewStatus]);
 
+  const loadReleaseGate = useCallback(async () => {
+    setReleaseGateError("");
+    try {
+      const payload = await adminGetAssistantReleaseGate();
+      setReleaseGate(payload || null);
+    } catch (error) {
+      setReleaseGate(null);
+      setReleaseGateError(error?.message || "Akuso release gate is unavailable.");
+    }
+  }, []);
+
   const loadEvalCandidates = useCallback(async () => {
     setEvalCandidatesLoading(true);
     setEvalCandidatesError("");
@@ -503,8 +555,8 @@ export default function AdminAssistantPage({ user }) {
 
   const refreshAll = useCallback(() => {
     setReviewActionNotice("");
-    void Promise.all([loadMetrics(), loadReviews(), loadEvalCandidates()]);
-  }, [loadEvalCandidates, loadMetrics, loadReviews]);
+    void Promise.all([loadMetrics(), loadReviews(), loadEvalCandidates(), loadReleaseGate()]);
+  }, [loadEvalCandidates, loadMetrics, loadReleaseGate, loadReviews]);
 
   useEffect(() => {
     void loadMetrics();
@@ -517,6 +569,10 @@ export default function AdminAssistantPage({ user }) {
   useEffect(() => {
     void loadEvalCandidates();
   }, [loadEvalCandidates]);
+
+  useEffect(() => {
+    void loadReleaseGate();
+  }, [loadReleaseGate]);
 
   const reviews = useMemo(
     () => (Array.isArray(reviewsPayload?.items) ? reviewsPayload.items : []),
@@ -837,6 +893,12 @@ export default function AdminAssistantPage({ user }) {
           {metricsLoading ? <div className="adminx-loading">Loading Akuso metrics...</div> : null}
           {!metricsLoading ? (
             <div className="adminx-analytics-grid">
+              {releaseGateError ? (
+                <div className="adminx-error adminx-panel--span-12">
+                  Akuso release gate unavailable: {releaseGateError}
+                </div>
+              ) : null}
+              <AkusoReleaseGate gate={releaseGate} />
               <QualityOperationsReview
                 review={metricsPayload?.operationsReview}
                 onNavigate={navigate}

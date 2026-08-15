@@ -18,6 +18,7 @@ const {
   getCreatorPrivateContent,
   getCreatorProfile,
   getCreatorSubscriptionAnalytics,
+  recordCreatorGrowthExperiment,
   registerCreator,
   createCreatorPayoutRequest,
   createCreatorWithdrawal,
@@ -34,6 +35,7 @@ router.get("/profile", auth, getCreatorProfile);
 router.post("/register", auth, registerCreator);
 router.put("/profile", auth, updateCreatorProfile);
 router.get("/dashboard", auth, getCreatorDashboard);
+router.post("/growth-experiments/events", auth, creatorAuth, recordCreatorGrowthExperiment);
 router.get("/discovery/insights", auth, getCreatorDiscoveryInsights);
 router.get("/discovery/content/:itemType/:itemId", auth, getCreatorDiscoveryContentInsights);
 router.get("/subscriptions/analytics", auth, getCreatorSubscriptionAnalytics);

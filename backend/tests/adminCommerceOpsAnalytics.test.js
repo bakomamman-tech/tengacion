@@ -9,6 +9,7 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "commerce_ops_test_secret_123
 
 const app = require("../app");
 const AnalyticsEvent = require("../models/AnalyticsEvent");
+const AuditLog = require("../models/AuditLog");
 const Entitlement = require("../models/Entitlement");
 const MarketplaceOrder = require("../models/MarketplaceOrder");
 const MarketplacePayout = require("../models/MarketplacePayout");
@@ -489,5 +490,57 @@ describe("admin commerce operations analytics", () => {
         },
       },
     });
+  });
+
+  test("serves the retention, recommendation, and executive operating controls", async () => {
+    const adminToken = await createAdminToken();
+
+    const fanResponse = await request(app)
+      .get("/api/admin/analytics/fan-retention?range=30d")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+    expect(fanResponse.body.cohorts).toHaveLength(5);
+    expect(fanResponse.body.dataQuality.complete).toBe(true);
+
+    const recommendationResponse = await request(app)
+      .get("/api/admin/analytics/recommendations?range=30d")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+    expect(recommendationResponse.body.policy).toMatchObject({
+      enabled: true,
+      maxRepeatedCreatorCount: 2,
+      maxContentTypeStreak: 2,
+    });
+    expect(recommendationResponse.body.dataQuality.complete).toBe(true);
+
+    const policyResponse = await request(app)
+      .patch("/api/admin/analytics/recommendations/policy")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        maxRepeatedCreatorCount: 3,
+        minimumExplorationShare: 0.2,
+        reason: "Validate the controlled rollout contract.",
+      })
+      .expect(200);
+    expect(policyResponse.body.policy).toMatchObject({
+      maxRepeatedCreatorCount: 3,
+      minimumExplorationShare: 0.2,
+    });
+    expect(await AuditLog.countDocuments({ action: "admin.recommendation_policy.update" })).toBe(1);
+
+    const executiveResponse = await request(app)
+      .get("/api/admin/analytics/executive-operating-dashboard?range=30d")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+    expect(executiveResponse.body.metrics.map((metric) => metric.key)).toEqual(
+      expect.arrayContaining([
+        "gmv",
+        "creator_earnings",
+        "fan_retention",
+        "recommendation_conversion",
+        "akuso_quality",
+        "incidents",
+      ])
+    );
   });
 });

@@ -22,6 +22,10 @@ import {
   adminGetAnalyticsRevenue,
   adminGetAnalyticsCommerceOps,
   adminGetAnalyticsProductScorecard,
+  adminGetAnalyticsFanRetention,
+  adminGetAnalyticsRecommendations,
+  adminGetExecutiveOperatingDashboard,
+  adminUpdateRecommendationPolicy,
   adminGetAnalyticsEngagement,
   adminGetAnalyticsTopCreators,
   adminGetAnalyticsTopContent,
@@ -69,8 +73,9 @@ const eventLabel = (type = "") =>
 
 const statusBadgeClass = (status = "") => {
   const normalized = String(status || "").toLowerCase();
-  if (["blocked", "incident"].includes(normalized)) {return "adminx-badge--danger";}
+  if (["blocked", "incident", "off_target"].includes(normalized)) {return "adminx-badge--danger";}
   if (["degraded", "watch"].includes(normalized)) {return "adminx-badge--warn";}
+  if (normalized === "no_data") {return "";}
   return "adminx-badge--good";
 };
 
@@ -81,6 +86,13 @@ const formatReliabilityMetric = (snapshot = {}) => {
   const rate = metric.rate === null || metric.rate === undefined ? "" : ` (${percent(metric.rate)})`;
   const unit = metric.unit ? ` - ${metric.unit}` : "";
   return `${value}${total}${rate}${unit}`;
+};
+
+const formatOperatingMetric = (metric = {}, valueKey = "current") => {
+  const value = Number(metric?.[valueKey] || 0);
+  if (metric.format === "currency") {return currency(value);}
+  if (metric.format === "percent") {return percent(value);}
+  return number(value);
 };
 
 const downloadBlob = ({ filename, content, type }) => {
@@ -151,6 +163,21 @@ export default function AdminAnalyticsPage({ user }) {
     features: [],
     zeroViewProductionFeatures: [],
   });
+  const [fanRetention, setFanRetention] = useState({ summary: {}, cohorts: [], priorities: [] });
+  const [recommendationDiagnostics, setRecommendationDiagnostics] = useState({
+    summary: {},
+    surfaces: [],
+    policy: {},
+  });
+  const [executiveDashboard, setExecutiveDashboard] = useState({
+    summary: {},
+    metrics: [],
+    actions: [],
+  });
+  const [recommendationPolicyDraft, setRecommendationPolicyDraft] = useState({});
+  const [recommendationPolicyReason, setRecommendationPolicyReason] = useState("");
+  const [recommendationPolicyNotice, setRecommendationPolicyNotice] = useState("");
+  const [recommendationPolicySaving, setRecommendationPolicySaving] = useState(false);
   const [engagement, setEngagement] = useState({ series: [] });
   const [topCreators, setTopCreators] = useState({ items: [] });
   const [topContent, setTopContent] = useState({ items: [] });
@@ -196,6 +223,9 @@ export default function AdminAnalyticsPage({ user }) {
         revenuePayload,
         commerceOpsPayload,
         productScorecardPayload,
+        fanRetentionPayload,
+        recommendationPayload,
+        executiveDashboardPayload,
         engagementPayload,
         topCreatorsPayload,
         topContentPayload,
@@ -210,6 +240,9 @@ export default function AdminAnalyticsPage({ user }) {
         adminGetAnalyticsRevenue(filterParams),
         adminGetAnalyticsCommerceOps(filterParams),
         adminGetAnalyticsProductScorecard(filterParams),
+        adminGetAnalyticsFanRetention(filterParams),
+        adminGetAnalyticsRecommendations(filterParams),
+        adminGetExecutiveOperatingDashboard(filterParams),
         adminGetAnalyticsEngagement(filterParams),
         adminGetAnalyticsTopCreators({ ...filterParams, mode: creatorMode }),
         adminGetAnalyticsTopContent(filterParams),
@@ -237,6 +270,10 @@ export default function AdminAnalyticsPage({ user }) {
         features: [],
         zeroViewProductionFeatures: [],
       });
+      setFanRetention(fanRetentionPayload || { summary: {}, cohorts: [], priorities: [] });
+      setRecommendationDiagnostics(recommendationPayload || { summary: {}, surfaces: [], policy: {} });
+      setRecommendationPolicyDraft(recommendationPayload?.policy || {});
+      setExecutiveDashboard(executiveDashboardPayload || { summary: {}, metrics: [], actions: [] });
       setEngagement(engagementPayload || { series: [] });
       setTopCreators(topCreatorsPayload || { items: [] });
       setTopContent(topContentPayload || { items: [] });
@@ -272,9 +309,39 @@ export default function AdminAnalyticsPage({ user }) {
   const exportJson = () => {
     downloadBlob({
       filename: `tengacion-admin-analytics-${filters.range}.json`,
-      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, productScorecard, engagement, topCreators, topContent, recentActivity, systemAlerts, reliabilityHealth, reportsSummary }, null, 2),
+      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, productScorecard, fanRetention, recommendationDiagnostics, executiveDashboard, engagement, topCreators, topContent, recentActivity, systemAlerts, reliabilityHealth, reportsSummary }, null, 2),
       type: "application/json",
     });
+  };
+
+  const saveRecommendationPolicy = async () => {
+    const reason = recommendationPolicyReason.trim();
+    if (!reason) {
+      setRecommendationPolicyNotice("Add a change reason before saving ranking controls.");
+      return;
+    }
+    setRecommendationPolicySaving(true);
+    setRecommendationPolicyNotice("");
+    try {
+      const payload = await adminUpdateRecommendationPolicy({
+        enabled: recommendationPolicyDraft.enabled !== false,
+        maxRepeatedCreatorCount: Number(recommendationPolicyDraft.maxRepeatedCreatorCount || 2),
+        maxContentTypeStreak: Number(recommendationPolicyDraft.maxContentTypeStreak || 2),
+        minimumExplorationShare: Number(recommendationPolicyDraft.minimumExplorationShare || 0),
+        hideRatePenalty: Number(recommendationPolicyDraft.hideRatePenalty || 0),
+        reportRatePenalty: Number(recommendationPolicyDraft.reportRatePenalty || 0),
+        conversionRateBoost: Number(recommendationPolicyDraft.conversionRateBoost || 0),
+        reason,
+      });
+      setRecommendationDiagnostics((current) => ({ ...current, policy: payload?.policy || current.policy }));
+      setRecommendationPolicyDraft(payload?.policy || recommendationPolicyDraft);
+      setRecommendationPolicyReason("");
+      setRecommendationPolicyNotice("Recommendation policy saved and audit logged.");
+    } catch (err) {
+      setRecommendationPolicyNotice(err?.message || "Failed to save recommendation policy.");
+    } finally {
+      setRecommendationPolicySaving(false);
+    }
   };
 
   const exportProductScorecard = () => {
@@ -381,6 +448,185 @@ export default function AdminAnalyticsPage({ user }) {
 
       {!loading ? (
         <div className="adminx-analytics-grid">
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <div>
+                <h2 className="adminx-panel-title">Executive Operating Dashboard</h2>
+                <span className="adminx-section-meta">
+                  This week, prior week, four-week average, target, and accountable drilldown
+                </span>
+              </div>
+              <div className="adminx-mobile-stack">
+                <span className="adminx-badge adminx-badge--good">
+                  On target {number(executiveDashboard.summary?.onTarget)}
+                </span>
+                <span className="adminx-badge adminx-badge--warn">
+                  Watch {number(executiveDashboard.summary?.watch)}
+                </span>
+                <span className="adminx-badge adminx-badge--danger">
+                  Off target {number(executiveDashboard.summary?.offTarget)}
+                </span>
+              </div>
+            </div>
+            <div className="adminx-leaderboard">
+              {(executiveDashboard.metrics || []).map((metric) => (
+                <button
+                  key={metric.key}
+                  type="button"
+                  className="adminx-leaderboard-item"
+                  onClick={() => navigate(metric.drilldown || "/admin/analytics")}
+                >
+                  <div className="adminx-row" style={{ gap: 12 }}>
+                    <strong>{metric.label}</strong>
+                    <span className={`adminx-badge ${statusBadgeClass(metric.status)}`}>
+                      {eventLabel(metric.status)}
+                    </span>
+                  </div>
+                  <div className="adminx-ops-grid adminx-mobile-stack--spaced">
+                    <span>This week <strong>{formatOperatingMetric(metric)}</strong></span>
+                    <span>Prior <strong>{formatOperatingMetric(metric, "previous")}</strong></span>
+                    <span>4-week <strong>{formatOperatingMetric(metric, "fourWeekAverage")}</strong></span>
+                    <span>Target <strong>{formatOperatingMetric(metric, "target")}</strong></span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            {(executiveDashboard.actions || []).length ? (
+              <div className="adminx-mobile-stack adminx-mobile-stack--spaced">
+                {(executiveDashboard.actions || []).slice(0, 5).map((action) => (
+                  <button key={action.key} type="button" className="adminx-btn" onClick={() => navigate(action.actionPath)}>
+                    {action.title}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <div>
+                <h2 className="adminx-panel-title">Fan Retention Cohorts</h2>
+                <span className="adminx-section-meta">
+                  First follow, purchase, renewal, live join, and content completion cohorts
+                </span>
+              </div>
+              <span className="adminx-badge">Entrants {number(fanRetention.summary?.entrants)}</span>
+            </div>
+            <div className="adminx-ops-grid">
+              {[
+                ["D1 return", fanRetention.summary?.d1RetentionRate],
+                ["D7 return", fanRetention.summary?.d7RetentionRate],
+                ["D30 return", fanRetention.summary?.d30RetentionRate],
+                ["Repeat purchase", fanRetention.summary?.repeatPurchaseRate],
+                ["Subscription conversion", fanRetention.summary?.subscriptionConversionRate],
+                ["Notification opt-out", fanRetention.summary?.notificationOptOutRate],
+              ].map(([label, value]) => (
+                <div key={label} className="adminx-ops-metric"><span>{label}</span><strong>{percent(value)}</strong></div>
+              ))}
+            </div>
+            {fanRetention.dataQuality?.complete === false ? (
+              <div className="adminx-error adminx-mobile-stack--spaced">
+                Retention rows reached the {number(fanRetention.dataQuality.rowLimit)}-row reporting limit. Treat these cohorts as incomplete.
+              </div>
+            ) : null}
+            <div className="adminx-leaderboard adminx-mobile-stack--spaced">
+              {(fanRetention.cohorts || []).map((cohort) => (
+                <article key={cohort.key} className="adminx-leaderboard-item">
+                  <div className="adminx-row">
+                    <strong>{cohort.label}</strong>
+                    <span className="adminx-badge">{number(cohort.entrants)} entrants</span>
+                  </div>
+                  <div className="adminx-muted" style={{ marginTop: 8 }}>
+                    D1 {percent(cohort.retention?.d1?.rate)} | D7 {percent(cohort.retention?.d7?.rate)} | D30 {percent(cohort.retention?.d30?.rate)} | Repeat purchase {percent(cohort.repeatPurchaseRate)}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <div>
+                <h2 className="adminx-panel-title">Recommendation Trust and Diversity</h2>
+                <span className="adminx-section-meta">
+                  Exposure repetition, content streaks, hides, reports, and post-recommendation outcomes
+                </span>
+              </div>
+              <span className={`adminx-badge ${recommendationPolicyDraft.enabled === false ? "adminx-badge--warn" : "adminx-badge--good"}`}>
+                {recommendationPolicyDraft.enabled === false ? "Controls paused" : "Controls active"}
+              </span>
+            </div>
+            <div className="adminx-ops-grid">
+              {[
+                ["Requests", number(recommendationDiagnostics.summary?.requests)],
+                ["Repeated creator violations", number(recommendationDiagnostics.summary?.repeatedCreatorViolations)],
+                ["Content streak violations", number(recommendationDiagnostics.summary?.contentTypeStreakViolations)],
+                ["Hide rate", percent(recommendationDiagnostics.summary?.hideRate)],
+                ["Report rate", percent(recommendationDiagnostics.summary?.reportRate)],
+                ["Conversion rate", percent(recommendationDiagnostics.summary?.conversionRate)],
+                ["Purchases after recommendation", number(recommendationDiagnostics.summary?.purchasesAfterRecommendation)],
+                ["Follows after recommendation", number(recommendationDiagnostics.summary?.followsAfterRecommendation)],
+              ].map(([label, value]) => (
+                <div key={label} className="adminx-ops-metric"><span>{label}</span><strong>{value}</strong></div>
+              ))}
+            </div>
+            {recommendationDiagnostics.dataQuality?.complete === false ? (
+              <div className="adminx-error adminx-mobile-stack--spaced">
+                Recommendation logs reached the {number(recommendationDiagnostics.dataQuality.rowLimit)}-row reporting limit. Treat these diagnostics as incomplete.
+              </div>
+            ) : null}
+            <div className="adminx-filter-row adminx-mobile-stack--spaced">
+              <label>
+                <span className="adminx-section-meta" style={{ display: "block", marginBottom: 6 }}>Controls enabled</span>
+                <input
+                  aria-label="Recommendation controls enabled"
+                  type="checkbox"
+                  checked={recommendationPolicyDraft.enabled !== false}
+                  onChange={(event) => setRecommendationPolicyDraft((current) => ({
+                    ...current,
+                    enabled: event.target.checked,
+                  }))}
+                />
+              </label>
+              {[
+                ["Creator cap", "maxRepeatedCreatorCount", 1, 5, 1],
+                ["Content streak", "maxContentTypeStreak", 1, 5, 1],
+                ["Exploration share", "minimumExplorationShare", 0, 0.5, 0.05],
+                ["Hide penalty", "hideRatePenalty", 0, 60, 1],
+                ["Report penalty", "reportRatePenalty", 0, 100, 1],
+                ["Conversion boost", "conversionRateBoost", 0, 60, 1],
+              ].map(([label, key, min, max, step]) => (
+                <label key={key}>
+                  <span className="adminx-section-meta" style={{ display: "block", marginBottom: 6 }}>{label}</span>
+                  <input
+                    className="adminx-input"
+                    aria-label={label}
+                    type="number"
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={recommendationPolicyDraft[key] ?? ""}
+                    onChange={(event) => setRecommendationPolicyDraft((current) => ({ ...current, [key]: event.target.value }))}
+                  />
+                </label>
+              ))}
+              <label>
+                <span className="adminx-section-meta" style={{ display: "block", marginBottom: 6 }}>Change reason</span>
+                <input
+                  className="adminx-input"
+                  aria-label="Recommendation policy change reason"
+                  value={recommendationPolicyReason}
+                  onChange={(event) => setRecommendationPolicyReason(event.target.value)}
+                  placeholder="Why this tuning is safe"
+                />
+              </label>
+              <button type="button" className="adminx-btn" onClick={saveRecommendationPolicy} disabled={recommendationPolicySaving}>
+                {recommendationPolicySaving ? "Saving..." : "Save ranking controls"}
+              </button>
+            </div>
+            {recommendationPolicyNotice ? <div className="adminx-muted adminx-mobile-stack--spaced">{recommendationPolicyNotice}</div> : null}
+          </section>
+
           <section className="adminx-panel adminx-panel--span-12">
             <div className="adminx-panel-head">
               <div>

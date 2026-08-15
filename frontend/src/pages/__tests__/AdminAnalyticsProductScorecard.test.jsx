@@ -8,8 +8,10 @@ import {
   adminGetAnalyticsCommerceOps,
   adminGetAnalyticsContentUploads,
   adminGetAnalyticsEngagement,
+  adminGetAnalyticsFanRetention,
   adminGetAnalyticsOverview,
   adminGetAnalyticsProductScorecard,
+  adminGetAnalyticsRecommendations,
   adminGetAnalyticsRecentActivity,
   adminGetAnalyticsReliabilityHealth,
   adminGetAnalyticsReportsSummary,
@@ -18,6 +20,8 @@ import {
   adminGetAnalyticsTopContent,
   adminGetAnalyticsTopCreators,
   adminGetAnalyticsUserGrowth,
+  adminGetExecutiveOperatingDashboard,
+  adminUpdateRecommendationPolicy,
 } from "../../api";
 
 vi.mock("../../components/AdminShell", () => ({
@@ -55,8 +59,10 @@ vi.mock("../../api", () => ({
   adminGetAnalyticsCommerceOps: vi.fn(),
   adminGetAnalyticsContentUploads: vi.fn(),
   adminGetAnalyticsEngagement: vi.fn(),
+  adminGetAnalyticsFanRetention: vi.fn(),
   adminGetAnalyticsOverview: vi.fn(),
   adminGetAnalyticsProductScorecard: vi.fn(),
+  adminGetAnalyticsRecommendations: vi.fn(),
   adminGetAnalyticsRecentActivity: vi.fn(),
   adminGetAnalyticsReliabilityHealth: vi.fn(),
   adminGetAnalyticsReportsSummary: vi.fn(),
@@ -65,6 +71,8 @@ vi.mock("../../api", () => ({
   adminGetAnalyticsTopContent: vi.fn(),
   adminGetAnalyticsTopCreators: vi.fn(),
   adminGetAnalyticsUserGrowth: vi.fn(),
+  adminGetExecutiveOperatingDashboard: vi.fn(),
+  adminUpdateRecommendationPolicy: vi.fn(),
 }));
 
 const emptyAnalyticsPayload = { summary: {}, series: [], items: [], alerts: [] };
@@ -76,6 +84,7 @@ describe("AdminAnalytics product scorecard", () => {
       adminGetAnalyticsCommerceOps,
       adminGetAnalyticsContentUploads,
       adminGetAnalyticsEngagement,
+      adminGetAnalyticsFanRetention,
       adminGetAnalyticsOverview,
       adminGetAnalyticsRecentActivity,
       adminGetAnalyticsReliabilityHealth,
@@ -85,9 +94,46 @@ describe("AdminAnalytics product scorecard", () => {
       adminGetAnalyticsTopContent,
       adminGetAnalyticsTopCreators,
       adminGetAnalyticsUserGrowth,
+      adminGetExecutiveOperatingDashboard,
     ].forEach((request) => {
       vi.mocked(request).mockResolvedValue(emptyAnalyticsPayload);
     });
+    vi.mocked(adminGetAnalyticsRecommendations).mockResolvedValue({
+      summary: { requests: 4, conversionRate: 0.05 },
+      surfaces: [],
+      policy: {
+        enabled: true,
+        maxRepeatedCreatorCount: 2,
+        maxContentTypeStreak: 2,
+        minimumExplorationShare: 0.15,
+        hideRatePenalty: 18,
+        reportRatePenalty: 40,
+        conversionRateBoost: 16,
+      },
+    });
+    vi.mocked(adminGetAnalyticsFanRetention).mockResolvedValue({
+      summary: { entrants: 3, d7RetentionRate: 0.33 },
+      cohorts: [],
+      priorities: [],
+    });
+    vi.mocked(adminGetExecutiveOperatingDashboard).mockResolvedValue({
+      summary: { onTarget: 1, watch: 0, offTarget: 0 },
+      metrics: [
+        {
+          key: "checkout_success",
+          label: "Checkout success",
+          current: 0.96,
+          previous: 0.91,
+          fourWeekAverage: 0.93,
+          target: 0.95,
+          format: "percent",
+          status: "on_target",
+          drilldown: "/admin/transactions",
+        },
+      ],
+      actions: [],
+    });
+    vi.mocked(adminUpdateRecommendationPolicy).mockResolvedValue({ success: true });
 
     vi.mocked(adminGetAnalyticsProductScorecard).mockResolvedValue({
       capture: {
@@ -152,6 +198,9 @@ describe("AdminAnalytics product scorecard", () => {
     expect(screen.getByText("Public marketing and company information")).toBeInTheDocument();
     expect(screen.getByText("8 views")).toBeInTheDocument();
     expect(screen.getByText("Zero-view production features 2")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Executive Operating Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Fan Retention Cohorts" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recommendation Trust and Diversity" })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(adminGetAnalyticsProductScorecard).toHaveBeenCalledWith({

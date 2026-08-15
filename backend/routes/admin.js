@@ -87,6 +87,16 @@ const {
 const {
   buildProductScorecard,
 } = require("../services/productScorecardService");
+const {
+  buildFanRetentionCohorts,
+} = require("../services/fanRetentionCohortService");
+const {
+  buildRecommendationDiagnostics,
+  updateRecommendationPolicy,
+} = require("../services/recommendationGovernanceService");
+const {
+  buildExecutiveOperatingDashboard,
+} = require("../services/executiveOperatingDashboardService");
 const { buildReadinessPayload } = require("../services/healthService");
 const {
   getStorageActionCatalog,
@@ -2902,6 +2912,62 @@ router.get("/analytics/product-scorecard", async (req, res) => {
     return res
       .status(code)
       .json({ error: err.message || "Failed to load the product scorecard" });
+  }
+});
+
+router.get("/analytics/fan-retention", async (req, res) => {
+  try {
+    return res.json(await buildFanRetentionCohorts(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load fan retention cohorts" });
+  }
+});
+
+router.get("/analytics/recommendations", async (req, res) => {
+  try {
+    return res.json(await buildRecommendationDiagnostics(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load recommendation diagnostics" });
+  }
+});
+
+router.get("/analytics/executive-operating-dashboard", async (req, res) => {
+  try {
+    return res.json(await buildExecutiveOperatingDashboard(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load the executive operating dashboard" });
+  }
+});
+
+router.patch("/analytics/recommendations/policy", adminMutationLimiter, async (req, res) => {
+  try {
+    const reason = String(req.body?.reason || "").trim();
+    const updates = { ...req.body };
+    delete updates.reason;
+    const result = await updateRecommendationPolicy({
+      updates,
+      userId: req.user.id,
+      reason,
+    });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.recommendation_policy.update",
+      targetType: "RecommendationPolicy",
+      targetId: "global",
+      reason,
+      metadata: {
+        previous: result.previous,
+        next: result.policy,
+      },
+    });
+    return res.json({ success: true, policy: result.policy });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (/invalid|required/i.test(String(err?.message || "")) ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update recommendation policy" });
   }
 });
 

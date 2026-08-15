@@ -48,6 +48,7 @@ const decorateRankedItems = ({ items = [] } = {}) =>
     return {
       id: item.entityId,
       entityType: item.entityType,
+      contentType: item.contentType || item.entityType,
       score: Number(item.score || 0),
       rank: index + 1,
       reason: primaryReason.key,

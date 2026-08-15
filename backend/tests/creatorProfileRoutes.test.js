@@ -309,7 +309,7 @@ describe("creator profile routes", () => {
   });
 
   test("GET /api/creator/me/content-summary exposes operating console insights", async () => {
-    const { profile, token } = await createUserAndProfile({ creatorTypes: ["music"] });
+    const { profile, token, user } = await createUserAndProfile({ creatorTypes: ["music"] });
     const { user: viewer } = await createViewer();
 
     const track = await Track.create({
@@ -399,6 +399,42 @@ describe("creator profile routes", () => {
     expect(response.body.operatingConsole.akusoTemplates.map((template) => template.key)).toEqual(
       expect.arrayContaining(["track_description", "subscription_benefits", "launch_announcement"])
     );
+    const firstExperiment = response.body.operatingConsole.growthExperiments.experiments[0];
+    expect(firstExperiment).toMatchObject({
+      key: expect.any(String),
+      checklist: expect.any(Array),
+      measurement: expect.objectContaining({ shown: 0, actedOn: 0, dismissed: 0 }),
+    });
+
+    await request(app)
+      .post("/api/creator/growth-experiments/events")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ promptKey: firstExperiment.key, eventType: "shown" })
+      .expect(202);
+    const duplicateShown = await request(app)
+      .post("/api/creator/growth-experiments/events")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ promptKey: firstExperiment.key, eventType: "shown" })
+      .expect(202);
+    expect(duplicateShown.body.deduplicated).toBe(true);
+
+    await request(app)
+      .post("/api/creator/growth-experiments/events")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ promptKey: firstExperiment.key, eventType: "dismissed" })
+      .expect(202);
+
+    const refreshed = await request(app)
+      .get("/api/creator/me/content-summary")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(refreshed.body.operatingConsole.growthExperiments.experiments.map((item) => item.key))
+      .not.toContain(firstExperiment.key);
+    expect(await AnalyticsEvent.countDocuments({
+      userId: user._id,
+      type: "creator_growth_prompt",
+      targetId: firstExperiment.key,
+    })).toBe(2);
   });
 
   test("GET /api/creator/subscriptions/analytics reports churn, retention, and cohort revenue", async () => {

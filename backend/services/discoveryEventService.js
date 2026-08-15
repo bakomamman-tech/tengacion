@@ -31,6 +31,7 @@ const ALLOWED_EVENT_TYPES = new Set([
   "recommendation_clicked",
   "recommendation_hidden",
   "recommendation_dismissed",
+  "recommendation_reported",
 ]);
 
 const normalizeText = (value, maxLength = 80) =>
@@ -105,6 +106,7 @@ const buildRankedItemRefs = (rankedItems = []) =>
       return {
         entityKey: entityType && entityId ? makeEntityKey(entityType, entityId) : "",
         entityType,
+        contentType: normalizeText(item?.contentType || entityType, 40),
         entityId,
         creatorId,
         rank: Number(item?.rank || 0),
@@ -135,8 +137,8 @@ const buildCreatorExposures = (rankedItemRefs = []) => {
         ? Math.min(existing.highestRank, rank)
         : rank;
     }
-    if (item?.entityType) {
-      existing.entityTypes.add(normalizeText(item.entityType, 40));
+    if (item?.contentType || item?.entityType) {
+      existing.entityTypes.add(normalizeText(item.contentType || item.entityType, 40));
     }
     byCreator.set(key, existing);
   }
@@ -163,6 +165,11 @@ const buildResponseMeta = ({ rankedItems = [], creatorIds = [], recommendationMe
   featuredCollectionActive: Boolean(recommendationMeta?.featuredCollectionActive),
   featuredCandidateCount: Number(recommendationMeta?.featuredCandidateCount || 0),
   featuredBoostedCount: Number(recommendationMeta?.featuredBoostedCount || 0),
+  maxContentTypeStreak: Number(recommendationMeta?.maxContentTypeStreak || 0),
+  maxObservedContentTypeStreak: Number(recommendationMeta?.maxObservedContentTypeStreak || 0),
+  minimumExplorationShare: Number(recommendationMeta?.minimumExplorationShare || 0),
+  explorationCount: Number(recommendationMeta?.explorationCount || 0),
+  explorationShare: Number(recommendationMeta?.explorationShare || 0),
 });
 
 const createRecommendationLog = async ({
@@ -211,7 +218,7 @@ const createRecommendationLog = async ({
       recommendationMeta,
     }), {
       maxDepth: 2,
-      maxKeys: 16,
+      maxKeys: 24,
       maxStringLength: 120,
       maxArrayLength: 4,
     }),
@@ -283,10 +290,12 @@ const trackDiscoveryEvents = async ({
     const metadata = event.metadata && typeof event.metadata === "object"
       ? { ...event.metadata }
       : {};
-    const creatorId =
-      String(metadata.creatorId || "").trim() ||
-      creatorByEntityKey.get(makeEntityKey(event.entityType, event.entityId)) ||
-      "";
+    const rankedCreatorId = creatorByEntityKey.get(
+      makeEntityKey(event.entityType, event.entityId)
+    );
+    const creatorId = rankedCreatorId || (!requestId
+      ? String(metadata.creatorId || "").trim()
+      : "");
 
     if (creatorId) {
       metadata.creatorId = creatorId;

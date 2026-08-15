@@ -46,7 +46,9 @@ export default function TengaHarvestAdminPage() {
     }
   };
 
-  if (loading) return <div className="th-page"><div className="th-admin-shell"><p>Loading TengaHarvest pilot operations…</p></div></div>;
+  if (loading) {
+    return <div className="th-page"><div className="th-admin-shell"><p>Loading TengaHarvest pilot operations…</p></div></div>;
+  }
 
   const summary = data?.summary || {};
   return (

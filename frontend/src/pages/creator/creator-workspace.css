@@ -2177,6 +2177,63 @@ textarea {
     linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(248, 242, 231, 0.92));
 }
 
+.creator-growth-experiments-panel {
+  display: grid;
+  gap: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(42, 116, 96, 0.13), transparent 28%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(239, 247, 242, 0.92));
+}
+
+.creator-growth-experiment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.creator-growth-experiment {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  align-content: space-between;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 249, 241, 0.76);
+  border: 1px solid rgba(46, 104, 86, 0.12);
+}
+
+.creator-growth-experiment__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.creator-growth-experiment p {
+  margin: 6px 0 0;
+  color: var(--creator-muted);
+  line-height: 1.55;
+}
+
+.creator-growth-checklist {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--creator-muted);
+}
+
+.creator-growth-checklist li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.creator-growth-checklist li.is-complete {
+  color: #28694f;
+}
+
 .creator-console-funnel,
 .creator-console-prompt-grid {
   display: grid;
@@ -3488,6 +3545,7 @@ textarea {
   .creator-catalog-health-summary,
   .creator-catalog-prompt-list,
   .creator-akuso-template-grid,
+  .creator-growth-experiment-grid,
   .creator-panel-grid,
   .creator-metric-grid,
   .creator-profile-summary-grid,

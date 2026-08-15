@@ -45,11 +45,17 @@ export const searchGsiJournals = (query) =>
 export const importGsiJournal = (sourceId) =>
   request(`/journals/${encodeURIComponent(sourceId)}/import`);
 
-export const publishGsiJournal = (sourceId, editorialReview) =>
+export const calculateGsiJournalScore = (sourceId, impactEvidence) =>
+  request(`/journals/${encodeURIComponent(sourceId)}/score`, {
+    method: "POST",
+    body: JSON.stringify({ impactEvidence }),
+  });
+
+export const publishGsiJournal = (sourceId, editorialReview, impactEvidence) =>
   request(`/journals/${encodeURIComponent(sourceId)}/publish`, {
     method: "POST",
     timeoutMs: 60000,
-    body: JSON.stringify({ confirmed: true, editorialReview }),
+    body: JSON.stringify({ confirmed: true, editorialReview, impactEvidence }),
   });
 
 export const getGsiRecord = (recordId) =>

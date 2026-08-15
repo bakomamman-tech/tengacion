@@ -280,7 +280,7 @@ function ReviewStep({
         <p>Correct the journal-level details if needed. Publication evidence remains linked to its source record.</p>
       </div>
       <Notice type="success" title="Import complete">
-        We found {formatNumber(data.importSummary.totalWorks)} publications and reviewed the {formatNumber(data.importSummary.reviewedWorks)} most recent records as evidence. Research publication types will form the scoring sample.
+        The OpenAlex source reports {formatNumber(data.source.worksCount)} works. Its primary-source query matched {formatNumber(data.importSummary.totalWorks)}, and this MVP reviewed the {formatNumber(data.importSummary.reviewedWorks)} most recent records as a reproducible evidence sample.
       </Notice>
 
       <div className="gsi-journal-summary">
@@ -305,8 +305,9 @@ function ReviewStep({
         <aside className="gsi-import-facts">
           <span>Imported evidence</span>
           <dl>
-            <div><dt>Works in OpenAlex</dt><dd>{formatNumber(data.importSummary.totalWorks)}</dd></div>
-            <div><dt>Records reviewed</dt><dd>{formatNumber(data.importSummary.reviewedWorks)}</dd></div>
+            <div><dt>OpenAlex source works</dt><dd>{formatNumber(data.source.worksCount)}</dd></div>
+            <div><dt>Primary-source query</dt><dd>{formatNumber(data.importSummary.totalWorks)}</dd></div>
+            <div><dt>Recent records reviewed</dt><dd>{formatNumber(data.importSummary.reviewedWorks)}</dd></div>
             <div><dt>Citations recorded</dt><dd>{formatNumber(data.source.citedByCount)}</dd></div>
             <div><dt>Open-access journal</dt><dd>{data.source.isOpenAccess ? "Yes" : "Not indicated"}</dd></div>
           </dl>
@@ -342,7 +343,7 @@ function ReviewStep({
 
       <div className="gsi-publications-card">
         <div className="gsi-card-heading">
-          <div><span>Publication history</span><h2>{formatNumber(data.importSummary.totalWorks)} indexed works</h2></div>
+          <div><span>Recent review sample</span><h2>{formatNumber(data.importSummary.reviewedWorks)} of {formatNumber(data.source.worksCount)} source works</h2></div>
           <span className="gsi-source-badge">Source: OpenAlex</span>
         </div>
         <div className="gsi-publication-list">
@@ -468,7 +469,9 @@ function ConfirmStep({ data, editorialReview, impactEvidence, onBack, onPublishe
           <dl>
             <div><dt>Primary ISSN</dt><dd>{editorialReview.issnL || "Not listed"}</dd></div>
             <div><dt>Country</dt><dd>{formatCountry(editorialReview.countryCode)}</dd></div>
-            <div><dt>OpenAlex works</dt><dd>{formatNumber(data.importSummary.totalWorks)}</dd></div>
+            <div><dt>OpenAlex source works</dt><dd>{formatNumber(data.source.worksCount)}</dd></div>
+            <div><dt>Recent records reviewed</dt><dd>{formatNumber(data.importSummary.reviewedWorks)}</dd></div>
+            <div><dt>Research records scored</dt><dd>{formatNumber(data.score.context?.scoredPublications ?? data.score.sampleSize)}</dd></div>
             <div><dt>GSI Score</dt><dd><strong>{data.score.total}/100</strong></dd></div>
           </dl>
           <div className="gsi-confirm-breakdown">
@@ -480,7 +483,7 @@ function ConfirmStep({ data, editorialReview, impactEvidence, onBack, onPublishe
             <div><span>Local citations</span><strong>{formatNumber(data.impactEvidence?.localCitations || 0)}</strong></div>
             <small>{data.impactEvidence?.verificationStatus === "self-reported" ? "Linked evidence · self-reported" : "No local-impact evidence provided"}</small>
           </div>
-          <div className="gsi-record-provenance"><GsiIcon name="shield" /><div><strong>Source evidence retained</strong><span>The record includes its OpenAlex reference, import time, score formula, and the publication sample used.</span></div></div>
+          <div className="gsi-record-provenance"><GsiIcon name="shield" /><div><strong>Source evidence retained</strong><span>The record includes its OpenAlex reference, recent yearly publication counts, import time, score formula, and the publication sample used.</span></div></div>
         </div>
 
         <aside className="gsi-save-card">
@@ -498,10 +501,11 @@ function ConfirmStep({ data, editorialReview, impactEvidence, onBack, onPublishe
   );
 }
 
-function SuccessStep({ payload }) {
+export function SuccessStep({ payload }) {
   const { archive, record } = payload;
   const [copied, setCopied] = useState(false);
   const publicUrl = `${window.location.origin}${archive.publicRecordPath}`;
+  const registryPending = payload.registry?.status === "pending" || payload.registryIndexed === false;
 
   const copyReference = async () => {
     try {
@@ -516,14 +520,16 @@ function SuccessStep({ payload }) {
   return (
     <section className="gsi-stage gsi-success-stage">
       <div className="gsi-success-mark"><GsiIcon name="check" size={34} /></div>
-      <div className="gsi-eyebrow">Indexing complete</div>
-      <h1>Journal successfully indexed.</h1>
-      <p>{record.journal.displayName} now has a permanent academic record with a transparent GSI Score and traceable source evidence.</p>
+      <div className="gsi-eyebrow">{registryPending ? "Permanent record saved" : "Indexing complete"}</div>
+      <h1>{registryPending ? "Journal permanently published." : "Journal successfully indexed."}</h1>
+      <p>{record.journal.displayName} now has a permanent academic record with a transparent GSI Score and traceable source evidence.{registryPending ? " Its Browse Research listing is still pending." : ""}</p>
+
+      {registryPending ? <div className="gsi-success-warning" role="status"><GsiIcon name="info" size={19} /><div><strong>Discovery indexing is pending</strong><span>{payload.warning || payload.registry?.message || "The IPFS record is safe. An operator can retry the registry index using this CID without republishing or changing the permanent record."}</span></div></div> : null}
 
       <div className="gsi-success-record">
         <div className="gsi-success-record-top"><div><span>Permanent record reference</span><strong>{archive.id}</strong></div><button type="button" onClick={copyReference}><GsiIcon name={copied ? "check" : "copy"} size={17} /> {copied ? "Copied" : "Copy link"}</button></div>
         <div className="gsi-success-journal"><span className="gsi-summary-monogram">{record.journal.displayName.charAt(0).toUpperCase()}</span><div><h2>{record.journal.displayName}</h2><p>{record.journal.publisher || "Publisher not listed"} · {record.journal.issnL || "ISSN not listed"}</p></div><div className="gsi-mini-score"><strong>{record.gsiScore.total}</strong><span>GSI Score</span></div></div>
-        <dl><div><dt>Saved</dt><dd>{formatDate(archive.savedAt)}</dd></div><div><dt>Records archived</dt><dd>{archive.archivedPublications}</dd></div><div><dt>Integrity reference</dt><dd>{archive.contentHash.slice(0, 22)}…</dd></div></dl>
+        <dl><div><dt>Saved</dt><dd>{formatDate(archive.savedAt)}</dd></div><div><dt>Records reviewed</dt><dd>{formatNumber(record.provenance.reviewedWorks)}</dd></div><div><dt>Research records scored</dt><dd>{formatNumber(record.provenance.scoredPublications ?? record.gsiScore.sampleSize)}</dd></div><div><dt>Publications retained</dt><dd>{formatNumber(archive.archivedPublications)}</dd></div><div><dt>Integrity reference</dt><dd>{archive.contentHash.slice(0, 22)}…</dd></div></dl>
       </div>
 
       <div className="gsi-success-actions">

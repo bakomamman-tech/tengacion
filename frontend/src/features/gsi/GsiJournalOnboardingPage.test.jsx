@@ -17,7 +17,7 @@ vi.mock("./gsiApi", () => ({
   searchGsiJournals: mocks.searchJournals,
 }));
 
-import GsiJournalOnboardingPage from "./GsiJournalOnboardingPage";
+import GsiJournalOnboardingPage, { SuccessStep } from "./GsiJournalOnboardingPage";
 
 const source = {
   id: "S123",
@@ -123,5 +123,34 @@ describe("GSI local-impact evidence", () => {
     })));
     expect(await screen.findByRole("heading", { name: /GSI Score, explained/i })).toBeInTheDocument();
     expect(screen.getByText("Local impact: self-reported")).toBeInTheDocument();
+  });
+
+  it("separates permanent publication success from pending discovery indexing", () => {
+    render(
+      <MemoryRouter>
+        <SuccessStep payload={{
+          archive: {
+            id: "bafkreieomt2dt7l5zfgzycjpebgzsggyh565wbdm7l2mllws4wpfo7edca",
+            publicRecordPath: "/gsi/records/example",
+            savedAt: "2026-08-15T00:00:00.000Z",
+            archivedPublications: 62,
+            contentHash: "sha256:fixture",
+          },
+          record: {
+            journal: { displayName: "Pan African Medical Journal", publisher: "AFENET", issnL: "1937-8688" },
+            provenance: { reviewedWorks: 100, scoredPublications: 98 },
+            gsiScore: { total: 90 },
+          },
+          registryIndexed: false,
+          registry: { status: "pending", message: "Discovery indexing can be retried by CID." },
+          warning: "The IPFS record is permanent and safe.",
+        }} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("heading", { name: "Journal permanently published." })).toBeInTheDocument();
+    expect(screen.getByText("Discovery indexing is pending")).toBeInTheDocument();
+    expect(screen.getByText("The IPFS record is permanent and safe.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /View public journal record/i })).toHaveAttribute("href", "/gsi/records/example");
   });
 });

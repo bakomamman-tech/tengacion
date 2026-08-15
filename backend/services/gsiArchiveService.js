@@ -36,6 +36,15 @@ const buildArchivalRecord = ({
   editorialReview,
   impactEvidence,
 }) => {
+  const publicationHistory = (Array.isArray(source.countsByYear) ? source.countsByYear : [])
+    .map((entry) => ({
+      year: Math.max(0, Number(entry?.year) || 0),
+      worksCount: Math.max(0, Number(entry?.worksCount) || 0),
+      citedByCount: Math.max(0, Number(entry?.citedByCount) || 0),
+    }))
+    .filter((entry) => entry.year > 0)
+    .sort((first, second) => second.year - first.year)
+    .slice(0, 10);
   const compactPublications = (Array.isArray(publications) ? publications : []).map((work) => ({
     id: work.id,
     doi: work.doi || null,
@@ -60,7 +69,7 @@ const buildArchivalRecord = ({
   }));
 
   const record = {
-    schema: "https://tengacion.com/schemas/gsi-journal-record/v2",
+    schema: "https://tengacion.com/schemas/gsi-journal-record/v3",
     recordType: "GSI Journal Onboarding Record",
     createdAt: new Date().toISOString(),
     createdBy: "TEAM ARCHIVE — GSI Buildathon 2026",
@@ -78,11 +87,14 @@ const buildArchivalRecord = ({
       isOpenAccess: source.isOpenAccess,
       isInDoaj: source.isInDoaj,
     },
+    publicationHistory,
     provenance: {
       provider: "OpenAlex",
       importedAt: importSummary.importedAt,
       totalWorks: importSummary.totalWorks,
       reviewedWorks: importSummary.reviewedWorks,
+      scoredPublications: score?.context?.scoredPublications ?? score?.sampleSize ?? 0,
+      excludedPublications: score?.context?.excludedPublications ?? 0,
       isSample: importSummary.isSample,
       editorConfirmedAt: new Date().toISOString(),
       impactEvidenceStatus: impactEvidence?.verificationStatus || "not-provided",

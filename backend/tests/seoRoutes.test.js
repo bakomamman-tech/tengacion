@@ -12,6 +12,7 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "test_secret_1234567890123456
 const Album = require("../models/Album");
 const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
+const GsiRegistryRecord = require("../models/GsiRegistryRecord");
 const MarketplaceProduct = require("../models/MarketplaceProduct");
 const MarketplaceSeller = require("../models/MarketplaceSeller");
 const Post = require("../models/Post");
@@ -231,6 +232,44 @@ describe("SEO routes", () => {
     expect(response.text).toContain('href="/creators"');
     expect(response.text).toContain('href="/music"');
     expect(response.headers["x-robots-tag"]).toBeUndefined();
+  });
+
+  test("permanent GSI journal URLs render record-specific crawler and social metadata", async () => {
+    const recordId = "bafkreieomt2dt7l5zfgzycjpebgzsggyh565wbdm7l2mllws4wpfo7edca";
+    await GsiRegistryRecord.create({
+      archiveId: recordId,
+      recordKind: "journal",
+      title: "Pan African Medical Journal",
+      subtitle: "African Field Epidemiology Network",
+      countryCode: "UG",
+      issnL: "1937-8688",
+      indexedWorks: 10706,
+      queryMatchedWorks: 10701,
+      reviewedWorks: 100,
+      scoredWorks: 98,
+      retainedWorks: 62,
+      gsiScore: 90,
+      scoringVersion: "GSI-Archive-1.2",
+      publicRecordPath: `/gsi/records/${recordId}`,
+      permanentUrl: `https://ipfs.io/ipfs/${recordId}`,
+      sourceProvider: "OpenAlex",
+      savedAt: new Date("2026-08-15T00:00:00.000Z"),
+    });
+
+    const response = await request(server).get(`/gsi/records/${recordId}`).expect(200);
+
+    expect(response.text).toContain(
+      '<title data-seo-key="title">Pan African Medical Journal | Global South Index</title>'
+    );
+    expect(response.text).toContain(
+      'data-seo-key="og:title" content="Pan African Medical Journal | Global South Index"'
+    );
+    expect(response.text).toContain(`href="https://tengacion.com/gsi/records/${recordId}"`);
+    expect(response.text).toContain("90/100 GSI Score");
+    expect(response.text).toContain("10,706");
+    expect(response.text).toContain("Publications retained");
+    expect(response.text).toContain("Verify the independent IPFS copy");
+    expect(response.text).not.toContain("</article></h1>");
   });
 
   test("public explainer pages render indexable metadata for content depth", async () => {

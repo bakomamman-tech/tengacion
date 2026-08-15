@@ -6,6 +6,10 @@ const mockScoreJournal = jest.fn();
 const mockScorePaper = jest.fn();
 const mockIndexPaperRecord = jest.fn();
 const mockIndexPublishedRecord = jest.fn();
+const mockListRegistryRecords = jest.fn();
+const mockBuildArchivalRecord = jest.fn();
+const mockFetchArchivedRecord = jest.fn();
+const mockPublishRecord = jest.fn();
 
 jest.mock("../models/GsiPaperRecord", () => ({
   create: jest.fn(),
@@ -28,7 +32,7 @@ jest.mock("../services/gsiScoringService", () => ({
 jest.mock("../services/gsiRegistryService", () => ({
   indexPaperRecord: (...args) => mockIndexPaperRecord(...args),
   indexPublishedRecord: (...args) => mockIndexPublishedRecord(...args),
-  listRegistryRecords: jest.fn(),
+  listRegistryRecords: (...args) => mockListRegistryRecords(...args),
 }));
 
 jest.mock("../services/gsiArchiveService", () => ({
@@ -39,9 +43,9 @@ jest.mock("../services/gsiArchiveService", () => ({
       this.code = code;
     }
   },
-  buildArchivalRecord: jest.fn(),
-  fetchArchivedRecord: jest.fn(),
-  publishRecord: jest.fn(),
+  buildArchivalRecord: (...args) => mockBuildArchivalRecord(...args),
+  fetchArchivedRecord: (...args) => mockFetchArchivedRecord(...args),
+  publishRecord: (...args) => mockPublishRecord(...args),
 }));
 
 const gsiRouter = require("../routes/gsi");
@@ -60,6 +64,10 @@ describe("GSI routes", () => {
     mockScorePaper.mockReset();
     mockIndexPaperRecord.mockReset();
     mockIndexPublishedRecord.mockReset();
+    mockListRegistryRecords.mockReset();
+    mockBuildArchivalRecord.mockReset();
+    mockFetchArchivedRecord.mockReset();
+    mockPublishRecord.mockReset();
     mockImportJournal.mockResolvedValue({ source: { id: "S123" }, publications: [] });
     mockScoreJournal.mockReturnValue({ version: "GSI-Archive-1.2", total: 4 });
     mockScorePaper.mockReturnValue({ version: "GSI-Paper-1.0", total: 70 });
@@ -151,6 +159,97 @@ describe("GSI routes", () => {
     expect(response.body.score.version).toBe("GSI-Paper-1.0");
     expect(mockScorePaper).toHaveBeenCalledWith(expect.objectContaining({
       paper: expect.objectContaining({ countryCode: "NG" }),
+    }));
+  });
+
+  test("publishes the archive and returns complete journal/work registry status", async () => {
+    const record = {
+      recordType: "GSI Journal Onboarding Record",
+      journal: { displayName: "Pan African Medical Journal" },
+      publications: [{ id: "W1" }, { id: "W2" }],
+      provenance: { archivedPublications: 2 },
+      gsiScore: { total: 90 },
+    };
+    const archive = {
+      id: "bafkreieomt2dt7l5zfgzycjpebgzsggyh565wbdm7l2mllws4wpfo7edca",
+      publicRecordPath: "/gsi/records/example",
+    };
+    const imported = { source: { id: "S123" }, publications: [{ id: "W1" }, { id: "W2" }] };
+    mockImportJournal.mockResolvedValue(imported);
+    mockBuildArchivalRecord.mockReturnValue(record);
+    mockPublishRecord.mockResolvedValue(archive);
+    mockIndexPublishedRecord.mockResolvedValue({
+      status: "indexed",
+      journalIndexed: true,
+      worksIndexed: 2,
+      expectedWorks: 2,
+    });
+
+    const response = await request(createApp())
+      .post("/api/gsi/journals/S123/publish")
+      .send({ confirmed: true });
+
+    expect(response.status).toBe(201);
+    expect(response.body.registryIndexed).toBe(true);
+    expect(response.body.registry).toMatchObject({ journalIndexed: true, worksIndexed: 2 });
+    expect(mockIndexPublishedRecord).toHaveBeenCalledWith(record, archive, {
+      sourcePublications: imported.publications,
+    });
+  });
+
+  test("keeps a successful immutable archive and reports a warning when registry indexing fails", async () => {
+    const record = {
+      recordType: "GSI Journal Onboarding Record",
+      journal: { displayName: "Pan African Medical Journal" },
+      publications: [{ id: "W1" }],
+      provenance: { archivedPublications: 1 },
+      gsiScore: { total: 90 },
+    };
+    const archive = {
+      id: "bafkreieomt2dt7l5zfgzycjpebgzsggyh565wbdm7l2mllws4wpfo7edca",
+      publicRecordPath: "/gsi/records/example",
+    };
+    const registryError = new Error("MongoDB unavailable");
+    registryError.registryStatus = {
+      status: "pending",
+      journalIndexed: false,
+      worksIndexed: 0,
+      expectedWorks: 1,
+    };
+    mockBuildArchivalRecord.mockReturnValue(record);
+    mockPublishRecord.mockResolvedValue(archive);
+    mockIndexPublishedRecord.mockRejectedValue(registryError);
+
+    const response = await request(createApp())
+      .post("/api/gsi/journals/S123/publish")
+      .send({ confirmed: true });
+
+    expect(response.status).toBe(201);
+    expect(response.body.success).toBe(true);
+    expect(response.body.archive).toEqual(archive);
+    expect(response.body.registryIndexed).toBe(false);
+    expect(response.body.registry).toMatchObject({ status: "pending", journalIndexed: false });
+    expect(response.body.warning).toContain("IPFS record is permanent and safe");
+    expect(mockPublishRecord).toHaveBeenCalledTimes(1);
+  });
+
+  test("returns registry results, global counters, and pagination through the public API", async () => {
+    mockListRegistryRecords.mockResolvedValue({
+      results: [{ archiveId: "cid:work:W1", recordKind: "journal-work" }],
+      pagination: { page: 2, limit: 1, total: 3, pages: 3 },
+      counts: { totalPublicRecords: 5, journals: 1, papers: 1, journalWorks: 3 },
+    });
+
+    const response = await request(createApp())
+      .get("/api/gsi/registry?type=journal-work&page=2&limit=1");
+
+    expect(response.status).toBe(200);
+    expect(response.body.counts.journalWorks).toBe(3);
+    expect(response.body.pagination.page).toBe(2);
+    expect(mockListRegistryRecords).toHaveBeenCalledWith(expect.objectContaining({
+      type: "journal-work",
+      page: "2",
+      limit: "1",
     }));
   });
 });

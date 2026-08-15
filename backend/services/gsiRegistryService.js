@@ -25,6 +25,22 @@ const cleanText = (value, maxLength) => String(value || "").replace(/\s+/g, " ")
 const uniqueStrings = (values, maxItems = 50) => [...new Set(
   (Array.isArray(values) ? values : []).map((value) => cleanText(value, 220)).filter(Boolean)
 )].slice(0, maxItems);
+const normalizeIssn = (value) => {
+  const match = cleanText(value, 24).toUpperCase().match(/^\d{4}-?\d{3}[\dX]$/);
+  if (!match) return "";
+  const compact = match[0].replace("-", "");
+  return `${compact.slice(0, 4)}-${compact.slice(4)}`;
+};
+const normalizeStoredIssn = (value) =>
+  normalizeIssn(value) || cleanText(value, 24).toUpperCase();
+const normalizeIssns = (values) => [...new Set(
+  (Array.isArray(values) ? values : []).map(normalizeStoredIssn).filter(Boolean)
+)].slice(0, 8);
+const normalizeOpenAlexSourceId = (value) => {
+  const normalized = cleanText(value, 180);
+  const match = normalized.match(/^(?:https?:\/\/(?:www\.)?openalex\.org\/)?(S\d+)\/?$/i);
+  return match ? match[1].toUpperCase() : "";
+};
 const publicationAnchor = (workId) => {
   const normalized = cleanText(workId, 40).toUpperCase().replace(/[^A-Z0-9_-]/g, "");
   return normalized ? `publication-${normalized}` : "";
@@ -44,6 +60,7 @@ const buildRegistryEntry = (record, archive) => {
     archiveId: archive.id,
     recordKind: isPaper ? "paper" : "journal",
     parentArchiveId: "",
+    openAlexSourceId: isPaper ? "" : normalizeOpenAlexSourceId(source.openAlexId),
     openAlexWorkId: "",
     doi: isPaper ? source.doi || "" : "",
     journalName: isPaper ? source.journalName || "" : source.displayName || source.title,
@@ -60,7 +77,8 @@ const buildRegistryEntry = (record, archive) => {
     field: isPaper ? source.field : "",
     countryCode: source.countryCode || "",
     publicationYear: isPaper ? source.publicationYear : null,
-    issnL: isPaper ? "" : source.issnL || "",
+    issnL: isPaper ? "" : normalizeStoredIssn(source.issnL),
+    issns: isPaper ? [] : normalizeIssns(source.issns),
     indexedWorks: isPaper ? null : Math.max(0, Number(source.worksCount) || 0),
     queryMatchedWorks: isPaper ? null : Math.max(0, Number(record.provenance.totalWorks) || 0),
     reviewedWorks: isPaper ? null : Math.max(0, Number(record.provenance.reviewedWorks) || 0),
@@ -152,6 +170,7 @@ const buildPaperRegistryEntry = (record) => ({
   archiveId: record.publicId,
   recordKind: "paper",
   parentArchiveId: "",
+  openAlexSourceId: "",
   openAlexWorkId: "",
   doi: record.paper.doi || "",
   journalName: record.paper.journalName || "",
@@ -169,6 +188,7 @@ const buildPaperRegistryEntry = (record) => ({
   countryCode: record.paper.countryCode,
   publicationYear: record.paper.publicationYear,
   issnL: "",
+  issns: [],
   indexedWorks: null,
   queryMatchedWorks: null,
   reviewedWorks: null,
@@ -294,7 +314,8 @@ const listRegistryRecords = async (query = {}) => {
   const limit = Math.min(24, Math.max(1, Number.parseInt(query.limit, 10) || 12));
   const filter = {};
   const type = String(query.type || "").trim().toLowerCase();
-  if (["journal", "paper", "journal-work"].includes(type)) filter.recordKind = type;
+  const hasExplicitType = ["journal", "paper", "journal-work"].includes(type);
+  if (hasExplicitType) filter.recordKind = type;
   const country = String(query.country || "").trim().toUpperCase();
   if (/^[A-Z]{2}$/.test(country)) {
     filter.$and = [{ $or: [{ countryCode: country }, { countryCodes: country }] }];
@@ -306,24 +327,46 @@ const listRegistryRecords = async (query = {}) => {
   }
   const search = String(query.q || "").trim().slice(0, 180);
   if (search) {
-    const pattern = { $regex: escapeRegex(search), $options: "i" };
-    const searchFilter = {
-      $or: [
-        { title: pattern },
-        { subtitle: pattern },
-        { abstract: pattern },
-        { field: pattern },
-        { journalName: pattern },
-        { doi: pattern },
-        { authors: pattern },
-        { topics: pattern },
-        { institutions: pattern },
-        { countryCode: pattern },
-        { countryCodes: pattern },
-        { countryNames: pattern },
-        { openAlexWorkId: pattern },
-      ],
-    };
+    const exactIssn = normalizeIssn(search);
+    const exactOpenAlexSourceId = normalizeOpenAlexSourceId(search);
+    let searchFilter;
+
+    if (exactIssn) {
+      const compactIssn = exactIssn.replace("-", "");
+      const issnPattern = {
+        $regex: `^${compactIssn.slice(0, 4)}-?${compactIssn.slice(4)}$`,
+        $options: "i",
+      };
+      searchFilter = { $or: [{ issnL: issnPattern }, { issns: issnPattern }] };
+    } else if (exactOpenAlexSourceId) {
+      searchFilter = { openAlexSourceId: exactOpenAlexSourceId };
+    } else {
+      const pattern = { $regex: escapeRegex(search), $options: "i" };
+      searchFilter = {
+        $or: [
+          { title: pattern },
+          { subtitle: pattern },
+          { abstract: pattern },
+          { field: pattern },
+          { journalName: pattern },
+          { doi: pattern },
+          { authors: pattern },
+          { topics: pattern },
+          { institutions: pattern },
+          { countryCode: pattern },
+          { countryCodes: pattern },
+          { countryNames: pattern },
+          { openAlexSourceId: pattern },
+          { openAlexWorkId: pattern },
+          { issnL: pattern },
+          { issns: pattern },
+        ],
+      };
+    }
+
+    if ((exactIssn || exactOpenAlexSourceId) && !hasExplicitType) {
+      filter.recordKind = "journal";
+    }
     filter.$and = [...(filter.$and || []), searchFilter];
   }
 

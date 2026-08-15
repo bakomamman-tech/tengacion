@@ -20,10 +20,12 @@ const journalRecord = {
   recordType: "GSI Journal Onboarding Record",
   createdAt: "2026-08-15T00:00:00.000Z",
   journal: {
+    openAlexId: "S2755481371",
     displayName: "Pan African Medical Journal",
     publisher: "African Field Epidemiology Network",
     countryCode: "UG",
     issnL: "1937-8688",
+    issns: ["1937-8688"],
     worksCount: 10706,
   },
   provenance: {
@@ -102,6 +104,7 @@ describe("GSI journal registry persistence and discovery", () => {
     expect(first).toMatchObject({ journalIndexed: true, worksIndexed: 3, entriesIndexed: 4 });
     expect(second).toMatchObject({ journalIndexed: true, worksIndexed: 3, entriesIndexed: 4 });
     expect(await GsiRegistryRecord.countDocuments()).toBe(4);
+    expect(await GsiRegistryRecord.countDocuments({ recordKind: "journal" })).toBe(1);
     expect(await GsiRegistryRecord.countDocuments({ recordKind: "journal-work" })).toBe(3);
     expect(await GsiRegistryRecord.findOne({ openAlexWorkId: "W1001" }).lean()).toMatchObject({
       parentArchiveId: PAMJ_CID,
@@ -110,6 +113,44 @@ describe("GSI journal registry persistence and discovery", () => {
       scoreContext: "parent-journal",
       publicRecordPath: `/gsi/records/${PAMJ_CID}#publication-W1001`,
     });
+    expect(await GsiRegistryRecord.findOne({ recordKind: "journal" }).lean()).toMatchObject({
+      openAlexSourceId: "S2755481371",
+      issnL: "1937-8688",
+      issns: ["1937-8688"],
+    });
+  });
+
+  test.each([
+    ["ISSN-L", "1937-8688"],
+    ["compact ISSN-L", "19378688"],
+    ["OpenAlex source ID", "S2755481371"],
+    ["lowercase OpenAlex source ID", "s2755481371"],
+    ["full OpenAlex source URL", "https://openalex.org/S2755481371"],
+  ])("finds the journal by exact %s without returning its works", async (_label, q) => {
+    await indexPublishedRecord(journalRecord, archive);
+
+    const response = await listRegistryRecords({ q });
+
+    expect(response.results).toHaveLength(1);
+    expect(response.results[0]).toMatchObject({
+      archiveId: PAMJ_CID,
+      recordKind: "journal",
+      title: "Pan African Medical Journal",
+    });
+  });
+
+  test("keeps journal title search and explicit journal-work ISSN search behavior", async () => {
+    await indexPublishedRecord(journalRecord, archive);
+
+    const titleResponse = await listRegistryRecords({ q: "Pan African Medical Journal" });
+    const workResponse = await listRegistryRecords({ q: "1937-8688", type: "journal-work" });
+
+    expect(titleResponse.results).toHaveLength(4);
+    expect(titleResponse.results).toEqual(expect.arrayContaining([
+      expect.objectContaining({ archiveId: PAMJ_CID, recordKind: "journal" }),
+    ]));
+    expect(workResponse.results).toHaveLength(3);
+    expect(workResponse.results.every((entry) => entry.recordKind === "journal-work")).toBe(true);
   });
 
   test.each([
@@ -191,6 +232,12 @@ describe("GSI journal registry persistence and discovery", () => {
     expect(second.registry).toMatchObject({ journalIndexed: true, worksIndexed: 3 });
     expect(fetchRecord).toHaveBeenCalledTimes(2);
     expect(await GsiRegistryRecord.countDocuments()).toBe(4);
+    expect(await GsiRegistryRecord.countDocuments({ recordKind: "journal" })).toBe(1);
+    expect(await GsiRegistryRecord.findOne({ recordKind: "journal" }).lean()).toMatchObject({
+      archiveId: PAMJ_CID,
+      openAlexSourceId: "S2755481371",
+      issns: ["1937-8688"],
+    });
     expect(first.archive.id).toBe(PAMJ_CID);
   });
 

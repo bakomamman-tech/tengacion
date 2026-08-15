@@ -3,6 +3,14 @@ const request = require("supertest");
 
 const mockImportJournal = jest.fn();
 const mockScoreJournal = jest.fn();
+const mockScorePaper = jest.fn();
+const mockIndexPaperRecord = jest.fn();
+const mockIndexPublishedRecord = jest.fn();
+
+jest.mock("../models/GsiPaperRecord", () => ({
+  create: jest.fn(),
+  findOne: jest.fn(),
+}));
 
 jest.mock("../services/gsiOpenAlexService", () => ({
   GsiOpenAlexError: class GsiOpenAlexError extends Error {},
@@ -11,8 +19,16 @@ jest.mock("../services/gsiOpenAlexService", () => ({
 }));
 
 jest.mock("../services/gsiScoringService", () => ({
+  GSI_PAPER_SCORING_VERSION: "GSI-Paper-1.0",
   GSI_SCORING_VERSION: "GSI-Archive-1.2",
   scoreJournal: (...args) => mockScoreJournal(...args),
+  scorePaper: (...args) => mockScorePaper(...args),
+}));
+
+jest.mock("../services/gsiRegistryService", () => ({
+  indexPaperRecord: (...args) => mockIndexPaperRecord(...args),
+  indexPublishedRecord: (...args) => mockIndexPublishedRecord(...args),
+  listRegistryRecords: jest.fn(),
 }));
 
 jest.mock("../services/gsiArchiveService", () => ({
@@ -41,8 +57,12 @@ describe("GSI routes", () => {
   beforeEach(() => {
     mockImportJournal.mockReset();
     mockScoreJournal.mockReset();
+    mockScorePaper.mockReset();
+    mockIndexPaperRecord.mockReset();
+    mockIndexPublishedRecord.mockReset();
     mockImportJournal.mockResolvedValue({ source: { id: "S123" }, publications: [] });
     mockScoreJournal.mockReturnValue({ version: "GSI-Archive-1.2", total: 4 });
+    mockScorePaper.mockReturnValue({ version: "GSI-Paper-1.0", total: 70 });
   });
 
   test("reports the active scoring version", async () => {
@@ -50,6 +70,7 @@ describe("GSI routes", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.scoringVersion).toBe("GSI-Archive-1.2");
+    expect(response.body.paperScoringVersion).toBe("GSI-Paper-1.0");
   });
 
   test("rejects local-impact claims without a safe public evidence URL", async () => {
@@ -109,6 +130,27 @@ describe("GSI routes", () => {
         sourceUrl: "https://example.org/programme",
         verificationStatus: "self-reported",
       }),
+    }));
+  });
+
+  test("validates paper metadata before returning a paper-level score", async () => {
+    const response = await request(createApp()).post("/api/gsi/papers/score").send({
+      paper: {
+        title: "Community health delivery in Northern Nigeria",
+        abstract: "This study documents a community health delivery model and evaluates how local clinics used it across several districts over a two-year period.",
+        field: "Public health",
+        authors: "Ada Okafor, Musa Bello",
+        countryCode: "NG",
+        publicationYear: 2026,
+        openAccessUrl: "https://example.org/paper",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.paper.authors).toEqual(["Ada Okafor", "Musa Bello"]);
+    expect(response.body.score.version).toBe("GSI-Paper-1.0");
+    expect(mockScorePaper).toHaveBeenCalledWith(expect.objectContaining({
+      paper: expect.objectContaining({ countryCode: "NG" }),
     }));
   });
 });

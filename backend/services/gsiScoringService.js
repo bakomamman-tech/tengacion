@@ -8,6 +8,7 @@ const round = (value, digits = 0) => {
 const percent = (value) => round(clamp(value) * 100);
 
 const GSI_SCORING_VERSION = "GSI-Archive-1.2";
+const GSI_PAPER_SCORING_VERSION = "GSI-Paper-1.0";
 
 const SCORABLE_WORK_TYPES = new Set([
   "article",
@@ -237,9 +238,116 @@ const scoreJournal = ({
   };
 };
 
+const scorePaper = ({ paper = {}, impactEvidence = {} } = {}) => {
+  const metadataFields = [
+    { label: "Title", present: Boolean(paper.title) },
+    { label: "Abstract", present: Boolean(paper.abstract) },
+    { label: "Research field", present: Boolean(paper.field) },
+    { label: "Publication year", present: Boolean(paper.publicationYear) },
+    { label: "Journal or venue", present: Boolean(paper.journalName) },
+  ];
+  const metadataCoverage = ratio(metadataFields.filter((field) => field.present).length, metadataFields.length);
+  const authorSignal = paper.authors?.length ? 1 : 0;
+  const institutionSignal = paper.institution ? 1 : 0;
+  const countrySignal = paper.countryCode ? 1 : 0;
+  const hasImpactSource = Boolean(
+    impactEvidence.sourceUrl && impactEvidence.verificationStatus === "self-reported"
+  );
+  const policyMentions = hasImpactSource ? Math.max(0, Number(impactEvidence.policyMentions) || 0) : 0;
+  const ngoAdoptions = hasImpactSource ? Math.max(0, Number(impactEvidence.ngoAdoptions) || 0) : 0;
+  const localCitations = hasImpactSource ? Math.max(0, Number(impactEvidence.localCitations) || 0) : 0;
+  const policySignal = clamp(Math.log1p(policyMentions) / Math.log(6));
+  const adoptionSignal = clamp(Math.log1p(ngoAdoptions) / Math.log(4));
+  const localCitationSignal = clamp(Math.log1p(localCitations) / Math.log(11));
+
+  const components = [
+    {
+      key: "metadata",
+      label: "Metadata completeness",
+      weight: 25,
+      score: round(metadataCoverage * 25),
+      explanation: `${metadataFields.filter((field) => field.present).length} of ${metadataFields.length} core discovery fields are present.`,
+      metrics: metadataFields.map((field) => ({
+        label: field.label,
+        value: field.present ? "Present" : "Not provided",
+        percent: field.present ? 100 : 0,
+      })),
+    },
+    {
+      key: "openAccess",
+      label: "Open-access availability",
+      weight: 20,
+      score: paper.openAccessUrl ? 20 : 0,
+      explanation: paper.openAccessUrl
+        ? "A public link lets readers reach the research without a subscription barrier."
+        : "No public full-text link was provided, so this category contributes zero points.",
+      metrics: [{ label: "Public full text", value: paper.openAccessUrl ? "Linked" : "Not linked", percent: paper.openAccessUrl ? 100 : 0 }],
+    },
+    {
+      key: "researchIdentity",
+      label: "Author & institution context",
+      weight: 15,
+      score: authorSignal * 8 + institutionSignal * 4 + countrySignal * 3,
+      explanation: "Measures whether the people and research context are identifiable, not institutional prestige or country wealth.",
+      metrics: [
+        { label: "Named authors", value: paper.authors?.length || 0, percent: authorSignal * 100 },
+        { label: "Institution", value: institutionSignal ? "Present" : "Not provided", percent: institutionSignal * 100 },
+        { label: "Research country", value: countrySignal ? paper.countryCode : "Not provided", percent: countrySignal * 100 },
+      ],
+    },
+    {
+      key: "identifiers",
+      label: "Persistent identifier",
+      weight: 10,
+      score: paper.doi ? 10 : 0,
+      explanation: paper.doi
+        ? "A DOI provides a durable scholarly identifier for this paper."
+        : "No DOI was provided; the public GSI record still supplies a stable discovery reference.",
+      metrics: [{ label: "DOI", value: paper.doi || "Not provided", percent: paper.doi ? 100 : 0 }],
+    },
+    {
+      key: "localImpact",
+      label: "Documented local impact",
+      weight: 30,
+      score: round(policySignal * 12 + adoptionSignal * 10 + localCitationSignal * 8),
+      explanation: hasImpactSource
+        ? "Uses self-reported counts linked to a public evidence source; claims remain clearly labeled until independently verified."
+        : "No public local-impact evidence was submitted, so this category contributes zero points rather than inferring impact from global citations.",
+      metrics: [
+        { label: "Policy mentions", value: policyMentions, percent: percent(policySignal) },
+        { label: "NGO / programme adoptions", value: ngoAdoptions, percent: percent(adoptionSignal) },
+        { label: "Local citations", value: localCitations, percent: percent(localCitationSignal) },
+      ],
+    },
+  ];
+  const total = Math.min(100, components.reduce((sum, component) => sum + component.score, 0));
+  const ranked = [...components].sort(
+    (first, second) => second.score / second.weight - first.score / first.weight
+  );
+
+  return {
+    version: GSI_PAPER_SCORING_VERSION,
+    total,
+    maximum: 100,
+    sampleSize: 1,
+    methodologyNote:
+      "This paper-level score uses only submitted metadata, public availability, durable identifiers, and disclosed local-impact evidence.",
+    components,
+    summary: `This paper is strongest in ${ranked[0].label.toLowerCase()}. The clearest opportunity is ${ranked[ranked.length - 1].label.toLowerCase()}.`,
+    fairnessNote:
+      "This score evaluates discoverability and disclosed evidence. It does not use journal impact factor, citation rank, publisher prestige, language, institution ranking, or country income, and it is not a judgment of research quality.",
+    context: {
+      countries: paper.countryCode ? [paper.countryCode] : [],
+      impactEvidenceStatus: hasImpactSource ? "self-reported" : "not-provided",
+    },
+  };
+};
+
 module.exports = {
+  GSI_PAPER_SCORING_VERSION,
   GSI_SCORING_VERSION,
   SCORABLE_WORK_TYPES,
   isScorableWork,
   scoreJournal,
+  scorePaper,
 };

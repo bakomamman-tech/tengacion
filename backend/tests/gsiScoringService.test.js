@@ -1,4 +1,4 @@
-const { scoreJournal } = require("../services/gsiScoringService");
+const { scoreJournal, scorePaper } = require("../services/gsiScoringService");
 
 const completeWork = (overrides = {}) => ({
   id: "W1",
@@ -128,5 +128,34 @@ describe("GSI scoring service", () => {
     expect(localImpact.score).toBe(10);
     expect(localImpact.explanation).toMatch(/self-reported/i);
     expect(score.context.impactEvidenceStatus).toBe("self-reported");
+  });
+
+  test("scores a paper independently with a transparent 100-point rubric", () => {
+    const score = scorePaper({
+      paper: {
+        title: "Local research paper",
+        abstract: "A complete abstract",
+        field: "Agriculture",
+        authors: ["Ada Okafor"],
+        institution: "Example University",
+        countryCode: "NG",
+        publicationYear: 2026,
+        doi: "10.1234/example",
+        openAccessUrl: "https://example.org/paper",
+        journalName: "Example Journal",
+      },
+      impactEvidence: {
+        policyMentions: 5,
+        ngoAdoptions: 3,
+        localCitations: 10,
+        sourceUrl: "https://example.org/evidence",
+        verificationStatus: "self-reported",
+      },
+    });
+
+    expect(score.version).toBe("GSI-Paper-1.0");
+    expect(score.total).toBe(100);
+    expect(score.components.reduce((sum, component) => sum + component.weight, 0)).toBe(100);
+    expect(score.fairnessNote).toMatch(/not a judgment of research quality/i);
   });
 });

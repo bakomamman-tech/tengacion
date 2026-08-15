@@ -46,7 +46,7 @@ export default function GsiPublicRecordPage() {
       <SeoHead title={record ? `${record.journal.displayName} | GSI Journal Record` : "GSI Journal Record"} description="A permanent journal record with a transparent GSI Score, OpenAlex provenance, and disclosed local-impact evidence." canonical={`/gsi/records/${recordId}`} robots="index,follow" />
       <header className="gsi-header">
         <Link className="gsi-brand" to="/gsi"><span className="gsi-brand-mark"><GsiIcon name="book" size={24} /></span><span><strong>Global South Index</strong><small>Journal Registry</small></span></Link>
-        <Link className="gsi-secondary-button gsi-header-action" to="/gsi">Index another journal</Link>
+        <nav className="gsi-header-meta"><Link to="/gsi/research">Browse research</Link><Link className="gsi-secondary-button gsi-header-action" to="/gsi">Index another journal</Link></nav>
       </header>
       <main className="gsi-record-main">
         {loading ? <div className="gsi-record-loading"><span className="gsi-spinner gsi-spinner-dark" /><h1>Retrieving the permanent record…</h1><p>This can take a moment immediately after publication.</p></div> : null}

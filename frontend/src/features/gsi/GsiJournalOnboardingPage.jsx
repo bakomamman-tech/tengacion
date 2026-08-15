@@ -109,7 +109,8 @@ function PageHeader() {
       </Link>
       <div className="gsi-header-meta">
         <span className="gsi-team-pill"><span /> Team Archive</span>
-        <a href="mailto:stephen@tengacion.com">Need help?</a>
+        <Link to="/gsi/research">Browse research</Link>
+        <Link to="/gsi/papers/new">Submit a paper</Link>
       </div>
     </header>
   );

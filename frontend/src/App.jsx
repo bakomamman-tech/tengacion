@@ -169,6 +169,15 @@ const GsiJournalOnboardingPage = lazy(
 const GsiPublicRecordPage = lazy(
   () => import("./features/gsi/GsiPublicRecordPage")
 );
+const GsiPaperSubmissionPage = lazy(
+  () => import("./features/gsi/GsiPaperSubmissionPage")
+);
+const GsiPaperRecordPage = lazy(
+  () => import("./features/gsi/GsiPaperRecordPage")
+);
+const GsiResearchDashboard = lazy(
+  () => import("./features/gsi/GsiResearchDashboard")
+);
 
 function AppShellFallback({ message = "Loading Tengacion..." }) {
   return (
@@ -222,6 +231,9 @@ export default function App() {
           <Route path="/" element={user ? <Navigate to="/home" replace /> : <PublicHomePage />} />
           <Route path="/kadahive" element={<KadahiveLanding />} />
           <Route path="/gsi" element={<GsiJournalOnboardingPage />} />
+          <Route path="/gsi/research" element={<GsiResearchDashboard />} />
+          <Route path="/gsi/papers/new" element={<GsiPaperSubmissionPage />} />
+          <Route path="/gsi/papers/:recordId" element={<GsiPaperRecordPage />} />
           <Route path="/gsi/records/:recordId" element={<GsiPublicRecordPage />} />
           <Route
             path="/kadahive/programmes/kids-code"

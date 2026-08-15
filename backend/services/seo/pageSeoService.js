@@ -78,6 +78,24 @@ const PUBLIC_INFO_PAGES = {
     previewDescription:
       "A journal-editor workflow for publication review, sourced local-impact evidence, transparent evaluation, and permanent indexing.",
   },
+  "/gsi/research": {
+    title: "Browse Global South Research | GSI",
+    description:
+      "Search public paper and journal records with transparent Global South Index scoring and disclosed local-impact evidence.",
+    canonicalPath: "/gsi/research",
+    previewTitle: "Global South Index Research Registry",
+    previewDescription:
+      "Browse discoverable paper and journal records with explainable scores and visible evidence.",
+  },
+  "/gsi/papers/new": {
+    title: "Submit a Paper | Global South Index",
+    description:
+      "Add paper-level research metadata, review a transparent GSI Score, and publish the record to the public research registry.",
+    canonicalPath: "/gsi/papers/new",
+    previewTitle: "Submit Research to the Global South Index",
+    previewDescription:
+      "Create a paper-level record with transparent scoring and optional sourced local-impact evidence.",
+  },
   "/kadahive": {
     title: "KADA Hive Innovation & Tech Hub | Kaduna",
     description:

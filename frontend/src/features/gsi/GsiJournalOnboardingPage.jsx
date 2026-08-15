@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import SeoHead from "../../components/seo/SeoHead";
 import GsiIcon from "./GsiIcons";
 import {
+  calculateGsiJournalScore,
   importGsiJournal,
   publishGsiJournal,
   searchGsiJournals,
@@ -26,6 +27,31 @@ const formatDate = (value) => {
   return Number.isNaN(date.getTime())
     ? value
     : new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(date);
+};
+
+const EMPTY_IMPACT_EVIDENCE = {
+  policyMentions: "",
+  ngoAdoptions: "",
+  localCitations: "",
+  summary: "",
+  sourceUrl: "",
+  attested: false,
+};
+
+const hasImpactEvidence = (value) => Boolean(
+  Number(value.policyMentions) ||
+  Number(value.ngoAdoptions) ||
+  Number(value.localCitations) ||
+  value.summary.trim() ||
+  value.sourceUrl.trim()
+);
+
+const isPublicEvidenceUrl = (value) => {
+  try {
+    return ["http:", "https:"].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
 };
 
 function StepRail({ activeStep }) {
@@ -221,13 +247,29 @@ function SearchStep({ onImported }) {
   );
 }
 
-function ReviewStep({ data, editorialReview, setEditorialReview, onBack, onContinue }) {
+function ReviewStep({
+  data,
+  editorialReview,
+  setEditorialReview,
+  impactEvidence,
+  setImpactEvidence,
+  scoreError,
+  scoring,
+  onBack,
+  onContinue,
+}) {
   const [showAll, setShowAll] = useState(false);
   const works = data.publications || [];
   const visibleWorks = showAll ? works : works.slice(0, 6);
 
   const updateField = (field) => (event) =>
     setEditorialReview((current) => ({ ...current, [field]: event.target.value }));
+  const updateImpactField = (field) => (event) =>
+    setImpactEvidence((current) => ({ ...current, [field]: event.target.value }));
+  const hasEvidence = hasImpactEvidence(impactEvidence);
+  const evidenceReady = !hasEvidence || (
+    isPublicEvidenceUrl(impactEvidence.sourceUrl) && impactEvidence.attested
+  );
 
   return (
     <section className="gsi-stage">
@@ -271,6 +313,32 @@ function ReviewStep({ data, editorialReview, setEditorialReview, onBack, onConti
         </aside>
       </div>
 
+      <div className="gsi-impact-card">
+        <div className="gsi-card-heading">
+          <div><span>Proof of local impact · Optional</span><h2>Add evidence OpenAlex cannot see</h2></div>
+          <span className="gsi-impact-weight">10 score points</span>
+        </div>
+        <p className="gsi-impact-intro">Global citation databases often miss how research changes policy and practice. Add only claims you can support with a public institutional, government, NGO, or repository link.</p>
+        <div className="gsi-impact-fields">
+          <label className="gsi-field"><span>Government policy mentions</span><input type="number" min="0" max="100000" inputMode="numeric" value={impactEvidence.policyMentions} onChange={updateImpactField("policyMentions")} placeholder="0" /></label>
+          <label className="gsi-field"><span>NGO or programme adoptions</span><input type="number" min="0" max="100000" inputMode="numeric" value={impactEvidence.ngoAdoptions} onChange={updateImpactField("ngoAdoptions")} placeholder="0" /></label>
+          <label className="gsi-field"><span>Local open-access citations</span><input type="number" min="0" max="100000" inputMode="numeric" value={impactEvidence.localCitations} onChange={updateImpactField("localCitations")} placeholder="0" /></label>
+          <label className="gsi-field gsi-field-full"><span>Public evidence link</span><input type="url" value={impactEvidence.sourceUrl} onChange={updateImpactField("sourceUrl")} placeholder="https://government.example/policy-document" /></label>
+          <label className="gsi-field gsi-field-full"><span>Impact context</span><textarea value={impactEvidence.summary} onChange={updateImpactField("summary")} maxLength="700" placeholder="Briefly explain what adopted or cited the research and where it was used." /></label>
+        </div>
+        {hasEvidence ? (
+          <label className="gsi-impact-attestation">
+            <input type="checkbox" checked={impactEvidence.attested} onChange={(event) => setImpactEvidence((current) => ({ ...current, attested: event.target.checked }))} />
+            <span><GsiIcon name="check" size={14} /></span>
+            <strong>I confirm these claims are accurate, publicly supportable, and may appear as self-reported evidence in the permanent record.</strong>
+          </label>
+        ) : null}
+        <div className={`gsi-impact-status ${hasEvidence ? "has-evidence" : ""}`}>
+          <GsiIcon name={hasEvidence ? "shield" : "info"} size={17} />
+          <span>{hasEvidence ? "Evidence is clearly labeled self-reported until independently verified. A valid public link and confirmation are required." : "Leave this section blank if no evidence is available. The score will show zero instead of estimating local impact from global citations."}</span>
+        </div>
+      </div>
+
       <div className="gsi-publications-card">
         <div className="gsi-card-heading">
           <div><span>Publication history</span><h2>{formatNumber(data.importSummary.totalWorks)} indexed works</h2></div>
@@ -288,7 +356,8 @@ function ReviewStep({ data, editorialReview, setEditorialReview, onBack, onConti
         {works.length > 6 ? <button type="button" className="gsi-list-toggle" onClick={() => setShowAll((value) => !value)}>{showAll ? "Show fewer publications" : `Show all ${works.length} reviewed publications`} <GsiIcon name="chevron" size={16} className={showAll ? "is-rotated" : ""} /></button> : null}
       </div>
 
-      <StageActions onBack={onBack} onContinue={onContinue} continueLabel="Calculate GSI Score" />
+      {scoreError ? <Notice type="error" title="We couldn’t calculate the score" onRetry={evidenceReady ? onContinue : null}>{scoreError}</Notice> : null}
+      <StageActions onBack={onBack} onContinue={onContinue} continueLabel={scoring ? "Calculating score…" : "Calculate GSI Score"} continueDisabled={!evidenceReady || scoring} />
     </section>
   );
 }
@@ -319,7 +388,7 @@ function ScoreStep({ data, onBack, onContinue }) {
           <span>GSI Score · {score.version}</span>
           <h2>{editorialTitle(data)}</h2>
           <p>{score.summary}</p>
-          <div className="gsi-score-context"><span><GsiIcon name="file" size={16} /> {formatNumber(score.sampleSize)} research records scored</span><span><GsiIcon name="globe" size={16} /> {formatNumber(score.context.countries.length || 0)} countries identified</span></div>
+          <div className="gsi-score-context"><span><GsiIcon name="file" size={16} /> {formatNumber(score.sampleSize)} research records scored</span><span><GsiIcon name="globe" size={16} /> {formatNumber(score.context.countries.length || 0)} countries identified</span><span><GsiIcon name="shield" size={16} /> Local impact: {score.context.impactEvidenceStatus === "self-reported" ? "self-reported" : "not provided"}</span></div>
           {score.context.excludedPublications ? <p className="gsi-score-methodology">{formatNumber(score.context.excludedPublications)} non-research {score.context.excludedPublications === 1 ? "record was" : "records were"} retained as evidence but excluded from scoring.</p> : null}
         </div>
       </div>
@@ -362,7 +431,7 @@ function ScoreStep({ data, onBack, onContinue }) {
 
 const editorialTitle = (data) => data.editorialReview?.displayName || data.source.displayName;
 
-function ConfirmStep({ data, editorialReview, onBack, onPublished }) {
+function ConfirmStep({ data, editorialReview, impactEvidence, onBack, onPublished }) {
   const [checked, setChecked] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
@@ -374,7 +443,7 @@ function ConfirmStep({ data, editorialReview, onBack, onPublished }) {
     setPublishing(true);
     setError("");
     try {
-      const payload = await publishGsiJournal(data.source.id, editorialReview);
+      const payload = await publishGsiJournal(data.source.id, editorialReview, impactEvidence);
       onPublished(payload);
     } catch (requestError) {
       setError(requestError.message);
@@ -403,6 +472,12 @@ function ConfirmStep({ data, editorialReview, onBack, onPublished }) {
           </dl>
           <div className="gsi-confirm-breakdown">
             {data.score.components.map((component) => <div key={component.key}><span>{component.label}</span><b>{component.score}/{component.weight}</b></div>)}
+          </div>
+          <div className="gsi-confirm-impact">
+            <div><span>Policy mentions</span><strong>{formatNumber(data.impactEvidence?.policyMentions || 0)}</strong></div>
+            <div><span>NGO / programme adoptions</span><strong>{formatNumber(data.impactEvidence?.ngoAdoptions || 0)}</strong></div>
+            <div><span>Local citations</span><strong>{formatNumber(data.impactEvidence?.localCitations || 0)}</strong></div>
+            <small>{data.impactEvidence?.verificationStatus === "self-reported" ? "Linked evidence · self-reported" : "No local-impact evidence provided"}</small>
           </div>
           <div className="gsi-record-provenance"><GsiIcon name="shield" /><div><strong>Source evidence retained</strong><span>The record includes its OpenAlex reference, import time, score formula, and the publication sample used.</span></div></div>
         </div>
@@ -459,11 +534,11 @@ function SuccessStep({ payload }) {
   );
 }
 
-function StageActions({ onBack, onContinue, continueLabel, hideContinue = false }) {
+function StageActions({ onBack, onContinue, continueLabel, continueDisabled = false, hideContinue = false }) {
   return (
     <div className="gsi-stage-actions">
       <button className="gsi-back-button" type="button" onClick={onBack}><GsiIcon name="back" size={17} /> Back</button>
-      {!hideContinue ? <button className="gsi-primary-button" type="button" onClick={onContinue}>{continueLabel} <GsiIcon name="arrow" size={17} /></button> : null}
+      {!hideContinue ? <button className="gsi-primary-button" type="button" onClick={onContinue} disabled={continueDisabled}>{continueLabel} <GsiIcon name="arrow" size={17} /></button> : null}
     </div>
   );
 }
@@ -472,6 +547,9 @@ export default function GsiJournalOnboardingPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [data, setData] = useState(null);
   const [editorialReview, setEditorialReview] = useState({ displayName: "", publisher: "", homepageUrl: "", countryCode: "", issnL: "" });
+  const [impactEvidence, setImpactEvidence] = useState(EMPTY_IMPACT_EVIDENCE);
+  const [scoring, setScoring] = useState(false);
+  const [scoreError, setScoreError] = useState("");
   const [successPayload, setSuccessPayload] = useState(null);
 
   const pageTitle = useMemo(() => `${STEPS[activeStep].label} | GSI Journal Registry`, [activeStep]);
@@ -486,23 +564,43 @@ export default function GsiJournalOnboardingPage() {
       countryCode: payload.source.countryCode || "",
       issnL: payload.source.issnL || payload.source.issns?.[0] || "",
     });
+    setImpactEvidence(EMPTY_IMPACT_EVIDENCE);
+    setScoreError("");
     goTo(1);
+  };
+
+  const handleScore = async () => {
+    setScoring(true);
+    setScoreError("");
+    try {
+      const payload = await calculateGsiJournalScore(data.source.id, impactEvidence);
+      setData((current) => ({
+        ...current,
+        score: payload.score,
+        impactEvidence: payload.impactEvidence,
+      }));
+      goTo(2);
+    } catch (requestError) {
+      setScoreError(requestError.message);
+    } finally {
+      setScoring(false);
+    }
   };
 
   const dataWithReview = data ? { ...data, editorialReview } : null;
 
   return (
     <div className="gsi-app-shell">
-      <SeoHead title={pageTitle} description="Find a journal, import real OpenAlex publication data, understand its transparent GSI Score, and create a permanent academic record." canonical="/gsi" robots="index,follow" />
+      <SeoHead title={pageTitle} description="Import OpenAlex journal data, add sourced local-impact evidence, understand a transparent GSI Score, and create a permanent academic record." canonical="/gsi" robots="index,follow" />
       <PageHeader />
       <MobileProgress activeStep={activeStep} />
       <div className="gsi-shell-grid">
         <StepRail activeStep={activeStep} />
         <main className="gsi-main">
           {activeStep === 0 ? <SearchStep onImported={handleImported} /> : null}
-          {activeStep === 1 && data ? <ReviewStep data={data} editorialReview={editorialReview} setEditorialReview={setEditorialReview} onBack={() => goTo(0)} onContinue={() => goTo(2)} /> : null}
+          {activeStep === 1 && data ? <ReviewStep data={data} editorialReview={editorialReview} setEditorialReview={setEditorialReview} impactEvidence={impactEvidence} setImpactEvidence={setImpactEvidence} scoreError={scoreError} scoring={scoring} onBack={() => goTo(0)} onContinue={handleScore} /> : null}
           {activeStep === 2 && data ? <ScoreStep data={dataWithReview} onBack={() => goTo(1)} onContinue={() => goTo(3)} /> : null}
-          {activeStep === 3 && data ? <ConfirmStep data={dataWithReview} editorialReview={editorialReview} onBack={() => goTo(2)} onPublished={(payload) => { setSuccessPayload(payload); goTo(4); }} /> : null}
+          {activeStep === 3 && data ? <ConfirmStep data={dataWithReview} editorialReview={editorialReview} impactEvidence={impactEvidence} onBack={() => goTo(2)} onPublished={(payload) => { setSuccessPayload(payload); goTo(4); }} /> : null}
           {activeStep === 4 && successPayload ? <SuccessStep payload={successPayload} /> : null}
         </main>
       </div>

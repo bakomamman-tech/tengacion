@@ -39,6 +39,13 @@ describe("GSI scoring service", () => {
         })),
       },
       publications: [completeWork(), completeWork({ id: "W2" })],
+      impactEvidence: {
+        policyMentions: 5,
+        ngoAdoptions: 3,
+        localCitations: 10,
+        sourceUrl: "https://example.org/impact-report",
+        verificationStatus: "self-reported",
+      },
       now: new Date("2026-08-10T00:00:00.000Z"),
     });
 
@@ -47,7 +54,7 @@ describe("GSI scoring service", () => {
     expect(score.components.reduce((sum, component) => sum + component.score, 0)).toBe(100);
     expect(score.components.every((component) => component.explanation.length > 20)).toBe(true);
     expect(score.fairnessNote).toMatch(/does not use impact factor/i);
-    expect(score.version).toBe("GSI-Archive-1.1");
+    expect(score.version).toBe("GSI-Archive-1.2");
   });
 
   test("reports missing evidence instead of inventing a placeholder score", () => {
@@ -88,12 +95,7 @@ describe("GSI scoring service", () => {
       ],
       now: new Date("2026-08-10T00:00:00.000Z"),
     });
-    const discoverability = score.components.find(
-      (component) => component.key === "discoverability"
-    );
-    const averageCitations = discoverability.metrics.find(
-      (metric) => metric.label === "Average citations"
-    );
+    const localImpact = score.components.find((component) => component.key === "localImpact");
 
     expect(score.sampleSize).toBe(1);
     expect(score.context).toMatchObject({
@@ -103,7 +105,28 @@ describe("GSI scoring service", () => {
       excludedWorkTypes: ["paratext"],
     });
     expect(score.context).not.toHaveProperty("globalSouthInstitutions");
-    expect(averageCitations.value).toBe(1);
+    expect(localImpact.score).toBe(0);
+    expect(localImpact.explanation).toMatch(/global citations/i);
     expect(score.methodologyNote).toMatch(/remain archived/i);
+  });
+
+  test("scores linked local-impact evidence without treating it as independently verified", () => {
+    const score = scoreJournal({
+      source: { issnL: "1234-5678", worksCount: 1 },
+      publications: [completeWork()],
+      impactEvidence: {
+        policyMentions: 5,
+        ngoAdoptions: 3,
+        localCitations: 10,
+        sourceUrl: "https://example.org/impact-report",
+        verificationStatus: "self-reported",
+      },
+      now: new Date("2026-08-10T00:00:00.000Z"),
+    });
+    const localImpact = score.components.find((component) => component.key === "localImpact");
+
+    expect(localImpact.score).toBe(10);
+    expect(localImpact.explanation).toMatch(/self-reported/i);
+    expect(score.context.impactEvidenceStatus).toBe("self-reported");
   });
 });

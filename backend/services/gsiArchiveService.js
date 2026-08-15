@@ -28,7 +28,14 @@ const canonicalize = (value) => {
 
 const serializeRecord = (record) => JSON.stringify(canonicalize(record));
 
-const buildArchivalRecord = ({ source, publications, importSummary, score, editorialReview }) => {
+const buildArchivalRecord = ({
+  source,
+  publications,
+  importSummary,
+  score,
+  editorialReview,
+  impactEvidence,
+}) => {
   const compactPublications = (Array.isArray(publications) ? publications : []).map((work) => ({
     id: work.id,
     doi: work.doi || null,
@@ -53,7 +60,7 @@ const buildArchivalRecord = ({ source, publications, importSummary, score, edito
   }));
 
   const record = {
-    schema: "https://tengacion.com/schemas/gsi-journal-record/v1",
+    schema: "https://tengacion.com/schemas/gsi-journal-record/v2",
     recordType: "GSI Journal Onboarding Record",
     createdAt: new Date().toISOString(),
     createdBy: "TEAM ARCHIVE — GSI Buildathon 2026",
@@ -78,8 +85,17 @@ const buildArchivalRecord = ({ source, publications, importSummary, score, edito
       reviewedWorks: importSummary.reviewedWorks,
       isSample: importSummary.isSample,
       editorConfirmedAt: new Date().toISOString(),
+      impactEvidenceStatus: impactEvidence?.verificationStatus || "not-provided",
     },
     gsiScore: score,
+    impactEvidence: {
+      policyMentions: impactEvidence?.policyMentions || 0,
+      ngoAdoptions: impactEvidence?.ngoAdoptions || 0,
+      localCitations: impactEvidence?.localCitations || 0,
+      summary: impactEvidence?.summary || null,
+      sourceUrl: impactEvidence?.sourceUrl || null,
+      verificationStatus: impactEvidence?.verificationStatus || "not-provided",
+    },
     publications: compactPublications,
   };
 

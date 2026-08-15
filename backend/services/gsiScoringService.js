@@ -7,6 +7,8 @@ const round = (value, digits = 0) => {
 };
 const percent = (value) => round(clamp(value) * 100);
 
+const GSI_SCORING_VERSION = "GSI-Archive-1.2";
+
 const SCORABLE_WORK_TYPES = new Set([
   "article",
   "review",
@@ -17,7 +19,12 @@ const SCORABLE_WORK_TYPES = new Set([
 const normalizedWorkType = (work) => String(work?.type || "article").trim().toLowerCase();
 const isScorableWork = (work) => SCORABLE_WORK_TYPES.has(normalizedWorkType(work));
 
-const scoreJournal = ({ source = {}, publications = [], now = new Date() } = {}) => {
+const scoreJournal = ({
+  source = {},
+  publications = [],
+  impactEvidence = {},
+  now = new Date(),
+} = {}) => {
   const reviewedWorks = Array.isArray(publications) ? publications : [];
   const works = reviewedWorks.filter(isScorableWork);
   const excludedWorks = reviewedWorks.filter((work) => !isScorableWork(work));
@@ -104,13 +111,21 @@ const scoreJournal = ({ source = {}, publications = [], now = new Date() } = {})
   const doiCoverage = ratio(doiCount, workCount);
   const hasIssn = Boolean(source.issnL || source.issns?.length);
 
-  const topicCount = works.filter((work) => work.topics?.length > 0).length;
-  const topicCoverage = ratio(topicCount, workCount);
-  const averageCitations = workCount
-    ? works.reduce((sum, work) => sum + Math.max(0, Number(work.citedByCount) || 0), 0) / workCount
+  const hasImpactSource = Boolean(
+    impactEvidence.sourceUrl && impactEvidence.verificationStatus === "self-reported"
+  );
+  const policyMentions = hasImpactSource
+    ? Math.max(0, Number(impactEvidence.policyMentions) || 0)
     : 0;
-  const citationSignal = clamp(Math.log1p(averageCitations) / Math.log(11));
-  const indexedVolume = clamp(Math.log1p(Math.max(source.worksCount || 0, workCount)) / Math.log(101));
+  const ngoAdoptions = hasImpactSource
+    ? Math.max(0, Number(impactEvidence.ngoAdoptions) || 0)
+    : 0;
+  const localCitations = hasImpactSource
+    ? Math.max(0, Number(impactEvidence.localCitations) || 0)
+    : 0;
+  const policySignal = clamp(Math.log1p(policyMentions) / Math.log(6));
+  const adoptionSignal = clamp(Math.log1p(ngoAdoptions) / Math.log(4));
+  const localCitationSignal = clamp(Math.log1p(localCitations) / Math.log(11));
 
   const components = [
     {
@@ -172,15 +187,17 @@ const scoreJournal = ({ source = {}, publications = [], now = new Date() } = {})
       ],
     },
     {
-      key: "discoverability",
-      label: "Discoverability signals",
+      key: "localImpact",
+      label: "Documented local impact",
       weight: 10,
-      score: round(topicCoverage * 4 + citationSignal * 4 + indexedVolume * 2),
-      explanation: `Combines topic labeling, citation visibility, and indexed publication volume without comparing journal prestige.`,
+      score: round(policySignal * 4 + adoptionSignal * 4 + localCitationSignal * 2),
+      explanation: hasImpactSource
+        ? "Uses self-reported counts linked to a public evidence source; the claims remain clearly labeled until independently verified."
+        : "No public local-impact evidence was submitted, so this category contributes zero points rather than inferring impact from global citations.",
       metrics: [
-        { label: "Topic coverage", value: `${topicCount} of ${workCount}`, percent: percent(topicCoverage) },
-        { label: "Average citations", value: round(averageCitations, 1), percent: percent(citationSignal) },
-        { label: "Works indexed", value: Math.max(source.worksCount || 0, workCount), percent: percent(indexedVolume) },
+        { label: "Policy mentions", value: policyMentions, percent: percent(policySignal) },
+        { label: "NGO / programme adoptions", value: ngoAdoptions, percent: percent(adoptionSignal) },
+        { label: "Local citations", value: localCitations, percent: percent(localCitationSignal) },
       ],
     },
   ];
@@ -193,7 +210,7 @@ const scoreJournal = ({ source = {}, publications = [], now = new Date() } = {})
   const opportunity = [...ranked].reverse()[0];
 
   return {
-    version: "GSI-Archive-1.1",
+    version: GSI_SCORING_VERSION,
     total,
     maximum: 100,
     sampleSize: workCount,
@@ -201,12 +218,12 @@ const scoreJournal = ({ source = {}, publications = [], now = new Date() } = {})
       "The score uses research publication types (articles, reviews, book chapters, and proceedings articles). Other OpenAlex records remain archived as evidence but do not affect the score.",
     components,
     summary: workCount
-      ? `The journal is strongest in ${strongest.label.toLowerCase()}. The clearest opportunity is ${opportunity.label.toLowerCase()}, based only on the metadata currently available from OpenAlex.`
+      ? `The journal is strongest in ${strongest.label.toLowerCase()}. The clearest opportunity is ${opportunity.label.toLowerCase()}, based on OpenAlex metadata and any disclosed local-impact evidence.`
       : reviewedWorks.length
         ? "OpenAlex returned records, but none were eligible research publication types, so they were retained as evidence without affecting the score."
         : "No publications were returned, so the score reflects missing indexed evidence rather than journal quality.",
     fairnessNote:
-      "This score evaluates record visibility and metadata coverage. It does not use impact factor, publisher prestige, language, or country income, and it should not be read as a judgment of research quality.",
+      "This score evaluates record visibility, metadata coverage, and disclosed local-impact evidence. It does not use impact factor, aggregate global citation rank, publisher prestige, language, or country income, and it should not be read as a judgment of research quality.",
     context: {
       countries,
       reviewedPublications: reviewedWorks.length,
@@ -215,8 +232,14 @@ const scoreJournal = ({ source = {}, publications = [], now = new Date() } = {})
       excludedWorkTypes: [...new Set(excludedWorks.map(normalizedWorkType))].sort(),
       totalIndexedPublications: Math.max(Number(source.worksCount) || 0, workCount),
       latestPublicationYear: latestYear || null,
+      impactEvidenceStatus: hasImpactSource ? "self-reported" : "not-provided",
     },
   };
 };
 
-module.exports = { SCORABLE_WORK_TYPES, isScorableWork, scoreJournal };
+module.exports = {
+  GSI_SCORING_VERSION,
+  SCORABLE_WORK_TYPES,
+  isScorableWork,
+  scoreJournal,
+};

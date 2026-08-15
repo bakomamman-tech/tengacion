@@ -5,7 +5,10 @@ const {
   importJournal,
   searchJournals,
 } = require("../services/gsiOpenAlexService");
-const { scoreJournal } = require("../services/gsiScoringService");
+const {
+  GSI_SCORING_VERSION,
+  scoreJournal,
+} = require("../services/gsiScoringService");
 const {
   GsiArchiveError,
   buildArchivalRecord,
@@ -41,6 +44,63 @@ const normalizeEditorialReview = (value = {}) => ({
   issnL: cleanText(value.issnL, 24).toUpperCase(),
 });
 
+const normalizeCount = (value) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? Math.min(100000, Math.max(0, parsed)) : 0;
+};
+
+const normalizeEvidenceUrl = (value) => {
+  const candidate = cleanText(value, 900);
+  if (!candidate) return "";
+  try {
+    const url = new URL(candidate);
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : "";
+  } catch {
+    return "";
+  }
+};
+
+const normalizeImpactEvidence = (value = {}) => {
+  const policyMentions = normalizeCount(value.policyMentions);
+  const ngoAdoptions = normalizeCount(value.ngoAdoptions);
+  const localCitations = normalizeCount(value.localCitations);
+  const summary = cleanText(value.summary, 700);
+  const sourceUrl = normalizeEvidenceUrl(value.sourceUrl);
+  const suppliedSource = cleanText(value.sourceUrl, 900);
+  const hasEvidence = Boolean(
+    policyMentions || ngoAdoptions || localCitations || summary || suppliedSource
+  );
+
+  if (suppliedSource && !sourceUrl) {
+    throw new GsiArchiveError("Enter a valid public http or https link for the impact evidence.", {
+      status: 400,
+      code: "INVALID_IMPACT_EVIDENCE_URL",
+    });
+  }
+  if (hasEvidence && !sourceUrl) {
+    throw new GsiArchiveError("Add a public source before local-impact claims can affect the score.", {
+      status: 400,
+      code: "IMPACT_EVIDENCE_SOURCE_REQUIRED",
+    });
+  }
+  if (hasEvidence && value.attested !== true) {
+    throw new GsiArchiveError("Confirm that the local-impact evidence is accurate and publicly verifiable.", {
+      status: 400,
+      code: "IMPACT_EVIDENCE_ATTESTATION_REQUIRED",
+    });
+  }
+
+  return {
+    policyMentions,
+    ngoAdoptions,
+    localCitations,
+    summary: summary || null,
+    sourceUrl: sourceUrl || null,
+    attested: hasEvidence,
+    verificationStatus: hasEvidence ? "self-reported" : "not-provided",
+  };
+};
+
 const sendServiceError = (res, error) => {
   if (error instanceof GsiOpenAlexError || error instanceof GsiArchiveError) {
     return res.status(error.status).json({
@@ -62,7 +122,7 @@ router.get("/status", (_req, res) => {
     success: true,
     openAlexReady: Boolean(String(process.env.OPENALEX_API_KEY || "").trim()),
     permanentArchiveReady: Boolean(String(process.env.PINATA_JWT || "").trim()),
-    scoringVersion: "GSI-Archive-1.0",
+    scoringVersion: GSI_SCORING_VERSION,
   });
 });
 
@@ -89,6 +149,21 @@ router.get("/journals/:sourceId/import", async (req, res) => {
   }
 });
 
+router.post("/journals/:sourceId/score", async (req, res) => {
+  try {
+    const imported = await importJournal(req.params.sourceId);
+    const impactEvidence = normalizeImpactEvidence(req.body?.impactEvidence);
+    const score = scoreJournal({ ...imported, impactEvidence });
+    return res.set("Cache-Control", "no-store").json({
+      success: true,
+      score,
+      impactEvidence,
+    });
+  } catch (error) {
+    return sendServiceError(res, error);
+  }
+});
+
 router.post("/journals/:sourceId/publish", publishLimiter, async (req, res) => {
   try {
     if (req.body?.confirmed !== true) {
@@ -100,9 +175,15 @@ router.post("/journals/:sourceId/publish", publishLimiter, async (req, res) => {
     }
 
     const imported = await importJournal(req.params.sourceId);
-    const score = scoreJournal(imported);
+    const impactEvidence = normalizeImpactEvidence(req.body?.impactEvidence);
+    const score = scoreJournal({ ...imported, impactEvidence });
     const editorialReview = normalizeEditorialReview(req.body?.editorialReview);
-    const record = buildArchivalRecord({ ...imported, score, editorialReview });
+    const record = buildArchivalRecord({
+      ...imported,
+      score,
+      editorialReview,
+      impactEvidence,
+    });
     const archive = await publishRecord(record);
     return res.status(201).set("Cache-Control", "no-store").json({
       success: true,

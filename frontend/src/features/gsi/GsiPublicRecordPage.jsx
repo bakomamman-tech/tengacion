@@ -40,9 +40,10 @@ export default function GsiPublicRecordPage() {
   }, [recordId]);
 
   const record = payload?.record;
+  const impactEvidence = record?.impactEvidence;
   return (
     <div className="gsi-app-shell gsi-record-page">
-      <SeoHead title={record ? `${record.journal.displayName} | GSI Journal Record` : "GSI Journal Record"} description="A public, permanently archived journal record with transparent GSI Score evidence." canonical={`/gsi/records/${recordId}`} robots="index,follow" />
+      <SeoHead title={record ? `${record.journal.displayName} | GSI Journal Record` : "GSI Journal Record"} description="A permanent journal record with a transparent GSI Score, OpenAlex provenance, and disclosed local-impact evidence." canonical={`/gsi/records/${recordId}`} robots="index,follow" />
       <header className="gsi-header">
         <Link className="gsi-brand" to="/gsi"><span className="gsi-brand-mark"><GsiIcon name="book" size={24} /></span><span><strong>Global South Index</strong><small>Journal Registry</small></span></Link>
         <Link className="gsi-secondary-button gsi-header-action" to="/gsi">Index another journal</Link>
@@ -70,6 +71,25 @@ export default function GsiPublicRecordPage() {
                 <dl><div><dt>Created</dt><dd>{formatDate(record.createdAt)}</dd></div><div><dt>OpenAlex source</dt><dd>{record.journal.openAlexId}</dd></div><div><dt>Publications retained</dt><dd>{formatNumber(record.provenance.archivedPublications)}</dd></div><div><dt>Integrity reference</dt><dd>{payload.contentHash}</dd></div></dl>
                 <a href={payload.permanentUrl} target="_blank" rel="noreferrer">View independent copy <GsiIcon name="external" size={15} /></a>
               </aside>
+            </section>
+
+            <section className="gsi-public-impact-card">
+              <div className="gsi-public-impact-heading">
+                <div><span>Proof of local impact</span><h2>Policy and practice evidence</h2></div>
+                <span className={`gsi-impact-verification ${impactEvidence?.verificationStatus === "self-reported" ? "is-reported" : ""}`}><GsiIcon name="shield" size={15} /> {impactEvidence?.verificationStatus === "self-reported" ? "Self-reported" : "Not provided"}</span>
+              </div>
+              {impactEvidence?.verificationStatus === "self-reported" ? (
+                <>
+                  <div className="gsi-public-impact-metrics">
+                    <div><span>Government policy mentions</span><strong>{formatNumber(impactEvidence.policyMentions)}</strong></div>
+                    <div><span>NGO / programme adoptions</span><strong>{formatNumber(impactEvidence.ngoAdoptions)}</strong></div>
+                    <div><span>Local open-access citations</span><strong>{formatNumber(impactEvidence.localCitations)}</strong></div>
+                  </div>
+                  {impactEvidence.summary ? <p>{impactEvidence.summary}</p> : null}
+                  <a href={impactEvidence.sourceUrl} target="_blank" rel="noreferrer">Review the submitted public source <GsiIcon name="external" size={15} /></a>
+                  <small>These counts were attested by the submitter and contribute to the score, but have not yet been independently verified by GSI.</small>
+                </>
+              ) : <p>No local-impact evidence was submitted. The score assigns zero points to this category instead of estimating impact from global citations.</p>}
             </section>
 
             <section className="gsi-publications-card gsi-public-record-publications">

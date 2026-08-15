@@ -46,7 +46,7 @@ describe("GSI archival records", () => {
         reviewedWorks: 100,
         isSample: true,
       },
-      score: { version: "GSI-Archive-1.1", total: 80, components: [] },
+      score: { version: "GSI-Archive-1.2", total: 80, components: [] },
       editorialReview: {
         displayName: "Editor-confirmed title",
         publisher: "Confirmed publisher",
@@ -54,12 +54,27 @@ describe("GSI archival records", () => {
         countryCode: "NG",
         issnL: "1234-5678",
       },
+      impactEvidence: {
+        policyMentions: 2,
+        ngoAdoptions: 1,
+        localCitations: 4,
+        summary: "Used in a state public-health programme.",
+        sourceUrl: "https://example.org/policy-evidence",
+        verificationStatus: "self-reported",
+      },
     });
     const serialized = serializeRecord(record);
 
     expect(record.journal.displayName).toBe("Editor-confirmed title");
     expect(record.provenance.provider).toBe("OpenAlex");
     expect(record.provenance.archivedPublications).toBe(record.publications.length);
+    expect(record.provenance.impactEvidenceStatus).toBe("self-reported");
+    expect(record.impactEvidence).toMatchObject({
+      policyMentions: 2,
+      ngoAdoptions: 1,
+      localCitations: 4,
+      verificationStatus: "self-reported",
+    });
     expect(record.publications.length).toBeGreaterThan(0);
     expect(record.publications[0].authors[0].institutions[0]).not.toHaveProperty(
       "isGlobalSouth"

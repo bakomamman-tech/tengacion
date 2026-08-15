@@ -33,7 +33,7 @@ describe("GSI OpenAlex service", () => {
       title: "A study",
       publication_year: 2025,
       open_access: { is_oa: true },
-      abstract_inverted_index: { A: [0] },
+      abstract_inverted_index: { A: [0], study: [1], in: [2], context: [3] },
       authorships: [
         {
           author: { id: "https://openalex.org/A8", display_name: "Researcher" },
@@ -49,7 +49,12 @@ describe("GSI OpenAlex service", () => {
     });
 
     expect(source).toMatchObject({ id: "S123", displayName: "Journal Name", worksCount: 12 });
-    expect(work).toMatchObject({ id: "W456", isOpenAccess: true, hasAbstract: true });
+    expect(work).toMatchObject({
+      id: "W456",
+      isOpenAccess: true,
+      hasAbstract: true,
+      abstract: "A study in context",
+    });
     expect(work.authors[0].institutions[0]).toEqual({
       id: "I9",
       displayName: "Institution",

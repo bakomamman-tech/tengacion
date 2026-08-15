@@ -39,6 +39,19 @@ const uniqueBy = (items, keyFn) => {
   });
 };
 
+const reconstructAbstract = (invertedIndex) => {
+  if (!invertedIndex || typeof invertedIndex !== "object" || Array.isArray(invertedIndex)) return "";
+  const wordsByPosition = [];
+  for (const [word, positions] of Object.entries(invertedIndex)) {
+    for (const position of Array.isArray(positions) ? positions : []) {
+      if (Number.isInteger(position) && position >= 0 && position < 1200) {
+        wordsByPosition[position] = cleanText(word, 120);
+      }
+    }
+  }
+  return cleanText(wordsByPosition.filter(Boolean).join(" "), 5000);
+};
+
 const normalizeSource = (source = {}) => ({
   id: entityId(source.id, "S"),
   openAlexUrl: cleanText(source.id, 180),
@@ -122,6 +135,7 @@ const normalizeWork = (work = {}) => {
     isOpenAccess: Boolean(openAccess.is_oa || primaryLocation.is_oa),
     openAccessStatus: cleanText(openAccess.oa_status, 40),
     hasAbstract: Boolean(work.abstract_inverted_index),
+    abstract: reconstructAbstract(work.abstract_inverted_index),
     landingPageUrl: cleanText(primaryLocation.landing_page_url, 700),
     authors,
     topics,
@@ -279,5 +293,6 @@ module.exports = {
   normalizeIssn,
   normalizeSource,
   normalizeWork,
+  reconstructAbstract,
   searchJournals,
 };

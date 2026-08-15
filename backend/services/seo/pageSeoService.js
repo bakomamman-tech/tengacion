@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Album = require("../../models/Album");
 const Book = require("../../models/Book");
 const CreatorProfile = require("../../models/CreatorProfile");
+const GsiRegistryRecord = require("../../models/GsiRegistryRecord");
 const MarketplaceProduct = require("../../models/MarketplaceProduct");
 const MarketplaceSeller = require("../../models/MarketplaceSeller");
 const Post = require("../../models/Post");
@@ -19,6 +20,7 @@ const {
 } = require("../../utils/publicText");
 const { createPublicModerationFilter } = require("../../utils/publicModeration");
 const { findCreatorProfileByReference } = require("../creatorLookupService");
+const { fetchArchivedRecord } = require("../gsiArchiveService");
 const {
   PRIVATE_CREATOR_ALIAS_SEGMENTS,
   buildCreatorIdPath,
@@ -1097,8 +1099,12 @@ const replaceTagAttribute = (html, key, attribute, value) =>
 
 const replaceTagContent = (html, key, value) =>
   html.replace(
-    new RegExp(`(<[^>]+data-seo-key="${key}"[^>]*>)([\\s\\S]*?)(</[^>]+>)`, "i"),
-    `$1${value}$3`
+    new RegExp(
+      `(<([a-zA-Z][\\w:-]*)\\b[^>]*data-seo-key="${key}"[^>]*>)([\\s\\S]*?)(</\\2>)`,
+      "i"
+    ),
+    (_match, openingTag, _tagName, _currentContent, closingTag) =>
+      `${openingTag}${value}${closingTag}`
   );
 
 const renderSeoHtml = (template = "", seo = {}) => {
@@ -1982,7 +1988,144 @@ const buildSchoolSeo = async (slug = "") => {
   });
 };
 
+const buildGsiRecordPreviewMarkup = ({ entry, canonicalPath }) => {
+  const counts = [
+    ["OpenAlex source works", entry.indexedWorks],
+    ["Recent records reviewed", entry.reviewedWorks],
+    ["Research records scored", entry.scoredWorks],
+    ["Publications retained", entry.retainedWorks],
+  ].filter(([, value]) => Number.isFinite(Number(value)));
+  return [
+    `<article class="seo-gsi-record">`,
+    `  <p>${escapeHtml("Global South Index journal record")}</p>`,
+    `  <h1>${escapeHtml(entry.title)}</h1>`,
+    entry.subtitle ? `  <p>${escapeHtml(entry.subtitle)}</p>` : "",
+    `  <p><strong>${escapeHtml(`${entry.gsiScore}/100 GSI Score`)}</strong></p>`,
+    counts.length ? "  <dl>" : "",
+    ...counts.flatMap(([label, value]) => [
+      `    <dt>${escapeHtml(label)}</dt>`,
+      `    <dd>${escapeHtml(Number(value).toLocaleString("en"))}</dd>`,
+    ]),
+    counts.length ? "  </dl>" : "",
+    `  <p><a href="${escapeHtmlAttribute(canonicalPath)}">${escapeHtml("Open the permanent journal record")}</a></p>`,
+    entry.permanentUrl
+      ? `  <p><a href="${escapeHtmlAttribute(entry.permanentUrl)}">${escapeHtml("Verify the independent IPFS copy")}</a></p>`
+      : "",
+    "</article>",
+  ].filter(Boolean).join("\n");
+};
+
+const buildGsiJournalRecordSeo = async (recordIdValue = "") => {
+  const recordId = String(recordIdValue || "").trim();
+  const canonicalPath = `/gsi/records/${encodeURIComponent(recordId)}`;
+  if (!/^[a-zA-Z0-9]{46,100}$/.test(recordId)) {
+    return buildSeoPayload({
+      title: "GSI Journal Record | Global South Index",
+      description: "This Global South Index journal record reference is not valid.",
+      canonicalPath,
+      robots: "noindex,follow",
+      statusCode: 404,
+    });
+  }
+
+  let entry = null;
+  try {
+    entry = await GsiRegistryRecord.findOne({ archiveId: recordId, recordKind: "journal" })
+      .select("archiveId title subtitle countryCode issnL indexedWorks queryMatchedWorks reviewedWorks scoredWorks retainedWorks gsiScore scoringVersion publicRecordPath permanentUrl savedAt")
+      .lean();
+  } catch (error) {
+    console.warn("Failed to load the GSI registry SEO summary:", error?.message || error);
+  }
+
+  if (!entry) {
+    try {
+      const archived = await fetchArchivedRecord(recordId);
+      const record = archived.record;
+      entry = {
+        archiveId: recordId,
+        title: record.journal.displayName,
+        subtitle: record.journal.publisher || "",
+        countryCode: record.journal.countryCode || "",
+        issnL: record.journal.issnL || "",
+        indexedWorks: record.journal.worksCount,
+        queryMatchedWorks: record.provenance.totalWorks,
+        reviewedWorks: record.provenance.reviewedWorks,
+        scoredWorks: record.provenance.scoredPublications
+          ?? record.gsiScore?.context?.scoredPublications
+          ?? record.gsiScore?.sampleSize,
+        retainedWorks: record.provenance.archivedPublications,
+        gsiScore: record.gsiScore.total,
+        scoringVersion: record.gsiScore.version,
+        permanentUrl: archived.permanentUrl,
+        savedAt: record.createdAt,
+      };
+    } catch {
+      return buildSeoPayload({
+        title: "GSI Journal Record | Global South Index",
+        description:
+          "A permanent Global South Index journal record with transparent scoring, OpenAlex provenance, and independently verifiable evidence.",
+        canonicalPath,
+        previewTitle: "Global South Index Journal Record",
+        previewDescription:
+          "Open this permanent record to review its transparent score, publication sample, and integrity reference.",
+      });
+    }
+  }
+
+  const title = `${entry.title} | Global South Index`;
+  const countSummary = [
+    Number.isFinite(Number(entry.reviewedWorks)) ? `${Number(entry.reviewedWorks).toLocaleString("en")} reviewed` : "",
+    Number.isFinite(Number(entry.scoredWorks)) ? `${Number(entry.scoredWorks).toLocaleString("en")} scored` : "",
+    Number.isFinite(Number(entry.retainedWorks)) ? `${Number(entry.retainedWorks).toLocaleString("en")} retained` : "",
+  ].filter(Boolean).join(", ");
+  const description = `${entry.title} has a transparent GSI Score of ${entry.gsiScore}/100${countSummary ? `, based on ${countSummary} publication records` : ""}. Review its OpenAlex provenance and permanent evidence.`;
+
+  return buildSeoPayload({
+    title,
+    description,
+    canonicalPath,
+    ogType: "article",
+    imageAlt: `${entry.title} Global South Index journal record`,
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        name: `${entry.title} Global South Index journal record`,
+        description,
+        url: toCanonicalUrl(canonicalPath),
+        identifier: recordId,
+        dateCreated: entry.savedAt || undefined,
+        creator: { "@type": "Organization", name: "Global South Index" },
+        publisher: entry.subtitle
+          ? { "@type": "Organization", name: entry.subtitle }
+          : undefined,
+        distribution: entry.permanentUrl
+          ? [{ "@type": "DataDownload", encodingFormat: "application/json", contentUrl: entry.permanentUrl }]
+          : undefined,
+        variableMeasured: [
+          { "@type": "PropertyValue", name: "GSI Score", value: entry.gsiScore, maxValue: 100 },
+          { "@type": "PropertyValue", name: "Scoring version", value: entry.scoringVersion },
+          { "@type": "PropertyValue", name: "Recent records reviewed", value: entry.reviewedWorks },
+          { "@type": "PropertyValue", name: "Research records scored", value: entry.scoredWorks },
+          { "@type": "PropertyValue", name: "Publications retained", value: entry.retainedWorks },
+        ].filter((value) => value.value !== null && value.value !== undefined),
+      },
+      buildBreadcrumbJsonLd([
+        { name: "Tengacion", url: "/" },
+        { name: "Global South Index", url: "/gsi" },
+        { name: entry.title, url: canonicalPath },
+      ]),
+    ],
+    previewHtml: buildGsiRecordPreviewMarkup({ entry, canonicalPath }),
+  });
+};
+
 const resolveDynamicSeo = async (pathname) => {
+  const gsiJournalRecordMatch = pathname.match(/^\/gsi\/records\/([^/]+)$/i);
+  if (gsiJournalRecordMatch) {
+    return buildGsiJournalRecordSeo(gsiJournalRecordMatch[1]);
+  }
+
   const schoolMatch = pathname.match(/^\/schools\/([^/]+)$/i);
   if (schoolMatch) {
     return buildSchoolSeo(schoolMatch[1]);

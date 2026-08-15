@@ -200,19 +200,35 @@ router.post("/journals/:sourceId/publish", publishLimiter, async (req, res) => {
       impactEvidence,
     });
     const archive = await publishRecord(record);
-    let registryIndexed = true;
+    let registry;
     try {
-      await indexPublishedRecord(record, archive);
+      registry = await indexPublishedRecord(record, archive, {
+        sourcePublications: imported.publications,
+      });
     } catch (registryError) {
-      registryIndexed = false;
+      registry = registryError?.registryStatus || {
+        status: "pending",
+        journalIndexed: false,
+        worksIndexed: 0,
+        expectedWorks: record.publications.length,
+      };
+      registry.message = registryError?.message
+        || "The permanent record is safe, but discovery indexing is pending.";
       console.error("[gsi] Journal saved permanently but registry indexing failed", registryError);
     }
+    const registryIndexed = registry.status === "indexed";
     return res.status(201).set("Cache-Control", "no-store").json({
       success: true,
-      message: "Journal successfully indexed.",
+      message: registryIndexed
+        ? "Journal permanently published and added to Browse Research."
+        : "Journal permanently published; Browse Research indexing is pending.",
       archive,
       record,
+      registry,
       registryIndexed,
+      ...(registryIndexed ? {} : {
+        warning: "Your IPFS record is permanent and safe. Discovery indexing can be retried by CID without republishing or changing it.",
+      }),
     });
   } catch (error) {
     return sendServiceError(res, error);

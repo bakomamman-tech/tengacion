@@ -38,6 +38,11 @@ describe("GSI archival records", () => {
         issns: ["1234-5678"],
         worksCount: 200,
         citedByCount: 500,
+        countsByYear: Array.from({ length: 12 }, (_, index) => ({
+          year: 2026 - index,
+          worksCount: 120 - index,
+          citedByCount: 40 - index,
+        })),
       },
       publications: Array.from({ length: 100 }, (_, index) => makeWork(index + 1)),
       importSummary: {
@@ -46,7 +51,13 @@ describe("GSI archival records", () => {
         reviewedWorks: 100,
         isSample: true,
       },
-      score: { version: "GSI-Archive-1.2", total: 80, components: [] },
+      score: {
+        version: "GSI-Archive-1.2",
+        total: 80,
+        sampleSize: 98,
+        components: [],
+        context: { scoredPublications: 98, excludedPublications: 2 },
+      },
       editorialReview: {
         displayName: "Editor-confirmed title",
         publisher: "Confirmed publisher",
@@ -68,6 +79,18 @@ describe("GSI archival records", () => {
     expect(record.journal.displayName).toBe("Editor-confirmed title");
     expect(record.provenance.provider).toBe("OpenAlex");
     expect(record.provenance.archivedPublications).toBe(record.publications.length);
+    expect(record.provenance).toMatchObject({
+      reviewedWorks: 100,
+      scoredPublications: 98,
+      excludedPublications: 2,
+    });
+    expect(record.publicationHistory).toHaveLength(10);
+    expect(record.publicationHistory[0]).toEqual({
+      year: 2026,
+      worksCount: 120,
+      citedByCount: 40,
+    });
+    expect(record.schema).toContain("gsi-journal-record/v3");
     expect(record.provenance.impactEvidenceStatus).toBe("self-reported");
     expect(record.impactEvidence).toMatchObject({
       policyMentions: 2,

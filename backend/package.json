@@ -15,6 +15,7 @@
     "release:safe-moderation-holds": "node scripts/releaseSafeModerationHolds.js",
     "reset:admin-password": "node scripts/resetAdminPassword.js",
     "audit:legacy-media": "node scripts/reportLegacyMedia.js",
+    "backfill:gsi-journal": "node scripts/backfillGsiJournalRegistry.js",
     "report:legacy-media": "node scripts/reportLegacyMedia.js",
     "probe:registration-capacity": "node scripts/registrationCapacityProbe.js",
     "cleanup:storage": "node scripts/storageCleanup.js",

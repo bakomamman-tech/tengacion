@@ -7,6 +7,7 @@ import AdminAssistantPage from "../AdminAssistant";
 import {
   adminGetAssistantEvalCandidates,
   adminGetAssistantMetrics,
+  adminGetAssistantReleaseGate,
   adminGetAssistantReviews,
   adminUpdateAssistantReview,
 } from "../../api";
@@ -27,6 +28,7 @@ vi.mock("../../components/AdminShell", () => ({
 vi.mock("../../api", () => ({
   adminGetAssistantEvalCandidates: vi.fn(),
   adminGetAssistantMetrics: vi.fn(),
+  adminGetAssistantReleaseGate: vi.fn(),
   adminGetAssistantReviews: vi.fn(),
   adminUpdateAssistantReview: vi.fn(),
 }));
@@ -348,6 +350,21 @@ describe("AdminAssistantPage", () => {
 
   it("loads assistant metrics, switches to reviews, and saves a triage update", async () => {
     vi.mocked(adminGetAssistantMetrics).mockResolvedValue(metricsPayload);
+    vi.mocked(adminGetAssistantReleaseGate).mockResolvedValue({
+      reportId: "akuso-gate-test",
+      generatedAt: "2026-04-15T08:00:00.000Z",
+      decision: "ready",
+      releaseReady: true,
+      command: "npm run gate:akuso-release --prefix backend",
+      checks: [
+        {
+          key: "critical_safety",
+          label: "No critical safety failures",
+          passed: true,
+          detail: "0 critical failures.",
+        },
+      ],
+    });
     vi.mocked(adminGetAssistantEvalCandidates).mockResolvedValue(evalCandidatesPayload);
     vi.mocked(adminGetAssistantReviews)
       .mockResolvedValueOnce({
@@ -393,6 +410,7 @@ describe("AdminAssistantPage", () => {
     expect(screen.getByText("Live Responses")).toBeInTheDocument();
     expect(screen.getAllByText("Eval Candidates").length).toBeGreaterThan(0);
     expect(screen.getByText("Weekly Quality Loop")).toBeInTheDocument();
+    expect(screen.getByText("Akuso Release Gate")).toBeInTheDocument();
     expect(screen.getByText("Commerce failures")).toBeInTheDocument();
     expect(screen.getByText("Audit failed checkouts and webhook failures")).toBeInTheDocument();
     expect(screen.getByText("Fine-tuning Readiness")).toBeInTheDocument();

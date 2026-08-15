@@ -3,6 +3,11 @@ const {
   getFeaturedDiscoveryCollections,
   getFeaturedDiscoverySignals,
 } = require("../config/discoveryCollections");
+const {
+  DEFAULT_RECOMMENDATION_POLICY,
+  getMaxContentTypeStreak,
+  normalizePolicy,
+} = require("./recommendationGovernanceService");
 
 const log1p = (value) => Math.log(1 + Math.max(0, Number(value) || 0));
 
@@ -151,6 +156,27 @@ const getTrustPenalty = (candidate, creatorQualityMap) => {
   };
 };
 
+const getRecommendationPerformanceAdjustment = (
+  candidate,
+  creatorPerformanceMap,
+  policy = DEFAULT_RECOMMENDATION_POLICY
+) => {
+  const creatorId = normalizeId(candidate?.creatorId);
+  const performance = creatorId ? creatorPerformanceMap?.get(creatorId) : null;
+  if (!performance) return { score: 0, reasons: [] };
+
+  const normalizedPolicy = normalizePolicy(policy);
+  const hidePenalty = Number(performance.hideRate || 0) * normalizedPolicy.hideRatePenalty;
+  const reportPenalty = Number(performance.reportRate || 0) * normalizedPolicy.reportRatePenalty;
+  const conversionBoost = Number(performance.conversionRate || 0) * normalizedPolicy.conversionRateBoost;
+  const score = conversionBoost - hidePenalty - reportPenalty;
+  const reasons = [];
+  if (conversionBoost >= 0.5) reasons.push(buildReason("trusted_conversion", conversionBoost));
+  if (hidePenalty >= 0.5) reasons.push({ ...buildReason("hide_rate_penalty", hidePenalty), penalty: true });
+  if (reportPenalty >= 0.5) reasons.push({ ...buildReason("report_rate_penalty", reportPenalty), penalty: true });
+  return { score, reasons };
+};
+
 const getIneligibleReason = (candidate, affinity) => {
   if (!candidate?.candidateId) {
     return "missing_candidate_id";
@@ -199,6 +225,19 @@ const getExplorationBonus = (candidate, affinity) => {
   };
 };
 
+const isExplorationCandidate = (candidate, affinity) => {
+  const sets = affinity?.relationshipSets || {};
+  const authorUserId = normalizeId(candidate?.authorUserId);
+  const creatorId = normalizeId(candidate?.creatorId);
+  return !(
+    sets.followingUserIds?.has(authorUserId)
+    || sets.friendUserIds?.has(authorUserId)
+    || sets.followingCreatorIds?.has(creatorId)
+    || sets.friendCreatorIds?.has(creatorId)
+    || sets.purchaseCreatorIds?.has(creatorId)
+  );
+};
+
 const getFeaturedCollectionBoost = (candidate, { isColdStart = false } = {}) => {
   const signals = getFeaturedDiscoverySignals(candidate);
   if (!signals.matched || !isColdStart) {
@@ -238,6 +277,60 @@ const diversify = (items, perCreatorCap = 2) => {
   }
 
   return [...diversified, ...overflow];
+};
+
+const applyGovernedOrdering = ({
+  items = [],
+  affinity,
+  limit = 20,
+  policy = DEFAULT_RECOMMENDATION_POLICY,
+} = {}) => {
+  const normalizedPolicy = normalizePolicy(policy);
+  const targetSize = Math.min(normalizeLimit(limit), items.length);
+  if (!normalizedPolicy.enabled) {
+    return diversify(items, normalizedPolicy.maxRepeatedCreatorCount).slice(0, targetSize);
+  }
+
+  const remaining = items.map((item) => ({
+    ...item,
+    isExploration: isExplorationCandidate(item, affinity),
+  }));
+  const selected = [];
+  const creatorCounts = new Map();
+  const desiredExploration = Math.min(
+    remaining.filter((item) => item.isExploration).length,
+    Math.ceil(targetSize * normalizedPolicy.minimumExplorationShare)
+  );
+
+  while (selected.length < targetSize && remaining.length) {
+    const slotsRemaining = targetSize - selected.length;
+    const explorationSelected = selected.filter((item) => item.isExploration).length;
+    const mustExplore = explorationSelected + slotsRemaining <= desiredExploration;
+    const previousType = String(selected[selected.length - 1]?.contentType || "");
+    let currentTypeStreak = 0;
+    for (let index = selected.length - 1; index >= 0; index -= 1) {
+      if (String(selected[index]?.contentType || "") !== previousType) break;
+      currentTypeStreak += 1;
+    }
+
+    const isAllowed = (item, { enforceType = true, enforceCreator = true } = {}) => {
+      const creatorId = normalizeId(item.creatorId);
+      const creatorAllowed = !creatorId || Number(creatorCounts.get(creatorId) || 0) < normalizedPolicy.maxRepeatedCreatorCount;
+      const type = String(item.contentType || "");
+      const typeAllowed = !type || type !== previousType || currentTypeStreak < normalizedPolicy.maxContentTypeStreak;
+      return (!mustExplore || item.isExploration) && (!enforceCreator || creatorAllowed) && (!enforceType || typeAllowed);
+    };
+
+    let nextIndex = remaining.findIndex((item) => isAllowed(item));
+    if (nextIndex < 0) break;
+
+    const [next] = remaining.splice(nextIndex, 1);
+    selected.push(next);
+    const creatorId = normalizeId(next.creatorId);
+    if (creatorId) creatorCounts.set(creatorId, Number(creatorCounts.get(creatorId) || 0) + 1);
+  }
+
+  return selected;
 };
 
 const hasPositiveAffinityEntries = (entries = [], keyName) =>
@@ -306,12 +399,15 @@ const rankCandidatesWithDiagnostics = ({
   candidates = [],
   affinity,
   creatorQualityMap,
+  creatorPerformanceMap,
   recentImpressions,
   limit = 20,
+  policy = DEFAULT_RECOMMENDATION_POLICY,
 } = {}) => {
   const candidateList = Array.isArray(candidates) ? candidates : [];
   const cappedLimit = normalizeLimit(limit);
-  const diversityCap = surface === "home" ? 3 : 2;
+  const normalizedPolicy = normalizePolicy(policy);
+  const diversityCap = normalizedPolicy.maxRepeatedCreatorCount;
   const isColdStart = !hasPositiveAffinitySignals(affinity);
   const featuredCollections = getFeaturedDiscoveryCollections();
   const meta = {
@@ -322,6 +418,8 @@ const rankCandidatesWithDiagnostics = ({
     rankedCount: 0,
     fallbackMode: "empty",
     diversityCap,
+    maxContentTypeStreak: normalizedPolicy.maxContentTypeStreak,
+    minimumExplorationShare: normalizedPolicy.minimumExplorationShare,
     limit: cappedLimit,
     featuredCollectionActive: featuredCollections.active,
     featuredCandidateCount: 0,
@@ -347,6 +445,11 @@ const rankCandidatesWithDiagnostics = ({
     const exploration = getExplorationBonus(candidate, affinity);
     const featuredCollection = getFeaturedCollectionBoost(candidate, { isColdStart });
     const trustPenalty = getTrustPenalty(candidate, creatorQualityMap);
+    const performanceAdjustment = getRecommendationPerformanceAdjustment(
+      candidate,
+      creatorPerformanceMap,
+      normalizedPolicy
+    );
     const viewerFollowsCreator = Boolean(
       normalizeId(candidate?.creatorId)
       && affinity?.relationshipSets?.followingCreatorIds?.has(normalizeId(candidate?.creatorId))
@@ -365,6 +468,7 @@ const rankCandidatesWithDiagnostics = ({
       + popularity.score
       + exploration.score
       + featuredCollection.score
+      + performanceAdjustment.score
       - agePenalty.score
       - impressionPenalty.score
       - trustPenalty.score;
@@ -380,6 +484,7 @@ const rankCandidatesWithDiagnostics = ({
         ...popularity.reasons,
         ...exploration.reasons,
         ...featuredCollection.reasons,
+        ...performanceAdjustment.reasons,
         ...agePenalty.reasons.map((entry) => ({ ...entry, penalty: true })),
         ...impressionPenalty.reasons.map((entry) => ({ ...entry, penalty: true })),
         ...trustPenalty.reasons.map((entry) => ({ ...entry, penalty: true })),
@@ -388,11 +493,22 @@ const rankCandidatesWithDiagnostics = ({
   }
 
   const sorted = ranked.sort(compareCandidates(surface));
-  const ordered = diversify(sorted, diversityCap);
-  const items = ordered.slice(0, cappedLimit);
+  const items = applyGovernedOrdering({
+    items: sorted,
+    affinity,
+    limit: cappedLimit,
+    policy: normalizedPolicy,
+  });
 
   meta.rankedCount = items.length;
   meta.fallbackMode = getFallbackMode({ affinity, rankedCount: items.length });
+  meta.explorationCount = items.filter((item) => item.isExploration).length;
+  meta.explorationShare = items.length
+    ? Number((meta.explorationCount / items.length).toFixed(4))
+    : 0;
+  meta.maxObservedContentTypeStreak = getMaxContentTypeStreak(
+    items.map((item, index) => ({ entityType: item.contentType, rank: index + 1 }))
+  );
 
   return { items, meta };
 };
@@ -403,6 +519,8 @@ const rankCandidates = (options = {}) => {
 };
 
 module.exports = {
+  applyGovernedOrdering,
+  getRecommendationPerformanceAdjustment,
   getIneligibleReason,
   rankCandidates,
   rankCandidatesWithDiagnostics,

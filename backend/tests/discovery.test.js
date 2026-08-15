@@ -267,7 +267,9 @@ describe("Discovery endpoints", () => {
     expect(new Date(response.body.items[0].payload.createdAt).getTime()).toBeGreaterThan(
       new Date(response.body.items[1].payload.createdAt).getTime()
     );
-    expect(response.body.meta.diversityCap).toBe(3);
+    expect(response.body.meta.diversityCap).toBe(2);
+    expect(response.body.meta.maxContentTypeStreak).toBe(2);
+    expect(response.body.meta.minimumExplorationShare).toBe(0.15);
 
     const log = await RecommendationLog.findOne({ requestId: response.body.requestId }).lean();
     expect(log).toBeTruthy();
@@ -275,6 +277,7 @@ describe("Discovery endpoints", () => {
     expect(log.rankedIds.length).toBeGreaterThan(0);
     expect(log.creatorIds.length).toBeGreaterThan(0);
     expect(log.creatorExposures.length).toBeGreaterThan(0);
+    expect(log.rankedItemRefs.every((item) => Boolean(item.contentType))).toBe(true);
   });
 
   test("GET /api/discovery/home remains personalized instead of strictly chronological", async () => {

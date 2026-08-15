@@ -11,6 +11,10 @@ const {
 const { rankCandidatesWithDiagnostics } = require("../services/rankingService");
 const { decorateRankedItems } = require("../services/explanationService");
 const {
+  getRecommendationPolicy,
+  loadCreatorRecommendationSignals,
+} = require("../services/recommendationGovernanceService");
+const {
   createRecommendationLog,
   loadRecentImpressionSignals,
   trackDiscoveryEvents,
@@ -40,21 +44,26 @@ const serveDiscoverySurface = async ({ req, res, surface, candidateLoader, loade
       ...loaderOptions,
     }),
   ]);
-  const [creatorQualityMap, recentImpressions] = await Promise.all([
+  const creatorIds = collectCreatorIds(candidates);
+  const [creatorQualityMap, creatorPerformanceMap, recentImpressions, policy] = await Promise.all([
     loadCreatorQualityProfiles({
-      creatorIds: collectCreatorIds(candidates),
+      creatorIds,
     }),
+    loadCreatorRecommendationSignals({ creatorIds }),
     surface === "home"
       ? loadRecentImpressionSignals({ userId, surface })
       : Promise.resolve(new Map()),
+    getRecommendationPolicy(),
   ]);
   const { items: ranked, meta: recommendationMeta } = rankCandidatesWithDiagnostics({
     surface,
     candidates,
     affinity,
     creatorQualityMap,
+    creatorPerformanceMap,
     recentImpressions,
     limit,
+    policy,
   });
   const items = decorateRankedItems({ items: ranked });
   const requestId = await createRecommendationLog({

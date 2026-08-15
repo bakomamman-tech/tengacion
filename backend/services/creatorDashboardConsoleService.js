@@ -2,6 +2,9 @@ const { buildPurchaseLifecyclePayload } = require("./purchaseLifecycleService");
 const {
   computePurchaseRevenueShare,
 } = require("./creatorRevenueSharePolicy");
+const {
+  buildCreatorGrowthExperiments,
+} = require("./creatorGrowthExperimentService");
 const DEFAULT_LIMITS = {
   actionPrompts: 5,
   akusoTemplates: 4,
@@ -1084,9 +1087,11 @@ const buildActionPrompts = ({
 const buildCreatorDashboardConsole = ({
   activation = {},
   content = {},
+  growthEvents = [],
   payoutReadiness = {},
   profile = {},
   purchases = [],
+  user = {},
 } = {}) => {
   const contentItems = buildContentItems(content);
   const contentLookup = buildContentLookup(contentItems);
@@ -1121,6 +1126,16 @@ const buildCreatorDashboardConsole = ({
     contentItems,
     funnel,
   });
+  const growthExperiments = buildCreatorGrowthExperiments({
+    activation,
+    contentItems,
+    followerCount: Array.isArray(user.followers) ? user.followers.length : 0,
+    growthEvents,
+    payoutReadiness,
+    profile,
+    recentSales,
+    recentSubscribers,
+  });
 
   return {
     funnel,
@@ -1129,6 +1144,7 @@ const buildCreatorDashboardConsole = ({
     metadataFixes,
     catalogHealth,
     catalogGrowthPrompts,
+    growthExperiments,
     akusoTemplates,
     recentSales,
     recentSubscribers,

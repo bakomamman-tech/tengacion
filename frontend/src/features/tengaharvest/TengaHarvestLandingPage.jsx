@@ -16,9 +16,15 @@ export default function TengaHarvestLandingPage() {
     let active = true;
     Promise.allSettled([getTengaHarvestServices({ state: "Kaduna" }), getTengaHarvestImpact()])
       .then(([serviceResult, impactResult]) => {
-        if (!active) return;
-        if (serviceResult.status === "fulfilled") setServices(serviceResult.value.services || []);
-        if (impactResult.status === "fulfilled") setImpact(impactResult.value);
+        if (!active) {
+          return;
+        }
+        if (serviceResult.status === "fulfilled") {
+          setServices(serviceResult.value.services || []);
+        }
+        if (impactResult.status === "fulfilled") {
+          setImpact(impactResult.value);
+        }
       })
       .finally(() => active && setLoading(false));
     return () => {

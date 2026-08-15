@@ -396,6 +396,11 @@ Turn operations into growth.
   - purchase or subscription lift
   - prompt dismissed
 - Use Akuso to assist only within grounded, reviewable templates.
+- Current implementation anchor:
+  - the creator dashboard now selects five server-owned experiments by creator stage: first paid launch, subscription packaging, profile trust readiness, catalog freshness, and follower announcement.
+  - every prompt includes a live checklist and records shown, acted-on, and dismissed events; post-action publishing, purchase, and subscription outcomes are calculated from server data.
+  - daily impression deduplication and durable dismissals prevent prompt reloads from inflating results or immediately resurfacing rejected guidance.
+  - follower copy uses the existing reviewable Akuso launch-announcement template; the assistant cannot publish or perform the creator action.
 
 ### Exit criteria
 
@@ -418,6 +423,10 @@ Turn operations into growth.
   - creator follow conversion
   - notification opt-out rate
 - Use these cohorts to prioritize fan return surfaces.
+- Current implementation anchor:
+  - Admin Analytics now exposes first-follow, first-purchase, first-subscription-renewal, first-live-join, and first-completion cohorts.
+  - each cohort reports mature D1, D7, and D30 24-hour return windows plus repeat purchase, subscription conversion, creator-follow conversion, and current notification opt-out rates.
+  - aggregate retention excludes entrants whose measurement window has not matured, and priority cards identify the weakest mature D7 path and highest opt-out cohort.
 
 ### Exit criteria
 
@@ -441,6 +450,11 @@ Turn operations into growth.
   - penalty for high hide or report rates
   - boost for strong conversion with low complaint rate
 - Expose admin tuning fields cautiously, with audit logs.
+- Current implementation anchor:
+  - discovery applies a durable global recommendation policy covering creator caps, content-type streaks, safe exploration share, hide/report penalties, and low-complaint conversion boost.
+  - performance adjustments require at least 10 observed impressions per creator, preventing sparse outcomes from distorting rank order.
+  - Admin Analytics exposes diagnostics and bounded tuning fields; every policy mutation requires a reason and writes an admin audit record.
+  - successful reports on recommended posts now become recommendation feedback, while creator identity is resolved from the server-owned recommendation log rather than trusted client metadata.
 
 ### Exit criteria
 
@@ -462,6 +476,10 @@ Turn operations into growth.
   - unresolved critical failures reviewed
   - new feature registry entries covered
   - admin review backlog checked
+- Current implementation anchor:
+  - `npm run gate:akuso-release --prefix backend` runs the Akuso eval suite, validates safety, route targets, feature grounding, commerce guidance, fallback quality, and registry coverage, then writes an attachable JSON report.
+  - the authenticated Admin Assistant release gate adds the live review-backlog check and blocks release while any unresolved high-risk safety or abuse review remains.
+  - the gate publishes a stable report ID, explicit blockers, release decision, and attachment guidance for deployment evidence.
 
 ### Exit criteria
 
@@ -515,6 +533,10 @@ Scale the operating system.
   - target
   - status
 - Add drilldowns to the relevant admin or creator operations pages.
+- Current implementation anchor:
+  - Admin Analytics now combines GMV, creator earnings, commission, checkout, payouts, creator activation/retention, fan D7 retention, recommendation conversion/complaints, Akuso helpfulness, support backlog, and active reliability incidents.
+  - each metric carries this-week, prior-week, four-week-average, target, status, and drilldown fields, with a generated action list for watch and off-target results.
+  - unavailable sample-dependent metrics are labeled `no_data` rather than shown as healthy zeros.
 
 ### Exit criteria
 

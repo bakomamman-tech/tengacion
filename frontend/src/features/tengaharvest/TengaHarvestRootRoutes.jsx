@@ -6,11 +6,6 @@ import TengaHarvestFarmerPage from "./TengaHarvestFarmerPage";
 import TengaHarvestProviderPage from "./TengaHarvestProviderPage";
 import TengaHarvestAdminPage from "./TengaHarvestAdminPage";
 
-export const isTengaHarvestPath = (pathname = "") =>
-  pathname === "/tengaharvest" ||
-  pathname.startsWith("/tengaharvest/") ||
-  pathname === "/admin/tengaharvest";
-
 export default function TengaHarvestRootRoutes() {
   const { user, loading } = useAuth();
   const location = useLocation();

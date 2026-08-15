@@ -28,7 +28,9 @@ const request = async (path, options = {}) => {
 export const getTengaHarvestServices = (filters = {}) => {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
-    if (value) params.set(key, value);
+    if (value) {
+      params.set(key, value);
+    }
   });
   return request(`/services${params.toString() ? `?${params}` : ""}`);
 };

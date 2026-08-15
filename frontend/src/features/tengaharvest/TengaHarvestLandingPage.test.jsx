@@ -20,7 +20,7 @@ describe("TengaHarvestLandingPage", () => {
     vi.mocked(getTengaHarvestImpact).mockResolvedValue({});
   });
 
-  it("links to the authoritative Tengacion leadership and contact pages", () => {
+  it("links to the authoritative Tengacion leadership and contact pages", async () => {
     render(
       <MemoryRouter initialEntries={["/tengaharvest"]}>
         <TengaHarvestLandingPage />
@@ -39,5 +39,6 @@ describe("TengaHarvestLandingPage", () => {
       "href",
       "/contact"
     );
+    expect(await screen.findByText("Provider onboarding is open.")).toBeInTheDocument();
   });
 });

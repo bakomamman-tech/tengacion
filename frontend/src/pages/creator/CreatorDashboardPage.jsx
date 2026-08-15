@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { recordCreatorGrowthExperiment } from "../../api";
 import CreatorProfileSummaryCard from "../../components/creator/CreatorProfileSummaryCard";
 import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
@@ -43,6 +44,8 @@ const getBuyerName = (buyer) =>
 
 export default function CreatorDashboardPage() {
   const [copiedTemplateKey, setCopiedTemplateKey] = useState("");
+  const [dismissedExperimentKeys, setDismissedExperimentKeys] = useState([]);
+  const shownExperimentKeysRef = useRef(new Set());
   const { creatorProfile, dashboard } = useCreatorWorkspace();
   const creatorLanes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
   const activation = dashboard.activation || {};
@@ -74,6 +77,15 @@ export default function CreatorDashboardPage() {
   const akusoTemplates = Array.isArray(operatingConsole.akusoTemplates)
     ? operatingConsole.akusoTemplates
     : [];
+  const growthExperimentPayload = operatingConsole.growthExperiments || {};
+  const growthExperiments = useMemo(
+    () => (Array.isArray(growthExperimentPayload.experiments)
+      ? growthExperimentPayload.experiments.filter(
+          (experiment) => !dismissedExperimentKeys.includes(experiment.key)
+        )
+      : []),
+    [dismissedExperimentKeys, growthExperimentPayload.experiments]
+  );
   const discoveryInsights = dashboard.discoveryInsights || {};
   const discoverySummary = discoveryInsights.summary || {};
   const discoverySurfaces = Array.isArray(discoveryInsights.surfaceBreakdown)
@@ -96,6 +108,51 @@ export default function CreatorDashboardPage() {
       await navigator.clipboard.writeText(prompt).catch(() => null);
     }
     setCopiedTemplateKey(template.key);
+  };
+
+  useEffect(() => {
+    growthExperiments.forEach((experiment) => {
+      if (!experiment?.key || shownExperimentKeysRef.current.has(experiment.key)) {
+        return;
+      }
+      shownExperimentKeysRef.current.add(experiment.key);
+      void recordCreatorGrowthExperiment({
+        promptKey: experiment.key,
+        eventType: "shown",
+      }).catch(() => null);
+    });
+  }, [growthExperiments]);
+
+  const handleGrowthExperimentAction = (experiment) => {
+    if (!experiment?.key) {
+      return;
+    }
+    void recordCreatorGrowthExperiment({
+      promptKey: experiment.key,
+      eventType: "acted_on",
+    }).catch(() => null);
+
+    if (experiment.templateKey) {
+      const template = akusoTemplates.find(
+        (candidate) => candidate.key === experiment.templateKey
+      );
+      if (template) {
+        void handleCopyTemplate(template);
+      }
+    }
+  };
+
+  const handleDismissGrowthExperiment = (experiment) => {
+    if (!experiment?.key) {
+      return;
+    }
+    setDismissedExperimentKeys((current) =>
+      current.includes(experiment.key) ? current : [...current, experiment.key]
+    );
+    void recordCreatorGrowthExperiment({
+      promptKey: experiment.key,
+      eventType: "dismissed",
+    }).catch(() => null);
   };
 
   return (
@@ -317,6 +374,78 @@ export default function CreatorDashboardPage() {
             ) : (
               <div className="creator-empty-card">
                 Akuso templates will appear after your creator profile loads.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="creator-panel creator-growth-experiments-panel">
+          <div className="creator-panel-head">
+            <div>
+              <h2>Growth experiments</h2>
+              <p>
+                Personalized for your {formatBadgeLabel(growthExperimentPayload.stage || "creator")} stage;
+                actions and dismissals improve the next recommendation.
+              </p>
+            </div>
+            <span className="creator-status-badge neutral">
+              {formatNumber(growthExperimentPayload.summary?.completed || 0)} completed
+            </span>
+          </div>
+
+          <div className="creator-growth-experiment-grid">
+            {growthExperiments.length ? (
+              growthExperiments.map((experiment) => (
+                <article key={experiment.key} className="creator-growth-experiment">
+                  <div className="creator-growth-experiment__head">
+                    <span className={`creator-status-badge ${experiment.completed ? "success" : "neutral"}`}>
+                      {experiment.completed ? "Completed" : `${experiment.progressPercent || 0}% ready`}
+                    </span>
+                    <button
+                      type="button"
+                      className="creator-chip-link"
+                      aria-label={`Dismiss ${experiment.title}`}
+                      onClick={() => handleDismissGrowthExperiment(experiment)}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                  <div>
+                    <strong>{experiment.title}</strong>
+                    <p>{experiment.description}</p>
+                  </div>
+                  <ul className="creator-growth-checklist">
+                    {(experiment.checklist || []).map((step) => (
+                      <li key={step.key} className={step.complete ? "is-complete" : ""}>
+                        <span aria-hidden="true">{step.complete ? "✓" : "○"}</span>
+                        {step.label}
+                      </li>
+                    ))}
+                  </ul>
+                  {experiment.templateKey ? (
+                    <button
+                      type="button"
+                      className="creator-secondary-btn"
+                      onClick={() => handleGrowthExperimentAction(experiment)}
+                    >
+                      {copiedTemplateKey === experiment.templateKey
+                        ? "Announcement prompt copied"
+                        : experiment.actionLabel}
+                    </button>
+                  ) : (
+                    <Link
+                      className="creator-secondary-btn"
+                      to={experiment.actionTo || "/creator/dashboard"}
+                      onClick={() => handleGrowthExperimentAction(experiment)}
+                    >
+                      {experiment.actionLabel || "Open"}
+                    </Link>
+                  )}
+                </article>
+              ))
+            ) : (
+              <div className="creator-empty-card">
+                Growth experiments will return after the next catalog or audience signal.
               </div>
             )}
           </div>

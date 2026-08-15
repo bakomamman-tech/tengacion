@@ -5,14 +5,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import CreatorDashboardPage from "../CreatorDashboardPage";
 import { useCreatorWorkspace } from "../../../components/creator/useCreatorWorkspace";
+import { recordCreatorGrowthExperiment } from "../../../api";
 
 vi.mock("../../../components/creator/useCreatorWorkspace", () => ({
   useCreatorWorkspace: vi.fn(),
 }));
 
+vi.mock("../../../api", async (importOriginal) => ({
+  ...(await importOriginal()),
+  recordCreatorGrowthExperiment: vi.fn(() => Promise.resolve({ accepted: true })),
+}));
+
 describe("CreatorDashboardPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    recordCreatorGrowthExperiment.mockResolvedValue({ accepted: true });
   });
 
   it("shows upload launch cards with upload-only actions", () => {
@@ -158,6 +165,24 @@ describe("CreatorDashboardPage", () => {
               actionLabel: "Copy prompt",
             },
           ],
+          growthExperiments: {
+            stage: "conversion",
+            summary: { completed: 1 },
+            experiments: [
+              {
+                key: "follower_announcement",
+                title: "Draft a follower announcement",
+                description: "Turn the strongest release into a fan update.",
+                actionLabel: "Copy announcement prompt",
+                templateKey: "launch_announcement",
+                progressPercent: 67,
+                checklist: [
+                  { key: "release", label: "Choose a release to promote", complete: true },
+                  { key: "draft", label: "Open a reviewable announcement draft", complete: false },
+                ],
+              },
+            ],
+          },
           recentSales: [
             {
               id: "sale-1",
@@ -224,6 +249,8 @@ describe("CreatorDashboardPage", () => {
     expect(screen.getByText(/catalog score/i)).toBeInTheDocument();
     expect(screen.getAllByText(/add a paid preview/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/akuso copy templates/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /growth experiments/i })).toBeInTheDocument();
+    expect(screen.getByText(/draft a follower announcement/i)).toBeInTheDocument();
     expect(screen.getByText(/track description/i)).toBeInTheDocument();
     expect(screen.getByText(/discovery insights/i)).toBeInTheDocument();
     expect(screen.getByText(/42 impressions/i)).toBeInTheDocument();

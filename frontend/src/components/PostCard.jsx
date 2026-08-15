@@ -1251,6 +1251,13 @@ export default function PostCard({
         targetId: post?._id,
         reason: String(reason || "").trim().toLowerCase(),
       });
+      if (isRecommendedPost) {
+        void runRecommendationAction({
+          action: "report",
+          eventType: "recommendation_reported",
+          metadata: { reason: String(reason || "").trim().toLowerCase() },
+        });
+      }
       toast.success("Report submitted");
       setMenuOpen(false);
     } catch (err) {

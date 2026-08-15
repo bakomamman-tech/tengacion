@@ -63,6 +63,13 @@ const RecommendationRankedItemRefSchema = new mongoose.Schema(
       lowercase: true,
       maxlength: 40,
     },
+    contentType: {
+      type: String,
+      default: "",
+      trim: true,
+      lowercase: true,
+      maxlength: 40,
+    },
     entityId: {
       type: String,
       default: "",
@@ -209,6 +216,7 @@ RecommendationLogSchema.pre("validate", function () {
     .map((item) => ({
       entityKey: String(item?.entityKey || "").slice(0, 160),
       entityType: String(item?.entityType || "").trim().toLowerCase().slice(0, 40),
+      contentType: String(item?.contentType || item?.entityType || "").trim().toLowerCase().slice(0, 40),
       entityId: String(item?.entityId || "").trim().slice(0, 120),
       creatorId: mongoose.Types.ObjectId.isValid(item?.creatorId)
         ? new mongoose.Types.ObjectId(item.creatorId)
@@ -240,7 +248,7 @@ RecommendationLogSchema.pre("validate", function () {
   if (this.responseMeta && typeof this.responseMeta === "object") {
     this.responseMeta = sanitizePlainObject(this.responseMeta, {
       maxDepth: 2,
-      maxKeys: 16,
+      maxKeys: 24,
       maxStringLength: 200,
       maxArrayLength: 4,
     });

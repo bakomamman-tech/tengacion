@@ -34,7 +34,15 @@ describe("GSI registry entries", () => {
   test("maps a permanent journal archive into the same browse index", () => {
     const entry = buildRegistryEntry({
       recordType: "GSI Journal Onboarding Record",
-      journal: { displayName: "African Health Review", publisher: "Example University", countryCode: "NG", issnL: "1234-5678", worksCount: 10706 },
+      journal: {
+        openAlexId: "S2755481371",
+        displayName: "Pan African Medical Journal",
+        publisher: "African Field Epidemiology Network",
+        countryCode: "UG",
+        issnL: "1937-8688",
+        issns: ["1937-8688"],
+        worksCount: 10706,
+      },
       provenance: { provider: "OpenAlex", totalWorks: 10701, reviewedWorks: 100, scoredPublications: 98, archivedPublications: 62 },
       gsiScore: { version: "GSI-Archive-1.2", total: 81, sampleSize: 98 },
       impactEvidence: { verificationStatus: "self-reported" },
@@ -47,10 +55,12 @@ describe("GSI registry entries", () => {
 
     expect(entry).toMatchObject({
       recordKind: "journal",
-      title: "African Health Review",
+      title: "Pan African Medical Journal",
       sourceProvider: "OpenAlex",
       impactEvidenceStatus: "self-reported",
-      issnL: "1234-5678",
+      openAlexSourceId: "S2755481371",
+      issnL: "1937-8688",
+      issns: ["1937-8688"],
       indexedWorks: 10706,
       queryMatchedWorks: 10701,
       reviewedWorks: 100,

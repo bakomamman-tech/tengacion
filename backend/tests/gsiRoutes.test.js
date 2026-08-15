@@ -241,13 +241,20 @@ describe("GSI routes", () => {
     });
 
     const response = await request(createApp())
-      .get("/api/gsi/registry?type=journal-work&page=2&limit=1");
+      .get("/api/gsi/registry")
+      .query({
+        q: "https://openalex.org/S2755481371",
+        type: "journal-work",
+        page: 2,
+        limit: 1,
+      });
 
     expect(response.status).toBe(200);
     expect(response.body.counts.journalWorks).toBe(3);
     expect(response.body.pagination.page).toBe(2);
     expect(mockListRegistryRecords).toHaveBeenCalledWith(expect.objectContaining({
       type: "journal-work",
+      q: "https://openalex.org/S2755481371",
       page: "2",
       limit: "1",
     }));

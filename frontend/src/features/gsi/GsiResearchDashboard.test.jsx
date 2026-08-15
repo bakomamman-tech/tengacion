@@ -33,7 +33,10 @@ describe("GSI public research dashboard", () => {
   it("renders browsable paper records and discovery filters", async () => {
     render(<MemoryRouter><GsiResearchDashboard /></MemoryRouter>);
 
-    expect(screen.getByLabelText("Search research")).toBeInTheDocument();
+    expect(screen.getByLabelText("Search research")).toHaveAttribute(
+      "placeholder",
+      "Search title, author, journal, ISSN, OpenAlex ID, topic, country, or DOI"
+    );
     expect(await screen.findByRole("link", { name: "Community health delivery in Northern Nigeria" })).toHaveAttribute("href", "/gsi/papers/paper-1");
     expect(screen.getByText("Public health")).toBeInTheDocument();
     expect(screen.getByText("Nigeria")).toBeInTheDocument();

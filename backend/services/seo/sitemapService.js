@@ -1,6 +1,7 @@
 const Album = require("../../models/Album");
 const Book = require("../../models/Book");
 const CreatorProfile = require("../../models/CreatorProfile");
+const GsiRegistryRecord = require("../../models/GsiRegistryRecord");
 const MarketplaceProduct = require("../../models/MarketplaceProduct");
 const MarketplaceSeller = require("../../models/MarketplaceSeller");
 const SchoolPage = require("../../models/SchoolPage");
@@ -36,6 +37,8 @@ const MAX_URLS_PER_SITEMAP = 1000;
 const STATIC_PUBLIC_ROUTES = [
   { path: "/" },
   { path: "/gsi" },
+  { path: "/gsi/research" },
+  { path: "/gsi/papers/new" },
   { path: "/kadahive" },
   { path: "/kadahive/programmes/kids-code" },
   { path: "/kadahive/programmes/cyber-smart" },
@@ -430,6 +433,22 @@ const buildSchoolEntries = async () =>
     }))
   );
 
+const buildGsiEntries = async () =>
+  dedupeEntries(
+    (
+      await GsiRegistryRecord.find({ recordKind: { $in: ["paper", "journal"] } })
+        .select("archiveId recordKind savedAt updatedAt")
+        .sort({ savedAt: -1 })
+        .limit(5000)
+        .lean()
+    ).map((record) => ({
+      path: record.recordKind === "paper"
+        ? `/gsi/papers/${encodeURIComponent(record.archiveId)}`
+        : `/gsi/records/${encodeURIComponent(record.archiveId)}`,
+      lastModified: record.updatedAt || record.savedAt,
+    }))
+  );
+
 const buildSectionFiles = (baseName, entries = []) =>
   chunkEntries(entries).map((chunk, index) => ({
     name: `${baseName}-${index + 1}`,
@@ -439,7 +458,7 @@ const buildSectionFiles = (baseName, entries = []) =>
   }));
 
 const buildSitemapManifest = async () => {
-  const [staticEntries, creatorEntries, musicEntries, bookEntries, podcastEntries, marketplaceEntries, schoolEntries] = await Promise.all([
+  const [staticEntries, creatorEntries, musicEntries, bookEntries, podcastEntries, marketplaceEntries, schoolEntries, gsiEntries] = await Promise.all([
     Promise.resolve(buildStaticEntries()),
     buildCreatorEntries(),
     buildMusicEntries(),
@@ -447,6 +466,7 @@ const buildSitemapManifest = async () => {
     buildPodcastEntries(),
     buildMarketplaceEntries(),
     buildSchoolEntries(),
+    buildGsiEntries(),
   ]);
 
   const sections = [
@@ -462,6 +482,7 @@ const buildSitemapManifest = async () => {
     ...buildSectionFiles("podcasts", podcastEntries),
     ...buildSectionFiles("marketplace", marketplaceEntries),
     ...buildSectionFiles("schools", schoolEntries),
+    ...buildSectionFiles("gsi", gsiEntries),
   ].filter((section) => Array.isArray(section.entries) && section.entries.length > 0);
 
   return {

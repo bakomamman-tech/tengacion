@@ -60,3 +60,28 @@ export const publishGsiJournal = (sourceId, editorialReview, impactEvidence) =>
 
 export const getGsiRecord = (recordId) =>
   request(`/records/${encodeURIComponent(recordId)}`, { timeoutMs: 20000 });
+
+export const calculateGsiPaperScore = (paper, impactEvidence) =>
+  request("/papers/score", {
+    method: "POST",
+    body: JSON.stringify({ paper, impactEvidence }),
+  });
+
+export const publishGsiPaper = (paper, impactEvidence) =>
+  request("/papers/publish", {
+    method: "POST",
+    body: JSON.stringify({ confirmed: true, paper, impactEvidence }),
+  });
+
+export const getGsiPaperRecord = (recordId) =>
+  request(`/papers/${encodeURIComponent(recordId)}`, { timeoutMs: 20000 });
+
+export const listGsiResearch = (filters = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== "" && value !== null && value !== undefined) {
+      query.set(key, value);
+    }
+  });
+  return request(`/registry?${query.toString()}`, { timeoutMs: 20000 });
+};

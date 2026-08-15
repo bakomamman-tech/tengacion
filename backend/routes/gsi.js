@@ -1,13 +1,17 @@
 const express = require("express");
 const rateLimit = require("express-rate-limit");
+const crypto = require("crypto");
+const GsiPaperRecord = require("../models/GsiPaperRecord");
 const {
   GsiOpenAlexError,
   importJournal,
   searchJournals,
 } = require("../services/gsiOpenAlexService");
 const {
+  GSI_PAPER_SCORING_VERSION,
   GSI_SCORING_VERSION,
   scoreJournal,
+  scorePaper,
 } = require("../services/gsiScoringService");
 const {
   GsiArchiveError,
@@ -15,6 +19,12 @@ const {
   fetchArchivedRecord,
   publishRecord,
 } = require("../services/gsiArchiveService");
+const { GsiPaperError, normalizePaper } = require("../services/gsiPaperService");
+const {
+  indexPaperRecord,
+  indexPublishedRecord,
+  listRegistryRecords,
+} = require("../services/gsiRegistryService");
 
 const router = express.Router();
 const publishLimiter = rateLimit({
@@ -102,7 +112,11 @@ const normalizeImpactEvidence = (value = {}) => {
 };
 
 const sendServiceError = (res, error) => {
-  if (error instanceof GsiOpenAlexError || error instanceof GsiArchiveError) {
+  if (
+    error instanceof GsiOpenAlexError ||
+    error instanceof GsiArchiveError ||
+    error instanceof GsiPaperError
+  ) {
     return res.status(error.status).json({
       success: false,
       code: error.code,
@@ -123,6 +137,7 @@ router.get("/status", (_req, res) => {
     openAlexReady: Boolean(String(process.env.OPENALEX_API_KEY || "").trim()),
     permanentArchiveReady: Boolean(String(process.env.PINATA_JWT || "").trim()),
     scoringVersion: GSI_SCORING_VERSION,
+    paperScoringVersion: GSI_PAPER_SCORING_VERSION,
   });
 });
 
@@ -185,12 +200,109 @@ router.post("/journals/:sourceId/publish", publishLimiter, async (req, res) => {
       impactEvidence,
     });
     const archive = await publishRecord(record);
+    let registryIndexed = true;
+    try {
+      await indexPublishedRecord(record, archive);
+    } catch (registryError) {
+      registryIndexed = false;
+      console.error("[gsi] Journal saved permanently but registry indexing failed", registryError);
+    }
     return res.status(201).set("Cache-Control", "no-store").json({
       success: true,
       message: "Journal successfully indexed.",
       archive,
       record,
+      registryIndexed,
     });
+  } catch (error) {
+    return sendServiceError(res, error);
+  }
+});
+
+router.post("/papers/score", async (req, res) => {
+  try {
+    const paper = normalizePaper(req.body?.paper);
+    const impactEvidence = normalizeImpactEvidence(req.body?.impactEvidence);
+    const score = scorePaper({ paper, impactEvidence });
+    return res.set("Cache-Control", "no-store").json({
+      success: true,
+      paper,
+      impactEvidence,
+      score,
+    });
+  } catch (error) {
+    return sendServiceError(res, error);
+  }
+});
+
+router.post("/papers/publish", publishLimiter, async (req, res) => {
+  try {
+    if (req.body?.confirmed !== true) {
+      return res.status(400).json({
+        success: false,
+        code: "CONFIRMATION_REQUIRED",
+        message: "Confirm that the paper details may be added to the public GSI registry.",
+      });
+    }
+    const paper = normalizePaper(req.body?.paper);
+    const impactEvidence = normalizeImpactEvidence(req.body?.impactEvidence);
+    const score = scorePaper({ paper, impactEvidence });
+    const duplicate = paper.doi
+      ? await GsiPaperRecord.findOne({ "paper.doi": paper.doi }).select("publicId").lean()
+      : null;
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        code: "PAPER_ALREADY_INDEXED",
+        message: "A paper with this DOI is already in the GSI research registry.",
+        publicRecordPath: `/gsi/papers/${duplicate.publicId}`,
+      });
+    }
+    const created = await GsiPaperRecord.create({
+      publicId: crypto.randomUUID(),
+      paper,
+      gsiScore: score,
+      impactEvidence,
+      confirmedAt: new Date(),
+    });
+    const record = created.toObject();
+    await indexPaperRecord(record);
+    return res.status(201).set("Cache-Control", "no-store").json({
+      success: true,
+      message: "Paper successfully added to the public research registry.",
+      publicRecordPath: `/gsi/papers/${record.publicId}`,
+      record,
+    });
+  } catch (error) {
+    return sendServiceError(res, error);
+  }
+});
+
+router.get("/papers/:recordId", async (req, res) => {
+  try {
+    const recordId = String(req.params.recordId || "").trim();
+    if (!/^[a-f0-9-]{36}$/i.test(recordId)) {
+      throw new GsiPaperError("That paper record reference is not valid.", {
+        code: "INVALID_PAPER_RECORD_ID",
+      });
+    }
+    const record = await GsiPaperRecord.findOne({ publicId: recordId }).select("-__v -updatedAt").lean();
+    if (!record) {
+      throw new GsiPaperError("That paper is not available in the public GSI registry.", {
+        status: 404,
+        code: "PAPER_NOT_FOUND",
+      });
+    }
+    return res.set("Cache-Control", "public, max-age=300").json({ success: true, record });
+  } catch (error) {
+    return sendServiceError(res, error);
+  }
+});
+
+router.get("/registry", async (req, res) => {
+  try {
+    const registry = await listRegistryRecords(req.query);
+    return res.set("Cache-Control", "public, max-age=60").json({ success: true, ...registry });
   } catch (error) {
     return sendServiceError(res, error);
   }

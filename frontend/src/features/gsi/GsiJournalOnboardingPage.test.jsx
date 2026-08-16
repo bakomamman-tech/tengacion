@@ -125,6 +125,53 @@ describe("GSI local-impact evidence", () => {
     expect(screen.getByText("Local impact: self-reported")).toBeInTheDocument();
   });
 
+  it("shows how a publisher or website search matched each OpenAlex result", async () => {
+    const user = userEvent.setup();
+    mocks.searchJournals.mockResolvedValue({
+      matchType: "publisher",
+      results: [{
+        ...source,
+        homepageUrl: "https://example-journal.org",
+        matchedBy: "publisher",
+        matchLabel: "Publisher: Example University",
+      }],
+    });
+    renderPage();
+
+    await user.type(screen.getByLabelText("Journal name, ISSN, publisher, or website"), "Example University");
+    await user.click(screen.getByRole("button", { name: "Find journal" }));
+
+    expect(await screen.findByText("Publisher: Example University")).toBeInTheDocument();
+    expect(screen.getByText("example-journal.org")).toBeInTheDocument();
+  });
+
+  it("keeps Crossref-only journals separate from importable OpenAlex records", async () => {
+    const user = userEvent.setup();
+    mocks.searchJournals.mockResolvedValue({
+      results: [],
+      fallbackUsed: true,
+      externalCandidates: [{
+        displayName: "Regional Discovery Journal",
+        publisher: "Community Press",
+        issnL: "2049-3630",
+        issns: ["2049-3630"],
+      }],
+    });
+    renderPage();
+
+    await user.type(screen.getByLabelText("Journal name, ISSN, publisher, or website"), "Regional Discovery");
+    await user.click(screen.getByRole("button", { name: "Find journal" }));
+
+    expect(await screen.findByRole("heading", { name: "Verification is still needed" })).toBeInTheDocument();
+    expect(screen.getByText("Regional Discovery Journal")).toBeInTheDocument();
+    expect(screen.getByText("Needs OpenAlex verification")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /This is my journal/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /How to get the journal indexed/i })).toHaveAttribute(
+      "href",
+      "https://help.openalex.org/how-to/getting-indexed/"
+    );
+  });
+
   it("separates permanent publication success from pending discovery indexing", () => {
     render(
       <MemoryRouter>

@@ -147,8 +147,10 @@
 .gsi-result-title-row { display: flex; justify-content: space-between; gap: 12px; }
 .gsi-result-title-row h3 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 16px; line-height: 1.3; }
 .gsi-result-title-row p { color: var(--gsi-muted); font-size: 10px; margin: 4px 0 0; }
+.gsi-result-badges { display: flex; align-items: flex-end; flex-direction: column; gap: 5px; }
+.gsi-match-badge { min-height: 23px; max-width: 220px; display: inline-flex; align-items: center; color: #735b22; background: #fbf4df; border-radius: 999px; padding: 4px 8px; font-size: 8px; font-weight: 800; line-height: 1.25; text-align: center; }
 .gsi-verified-badge { height: 23px; display: inline-flex; align-items: center; gap: 4px; color: #3f7854; background: #edf7ef; border-radius: 999px; padding: 0 8px; font-size: 8px; font-weight: 800; white-space: nowrap; }
-.gsi-result-card dl { display: flex; gap: 23px; margin: 13px 0 0; }
+.gsi-result-card dl { display: flex; flex-wrap: wrap; gap: 8px 23px; margin: 13px 0 0; }
 .gsi-result-card dl div { display: flex; gap: 5px; }
 .gsi-result-card dt { color: #89958f; font-size: 9px; }
 .gsi-result-card dd { margin: 0; color: #53645e; font-size: 9px; font-weight: 700; }
@@ -158,6 +160,10 @@
 .gsi-empty-state > span { width: 53px; height: 53px; display: grid; place-items: center; margin: 0 auto 15px; border-radius: 50%; color: var(--gsi-muted); background: var(--gsi-mint); }
 .gsi-empty-state h3 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; }
 .gsi-empty-state p { max-width: 520px; margin: 9px auto 20px; color: var(--gsi-muted); font-size: 12px; line-height: 1.6; }
+.gsi-external-results > .gsi-notice { margin-top: 0; }
+.gsi-external-result-card { grid-template-columns: 52px minmax(0, 1fr); border-style: dashed; }
+.gsi-external-result-card:hover { transform: none; }
+.gsi-external-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 
 .gsi-journal-summary { display: grid; grid-template-columns: 54px 1fr auto; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--gsi-line); border-radius: 13px; background: var(--gsi-card); margin: 20px 0; }
 .gsi-journal-summary h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 19px; font-weight: 500; }
@@ -570,7 +576,7 @@
   .gsi-result-card { grid-template-columns: 45px minmax(0,1fr); padding: 15px; }
   .gsi-result-monogram { width: 45px; height: 45px; }
   .gsi-result-title-row { display: block; }
-  .gsi-verified-badge { margin-top: 7px; }
+  .gsi-result-badges { align-items: flex-start; margin-top: 7px; }
   .gsi-result-card dl { flex-wrap: wrap; gap: 8px 15px; }
   .gsi-select-button { grid-column: 1 / -1; width: 100%; }
   .gsi-results-heading > small { display: none; }

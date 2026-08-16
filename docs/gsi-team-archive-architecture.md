@@ -5,7 +5,7 @@
 Public entry point: `/gsi`
 
 1. An editor searches by journal title, ISSN, publisher, or website.
-2. The Tengacion backend searches the live OpenAlex Sources API.
+2. The Tengacion backend searches live OpenAlex sources, resolves matching publisher entities and homepage domains, and uses Crossref ISSNs as a fallback when OpenAlex text search returns no journal.
 3. The editor selects a source; the backend imports that source and up to 100 recent works.
 4. The backend normalizes incomplete metadata and calculates the GSI Score.
 5. The editor reviews journal-level details and sees the complete score breakdown.
@@ -20,8 +20,9 @@ Journal editor
 React onboarding flow at tengacion.com/gsi
     ↓ same-origin JSON
 Express /api/gsi routes
-    ├── OpenAlex source + works requests
-    ├── normalization and GSI-Archive-1.1 scoring
+    ├── OpenAlex source, publisher + works requests
+    ├── Crossref journal fallback → OpenAlex ISSN resolution
+    ├── normalization and GSI-Archive-1.2 scoring
     └── server-managed IPFS pinning
              ↓
       permanent content identifier
@@ -32,6 +33,9 @@ The browser never receives either provider credential. It also never performs an
 ## Reliability and integrity controls
 
 - Search input is bounded and normalized; ISSNs receive an exact lookup before full-text search.
+- Publisher searches resolve OpenAlex Publisher IDs before filtering journal sources by publisher lineage.
+- Website searches normalize the domain, rank exact OpenAlex homepage-domain matches first, and clearly label less-certain title candidates.
+- Crossref fallback records remain visibly separate and cannot enter the import workflow unless their ISSNs resolve to an OpenAlex journal source.
 - OpenAlex timeouts, rate limits, no-result states, incomplete metadata, and configuration failures receive editor-friendly messages.
 - Publication evidence is never accepted from the browser when publishing. The backend fetches it again and recalculates the score.
 - Editor corrections are limited to journal title, publisher, homepage, country code, and primary ISSN.

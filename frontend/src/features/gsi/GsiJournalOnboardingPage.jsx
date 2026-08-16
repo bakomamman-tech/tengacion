@@ -29,6 +29,14 @@ const formatDate = (value) => {
     : new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(date);
 };
 
+const formatDomain = (value) => {
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return "Not listed";
+  }
+};
+
 const EMPTY_IMPACT_EVIDENCE = {
   policyMentions: "",
   ngoAdoptions: "",
@@ -129,6 +137,8 @@ function Notice({ type = "info", title, children, onRetry }) {
 function SearchStep({ onImported }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
+  const [externalCandidates, setExternalCandidates] = useState([]);
+  const [fallbackUsed, setFallbackUsed] = useState(false);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [importingId, setImportingId] = useState("");
@@ -148,10 +158,14 @@ function SearchStep({ onImported }) {
     try {
       const payload = await searchGsiJournals(query.trim());
       setResults(payload.results || []);
+      setExternalCandidates(payload.externalCandidates || []);
+      setFallbackUsed(Boolean(payload.fallbackUsed));
       setSearched(true);
     } catch (requestError) {
       setError(requestError.message);
       setResults([]);
+      setExternalCandidates([]);
+      setFallbackUsed(false);
       setSearched(true);
     } finally {
       setLoading(false);
@@ -204,7 +218,7 @@ function SearchStep({ onImported }) {
 
       {!searched && !loading ? (
         <div className="gsi-trust-grid">
-          <article><span><GsiIcon name="search" /></span><strong>Find the right record</strong><p>Search by journal name or use an ISSN for an exact match.</p></article>
+          <article><span><GsiIcon name="search" /></span><strong>Find the right record</strong><p>Search by title, exact ISSN, publisher, or the journal’s website.</p></article>
           <article><span><GsiIcon name="file" /></span><strong>Review real publications</strong><p>Inspect the current OpenAlex record and correct journal details.</p></article>
           <article><span><GsiIcon name="shield" /></span><strong>Save with confidence</strong><p>Create a permanent academic reference only after you confirm it.</p></article>
         </div>
@@ -213,8 +227,8 @@ function SearchStep({ onImported }) {
       {searched && !loading && !error ? (
         <div className="gsi-results" aria-live="polite">
           <div className="gsi-results-heading">
-            <div><span>{results.length ? `${results.length} likely matches` : "No matching journals"}</span><h2>{results.length ? "Select your journal" : "Try another search"}</h2></div>
-            {results.length ? <small>Check the publisher and ISSN before continuing.</small> : null}
+            <div><span>{results.length ? `${results.length} likely matches` : externalCandidates.length ? "Crossref metadata found" : "No matching journals"}</span><h2>{results.length ? "Select your journal" : externalCandidates.length ? "Verification is still needed" : "Try another search"}</h2></div>
+            {results.length ? <small>{fallbackUsed ? "Crossref ISSNs helped recover additional OpenAlex records. " : ""}Check the publisher, website, and ISSN before continuing.</small> : null}
           </div>
           {results.length ? results.map((source) => (
             <article className="gsi-result-card" key={source.id}>
@@ -222,24 +236,48 @@ function SearchStep({ onImported }) {
               <div className="gsi-result-body">
                 <div className="gsi-result-title-row">
                   <div><h3>{source.displayName}</h3><p>{source.publisher || "Publisher not listed"}</p></div>
-                  {source.isInDoaj ? <span className="gsi-verified-badge"><GsiIcon name="check" size={14} /> DOAJ listed</span> : null}
+                  <div className="gsi-result-badges">
+                    {source.matchLabel ? <span className="gsi-match-badge">{source.matchLabel}</span> : null}
+                    {source.isInDoaj ? <span className="gsi-verified-badge"><GsiIcon name="check" size={14} /> DOAJ listed</span> : null}
+                  </div>
                 </div>
                 <dl>
                   <div><dt>ISSN</dt><dd>{source.issnL || source.issns?.[0] || "Not listed"}</dd></div>
                   <div><dt>Country</dt><dd>{formatCountry(source.countryCode)}</dd></div>
                   <div><dt>Works indexed</dt><dd>{formatNumber(source.worksCount)}</dd></div>
+                  <div><dt>Website</dt><dd>{formatDomain(source.homepageUrl)}</dd></div>
                 </dl>
               </div>
               <button className="gsi-select-button" type="button" disabled={Boolean(importingId)} onClick={() => chooseJournal(source)}>
                 {importingId === source.id ? <><span className="gsi-spinner" /> Importing…</> : <>This is my journal <GsiIcon name="arrow" size={17} /></>}
               </button>
             </article>
-          )) : (
+          )) : externalCandidates.length ? (
+            <div className="gsi-external-results">
+              <Notice title="Found in Crossref, but not yet importable">These records have journal metadata and ISSNs in Crossref, but GSI could not link them to an OpenAlex journal source. They are not being treated as verified or indexed.</Notice>
+              {externalCandidates.map((journal) => (
+                <article className="gsi-result-card gsi-external-result-card" key={journal.issnL || journal.issns?.join("-")}>
+                  <div className="gsi-result-monogram" aria-hidden="true">{journal.displayName.charAt(0).toUpperCase()}</div>
+                  <div className="gsi-result-body">
+                    <div className="gsi-result-title-row">
+                      <div><h3>{journal.displayName}</h3><p>{journal.publisher || "Publisher not listed"}</p></div>
+                      <span className="gsi-match-badge">Crossref only</span>
+                    </div>
+                    <dl><div><dt>ISSN</dt><dd>{journal.issnL || journal.issns?.[0] || "Not listed"}</dd></div><div><dt>Status</dt><dd>Needs OpenAlex verification</dd></div></dl>
+                  </div>
+                </article>
+              ))}
+              <div className="gsi-external-actions">
+                <a className="gsi-secondary-button" href="https://help.openalex.org/how-to/getting-indexed/" target="_blank" rel="noreferrer">How to get the journal indexed <GsiIcon name="external" size={15} /></a>
+                <button className="gsi-text-button" type="button" onClick={() => { setSearched(false); setExternalCandidates([]); searchInput.current?.focus(); }}>Try another search</button>
+              </div>
+            </div>
+          ) : (
             <div className="gsi-empty-state">
               <span><GsiIcon name="search" size={28} /></span>
               <h3>We didn’t find a journal for “{query}”</h3>
-              <p>Check the spelling, try the journal’s ISSN, or search using only the most distinctive words in its title.</p>
-              <button className="gsi-secondary-button" type="button" onClick={() => { setSearched(false); setQuery(""); searchInput.current?.focus(); }}>Change search</button>
+              <p>Check the spelling, try the journal’s ISSN, publisher name, or full website address. GSI checked both OpenAlex and its Crossref fallback.</p>
+              <button className="gsi-secondary-button" type="button" onClick={() => { setSearched(false); setQuery(""); setExternalCandidates([]); searchInput.current?.focus(); }}>Change search</button>
             </div>
           )}
         </div>

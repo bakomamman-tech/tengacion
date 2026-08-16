@@ -36,6 +36,7 @@ const PUBLIC_STATIC_PATHS = new Set([
   "/neheze-farms",
   "/neheze_farms",
   "/farms/neheze-farms",
+  "/cygro-enterprise",
   "/safety",
   "/child-safety",
   "/moderation-policy",

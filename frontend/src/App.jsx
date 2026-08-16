@@ -29,6 +29,7 @@ const InvestorPitchPage = lazy(() => import("./pages/InvestorPitchPage"));
 const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
 const TovidoAnthonyFoundationPage = lazy(() => import("./pages/TovidoAnthonyFoundationPage"));
 const NehezeFarmsPage = lazy(() => import("./pages/NehezeFarmsPage"));
+const CygroEnterprisePage = lazy(() => import("./pages/CygroEnterprisePage"));
 const AIProfessionalsKadunaPage = lazy(() => import("./pages/AIProfessionalsKadunaPage"));
 const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
 const TeacherTrainingPage = lazy(() => import("./pages/TeacherTrainingPage"));
@@ -212,8 +213,12 @@ export default function App() {
     pathname.startsWith("/kadahive/") ||
     pathname === "/admin/institutions/kadahive";
   const isGsiRoute = pathname === "/gsi" || pathname.startsWith("/gsi/");
+  const isCygroEnterpriseRoute = pathname === "/cygro-enterprise";
   const isAuthOptionalRoute =
-    pathname === "/" || pathname.startsWith("/kadahive") || isGsiRoute;
+    pathname === "/" ||
+    isCygroEnterpriseRoute ||
+    pathname.startsWith("/kadahive") ||
+    isGsiRoute;
 
   // The public landing page must remain useful while a slow mobile connection
   // checks for an existing session. Authenticated visitors are redirected as
@@ -224,7 +229,9 @@ export default function App() {
 
   return (
     <>
-      <WelcomeVoiceController user={isKadahiveRoute || isAIProfessionalsRoute || isGsiRoute ? null : user} />
+      <WelcomeVoiceController
+        user={isKadahiveRoute || isAIProfessionalsRoute || isGsiRoute || isCygroEnterpriseRoute ? null : user}
+      />
       <RouteSeoController />
       <Suspense fallback={<AppShellFallback />}>
         <Routes>
@@ -285,6 +292,7 @@ export default function App() {
           <Route path="/neheze-farms" element={<NehezeFarmsPage />} />
           <Route path="/neheze_farms" element={<NehezeFarmsPage />} />
           <Route path="/farms/neheze-farms" element={<NehezeFarmsPage />} />
+          <Route path="/cygro-enterprise" element={<CygroEnterprisePage />} />
           <Route
             path="/AI-Professionals-In-Kaduna-State"
             element={<AIProfessionalsKadunaPage />}
@@ -1094,7 +1102,7 @@ export default function App() {
           />
         </Routes>
       </Suspense>
-      {user && !isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isGsiRoute ? (
+      {user && !isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isGsiRoute && !isCygroEnterpriseRoute ? (
         <TopUpPromoDiscovery
           user={user}
           onExploreTip={(tip) => {
@@ -1112,8 +1120,8 @@ export default function App() {
           }}
         />
       ) : null}
-      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isGsiRoute ? <InstallPrompt /> : null}
-      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isGsiRoute ? (
+      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isGsiRoute && !isCygroEnterpriseRoute ? <InstallPrompt /> : null}
+      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isGsiRoute && !isCygroEnterpriseRoute ? (
         <TengacionAssistantDock />
       ) : null}
     </>

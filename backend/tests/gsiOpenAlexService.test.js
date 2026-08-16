@@ -37,14 +37,30 @@ describe("GSI OpenAlex service", () => {
   test("normalizes ISSNs in compact and hyphenated input", () => {
     expect(normalizeIssn("ISSN 1234567X")).toBe("1234-567X");
     expect(normalizeIssn("1234-5678")).toBe("1234-5678");
+    expect(normalizeIssn("24678821")).toBe("2467-8821");
+    expect(normalizeIssn("2467-8821")).toBe("2467-8821");
     expect(normalizeIssn("journal title only")).toBe("");
   });
 
-  test("recognizes and normalizes website searches", () => {
-    expect(parseWebsiteQuery("www.panafrican-med-journal.com/about")).toEqual({
+  test("builds bounded website search candidates from academic words and abbreviations", () => {
+    expect(parseWebsiteQuery("www.panafrican-med-journal.com/about")).toMatchObject({
       domain: "panafrican-med-journal.com",
-      searchText: "pan african med journal about",
+      searchText: "pan african medical journal",
     });
+    expect(parseWebsiteQuery("www.panafrican-med-journal.com/about").searchCandidates).toEqual([
+      "pan african medical journal",
+      "pan african medical journal about",
+      "about",
+      "panafrican med journal about",
+    ]);
+    expect(parseWebsiteQuery("ghanamedj.org").searchCandidates).toEqual([
+      "ghana medical journal",
+      "ghanamedj",
+    ]);
+    expect(parseWebsiteQuery("africanhealthsciences.org").searchCandidates).toEqual([
+      "african health sciences",
+      "africanhealthsciences",
+    ]);
     expect(parseWebsiteQuery("African Health Sciences")).toBeNull();
   });
 
@@ -169,6 +185,176 @@ describe("GSI OpenAlex service", () => {
       matchLabel: "Website: thelancet.com",
     });
     expect(payload.results[1].matchedBy).toBe("website-derived");
+  });
+
+  test("preserves NIJOTECH exact website discovery", async () => {
+    process.env.OPENALEX_API_KEY = "test-key";
+    const fetchMock = jest.spyOn(global, "fetch").mockImplementation((input) => {
+      const url = new URL(String(input));
+      if (url.hostname === "api.crossref.org") {
+        throw new Error("Crossref should not be needed for an exact OpenAlex homepage match");
+      }
+      expect(url.pathname).toBe("/sources");
+      expect(url.searchParams.get("search")).toBe("nijotech");
+      return jsonResponse({ results: [openAlexSource({
+        id: "https://openalex.org/S130385790",
+        display_name: "Nigerian Journal of Technology",
+        issn_l: "0331-8443",
+        issn: ["0331-8443", "2467-8821"],
+        homepage_url: "https://www.nijotech.com/",
+      })] });
+    });
+
+    const payload = await searchJournals("https://www.nijotech.com/");
+
+    expect(payload.matchType).toBe("website");
+    expect(payload.results).toHaveLength(1);
+    expect(payload.results[0]).toMatchObject({
+      displayName: "Nigerian Journal of Technology",
+      matchedBy: "website",
+      matchLabel: "Website: nijotech.com",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test.each([
+    [
+      "https://ghanamedj.org/",
+      "ghanamedj.org",
+      "ghana medical journal",
+      "Ghana Medical Journal",
+      ["0016-9560", "2616-163X"],
+      "S123001",
+    ],
+    [
+      "ghanamedj.org",
+      "ghanamedj.org",
+      "ghana medical journal",
+      "Ghana Medical Journal",
+      ["0016-9560", "2616-163X"],
+      "S123002",
+    ],
+    [
+      "https://africanhealthsciences.org/",
+      "africanhealthsciences.org",
+      "african health sciences",
+      "African Health Sciences",
+      ["1680-6905", "1729-0503"],
+      "S123003",
+    ],
+    [
+      "africanhealthsciences.org",
+      "africanhealthsciences.org",
+      "african health sciences",
+      "African Health Sciences",
+      ["1680-6905", "1729-0503"],
+      "S123004",
+    ],
+  ])("resolves website %s through a general Crossref ISSN bridge", async (
+    query,
+    domain,
+    expectedSearch,
+    title,
+    issns,
+    sourceId
+  ) => {
+    process.env.OPENALEX_API_KEY = "test-key";
+    const openAlexSearches = [];
+    const fetchMock = jest.spyOn(global, "fetch").mockImplementation((input) => {
+      const url = new URL(String(input));
+      if (url.hostname === "api.crossref.org") {
+        expect(url.searchParams.get("query")).toBe(expectedSearch);
+        return jsonResponse({ message: { items: [{
+          title,
+          publisher: "Regional Medical Publisher",
+          ISSN: issns,
+          "ISSN-L": issns[0],
+          URL: `https://api.crossref.org/journals/${issns[0]}`,
+        }] } });
+      }
+      if (url.searchParams.get("filter")?.includes(`issn:${issns.join("|")}`)) {
+        return jsonResponse({ results: [openAlexSource({
+          id: `https://openalex.org/${sourceId}`,
+          display_name: title,
+          issn_l: issns[0],
+          issn: issns,
+          homepage_url: `https://${domain}/journal-home`,
+        })] });
+      }
+      openAlexSearches.push(url.searchParams.get("search"));
+      return jsonResponse({ meta: { count: 0 }, results: [] });
+    });
+
+    const payload = await searchJournals(query);
+
+    expect(openAlexSearches).toContain(expectedSearch);
+    expect(payload.matchType).toBe("website");
+    expect(payload.externalCandidates).toEqual([]);
+    expect(payload.results[0]).toMatchObject({
+      id: sourceId,
+      displayName: title,
+      matchedBy: "website",
+      matchLabel: `Website: ${domain}`,
+    });
+    expect(fetchMock.mock.calls.some(([input]) =>
+      new URL(String(input)).hostname === "api.crossref.org"
+    )).toBe(true);
+  });
+
+  test("a bogus website rejects unrelated text and Crossref candidates cleanly", async () => {
+    process.env.OPENALEX_API_KEY = "test-key";
+    jest.spyOn(global, "fetch").mockImplementation((input) => {
+      const url = new URL(String(input));
+      if (url.hostname === "api.crossref.org") {
+        return jsonResponse({ message: { items: [{
+          title: "Ghana Medical Journal",
+          publisher: "Unrelated Publisher",
+          ISSN: ["0016-9560"],
+          "ISSN-L": "0016-9560",
+        }] } });
+      }
+      if (url.searchParams.get("filter")?.includes("issn:0016-9560")) {
+        return jsonResponse({ results: [openAlexSource({
+          display_name: "Ghana Medical Journal",
+          issn_l: "0016-9560",
+          issn: ["0016-9560"],
+          homepage_url: "https://ghanamedj.org/",
+        })] });
+      }
+      return jsonResponse({ results: [openAlexSource({
+        display_name: "African Health Sciences",
+        homepage_url: "https://africanhealthsciences.org/",
+      })] });
+    });
+
+    const payload = await searchJournals("bogus-journal-website.example");
+
+    expect(payload.results).toEqual([]);
+    expect(payload.externalCandidates).toEqual([]);
+    expect(payload.matchType).toBe("website");
+  });
+
+  test.each(["2467-8821", "24678821"])("keeps exact ISSN discovery for %s", async (query) => {
+    process.env.OPENALEX_API_KEY = "test-key";
+    const fetchMock = jest.spyOn(global, "fetch").mockImplementation((input) => {
+      const url = new URL(String(input));
+      expect(url.pathname).toBe("/sources/issn:2467-8821");
+      return jsonResponse(openAlexSource({
+        display_name: "Nigerian Journal of Technology",
+        issn_l: "2467-8821",
+        issn: ["2467-8821"],
+      }));
+    });
+
+    const payload = await searchJournals(query);
+
+    expect(payload.matchType).toBe("issn");
+    expect(payload.results[0]).toMatchObject({
+      displayName: "Nigerian Journal of Technology",
+      matchedBy: "issn",
+      matchLabel: "Exact ISSN: 2467-8821",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   test("uses Crossref ISSNs to recover a journal missing from title and publisher search", async () => {

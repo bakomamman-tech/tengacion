@@ -4,6 +4,35 @@ const DEFAULT_TIMEOUT_MS = 15000;
 const CROSSREF_TIMEOUT_MS = 8000;
 const MAX_IMPORTED_WORKS = 100;
 const MAX_SEARCH_RESULTS = 8;
+const MAX_WEBSITE_SEARCH_CANDIDATES = 4;
+
+const JOURNAL_DOMAIN_WORDS = Object.freeze([
+  "journals",
+  "journal",
+  "sciences",
+  "science",
+  "medicine",
+  "medical",
+  "research",
+  "review",
+  "health",
+]);
+
+// These are conventional scholarly-domain suffixes, not journal-specific aliases.
+// Suffix-only expansion avoids splitting ordinary words that merely contain them.
+const JOURNAL_DOMAIN_ABBREVIATIONS = Object.freeze([
+  ["jrnl", "journal"],
+  ["jour", "journal"],
+  ["med", "medical"],
+  ["sci", "science"],
+  ["res", "research"],
+  ["rev", "review"],
+  ["j", "journal"],
+]);
+
+const WEBSITE_TITLE_STOP_WORDS = new Set([
+  "and", "for", "journal", "journals", "of", "the",
+]);
 
 class GsiOpenAlexError extends Error {
   constructor(message, { status = 502, code = "OPENALEX_UNAVAILABLE" } = {}) {
@@ -63,11 +92,50 @@ const normalizedHostname = (value) => {
   }
 };
 
-const expandWebsiteToken = (value) =>
-  value
+const expandAcademicSuffixes = (value) => {
+  let stem = value;
+  const expandedSuffixes = [];
+  for (let index = 0; index < 4 && stem; index += 1) {
+    const match = JOURNAL_DOMAIN_ABBREVIATIONS.find(([abbreviation]) =>
+      stem.endsWith(abbreviation) && (
+        stem === abbreviation ||
+        expandedSuffixes.length > 0 ||
+        abbreviation === "j" ||
+        abbreviation === "jour" ||
+        abbreviation === "jrnl"
+      )
+    );
+    if (!match) break;
+    stem = stem.slice(0, -match[0].length);
+    expandedSuffixes.unshift(match[1]);
+  }
+  return [stem, ...expandedSuffixes].filter(Boolean);
+};
+
+const expandWebsiteToken = (value) => {
+  const prefixed = value
     .replace(/^the(?=[a-z]{4,}$)/, "the ")
-    .replace(/^pan(?=african|american|asian|european)/, "pan ")
-    .replace(/(journal|review|science|health|medical|medicine|research)$/g, " $1")
+    .replace(/^pan(?=african|american|asian|european)/, "pan ");
+  const academicWordPattern = new RegExp(`(${JOURNAL_DOMAIN_WORDS.join("|")})`, "g");
+
+  return prefixed
+    .split(/\s+/)
+    .filter(Boolean)
+    .flatMap((part) => part.split(academicWordPattern).filter(Boolean))
+    .flatMap((part) => JOURNAL_DOMAIN_WORDS.includes(part)
+      ? [part]
+      : expandAcademicSuffixes(part))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const websiteSearchText = (parts, { expand = true } = {}) =>
+  parts
+    .map((part) => expand ? expandWebsiteToken(part.toLowerCase()) : part.toLowerCase())
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
     .trim();
 
 const parseWebsiteQuery = (value) => {
@@ -86,15 +154,26 @@ const parseWebsiteQuery = (value) => {
     const ignoredParts = new Set([
       "ac", "co", "com", "edu", "gov", "net", "online", "org", "www",
     ]);
-    const searchText = [...hostnameParts.slice(0, -1), ...pathParts]
+    const hostnameSearchParts = hostnameParts.slice(0, -1)
       .flatMap((part) => part.split(/[-_.]+/))
-      .map((part) => expandWebsiteToken(part.toLowerCase()))
-      .filter((part) => part.length > 1 && !ignoredParts.has(part))
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
+      .filter((part) => part.length > 1 && !ignoredParts.has(part.toLowerCase()));
+    const pathSearchParts = pathParts
+      .flatMap((part) => part.split(/[-_.]+/))
+      .filter((part) => part.length > 1 && !ignoredParts.has(part.toLowerCase()));
+    const combinedParts = [...hostnameSearchParts, ...pathSearchParts];
+    const searchCandidates = uniqueBy([
+      websiteSearchText(hostnameSearchParts),
+      websiteSearchText(combinedParts),
+      websiteSearchText(pathSearchParts),
+      websiteSearchText(combinedParts, { expand: false }),
+    ].filter(Boolean), (searchText) => normalizedWords(searchText))
+      .slice(0, MAX_WEBSITE_SEARCH_CANDIDATES);
 
-    return { domain, searchText: searchText || hostnameParts[0] };
+    return {
+      domain,
+      searchText: searchCandidates[0] || hostnameParts[0],
+      searchCandidates: searchCandidates.length ? searchCandidates : [hostnameParts[0]],
+    };
   } catch {
     return null;
   }
@@ -107,6 +186,29 @@ const domainsMatch = (homepageUrl, searchedDomain) => {
     homepageDomain.endsWith(`.${searchedDomain}`) ||
     searchedDomain.endsWith(`.${homepageDomain}`);
 };
+
+const canonicalWebsiteWord = (value) => ({
+  journals: "journal",
+  sciences: "science",
+}[value] || value);
+
+const websitePhraseMatchesTitle = (phrase, title) => {
+  const phraseWords = normalizedWords(phrase)
+    .split(" ")
+    .map(canonicalWebsiteWord)
+    .filter((word) => word && !WEBSITE_TITLE_STOP_WORDS.has(word));
+  if (!phraseWords.length) return false;
+  const titleWords = new Set(normalizedWords(title).split(" ").map(canonicalWebsiteWord));
+  const matchedWords = phraseWords.filter((word) => titleWords.has(word));
+  return matchedWords.length / phraseWords.length >= 0.75;
+};
+
+const sourceMatchesWebsiteCandidates = (source, searchCandidates) =>
+  [source?.displayName, ...(Array.isArray(source?.alternateTitles) ? source.alternateTitles : [])]
+    .filter(Boolean)
+    .some((title) => searchCandidates.some((candidate) =>
+      websitePhraseMatchesTitle(candidate, title)
+    ));
 
 const uniqueBy = (items, keyFn) => {
   const seen = new Set();
@@ -401,36 +503,70 @@ const crossrefFallback = async (query) => {
 };
 
 const searchByWebsite = async (cleanedQuery, website) => {
-  const payload = await fetchOpenAlex("/sources", {
-    search: website.searchText,
-    filter: "type:journal",
-    per_page: 25,
-  });
-  const normalized = uniqueBy(
-    (Array.isArray(payload?.results) ? payload.results : [])
-      .map(normalizeSource)
-      .filter((source) => source.id),
-    (source) => source.id
-  );
-  const exact = normalized
+  const searchCandidates = uniqueBy(
+    [website.searchText, ...(Array.isArray(website.searchCandidates) ? website.searchCandidates : [])]
+      .map((candidate) => cleanText(candidate, 180))
+      .filter(Boolean),
+    (candidate) => normalizedWords(candidate)
+  ).slice(0, MAX_WEBSITE_SEARCH_CANDIDATES);
+  let normalized = [];
+  for (const searchCandidate of searchCandidates) {
+    const payload = await fetchOpenAlex("/sources", {
+      search: searchCandidate,
+      filter: "type:journal",
+      per_page: 25,
+    });
+    normalized = uniqueBy([
+      ...normalized,
+      ...(Array.isArray(payload?.results) ? payload.results : [])
+        .map(normalizeSource)
+        .filter((source) => source.id),
+    ], (source) => source.id);
+    if (normalized.some((source) => domainsMatch(source.homepageUrl, website.domain))) break;
+  }
+
+  const textExact = normalized
     .filter((source) => domainsMatch(source.homepageUrl, website.domain))
     .map((source) => annotateSource(source, "website", `Website: ${website.domain}`));
   const approximate = normalized
-    .filter((source) => !domainsMatch(source.homepageUrl, website.domain))
+    .filter((source) =>
+      !domainsMatch(source.homepageUrl, website.domain) &&
+      sourceMatchesWebsiteCandidates(source, searchCandidates)
+    )
     .map((source) => annotateSource(source, "website-derived", "Possible match from website name"));
-  const fallback = exact.length
+  const fallbackQuery = [...searchCandidates]
+    .sort((left, right) => normalizedWords(right).split(" ").length - normalizedWords(left).split(" ").length)[0];
+  const fallback = textExact.length
     ? { results: [], externalCandidates: [] }
-    : await crossrefFallback(website.searchText);
-  const results = uniqueBy([...exact, ...fallback.results, ...approximate], (source) => source.id)
+    : await crossrefFallback(fallbackQuery || website.searchText);
+  const relevantFallback = fallback.results.filter((source) =>
+    domainsMatch(source.homepageUrl, website.domain) ||
+    sourceMatchesWebsiteCandidates(source, searchCandidates)
+  );
+  const fallbackExact = relevantFallback
+    .filter((source) => domainsMatch(source.homepageUrl, website.domain))
+    .map((source) => annotateSource(source, "website", `Website: ${website.domain}`));
+  const fallbackApproximate = relevantFallback
+    .filter((source) => !domainsMatch(source.homepageUrl, website.domain));
+  const exact = uniqueBy([...textExact, ...fallbackExact], (source) => source.id);
+  const results = uniqueBy([...exact, ...fallbackApproximate, ...approximate], (source) => source.id)
     .slice(0, MAX_SEARCH_RESULTS);
+  const externalCandidates = fallback.externalCandidates
+    .filter((journal) => sourceMatchesWebsiteCandidates(journal, searchCandidates));
 
   return {
     query: cleanedQuery,
-    matchType: exact.length ? "website" : fallback.results.length ? "crossref" : "website-derived",
+    matchType: exact.length
+      ? "website"
+      : fallbackApproximate.length
+        ? "crossref"
+        : approximate.length
+          ? "website-derived"
+          : "website",
     results,
     totalMatches: results.length,
-    externalCandidates: results.length ? [] : fallback.externalCandidates,
-    fallbackUsed: Boolean(fallback.results.length),
+    externalCandidates: results.length ? [] : externalCandidates,
+    fallbackUsed: Boolean(fallbackExact.length || fallbackApproximate.length || externalCandidates.length),
   };
 };
 

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -143,6 +143,38 @@ describe("GSI local-impact evidence", () => {
 
     expect(await screen.findByText("Publisher: Example University")).toBeInTheDocument();
     expect(screen.getByText("example-journal.org")).toBeInTheDocument();
+  });
+
+  it("labels only domain-confirmed results as exact website matches", async () => {
+    const user = userEvent.setup();
+    mocks.searchJournals.mockResolvedValue({
+      matchType: "website",
+      results: [{
+        ...source,
+        id: "S-GHANA",
+        displayName: "Ghana Medical Journal",
+        homepageUrl: "https://ghanamedj.org/",
+        matchedBy: "website",
+        matchLabel: "Website: ghanamedj.org",
+      }, {
+        ...source,
+        id: "S-APPROXIMATE",
+        displayName: "Ghana Journal of Health Research",
+        homepageUrl: "https://unrelated.example.org/",
+        matchedBy: "website-derived",
+        matchLabel: "Possible match from website name",
+      }],
+    });
+    renderPage();
+
+    await user.type(screen.getByLabelText("Journal name, ISSN, publisher, or website"), "ghanamedj.org");
+    await user.click(screen.getByRole("button", { name: "Find journal" }));
+
+    const exactCard = (await screen.findByRole("heading", { name: "Ghana Medical Journal" })).closest("article");
+    const approximateCard = screen.getByRole("heading", { name: "Ghana Journal of Health Research" }).closest("article");
+    expect(within(exactCard).getByText("Website: ghanamedj.org")).toBeInTheDocument();
+    expect(within(approximateCard).getByText("Possible match from website name")).toBeInTheDocument();
+    expect(within(approximateCard).queryByText(/^Website:/)).not.toBeInTheDocument();
   });
 
   it("keeps Crossref-only journals separate from importable OpenAlex records", async () => {

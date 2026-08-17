@@ -88,8 +88,11 @@ const frontendPath = path.join(__dirname, "../frontend/dist");
 const frontendIndex = path.join(frontendPath, "index.html");
 const francescaSitePath = path.join(frontendPath, "francesca-naymarie");
 const francescaSiteIndex = path.join(francescaSitePath, "index.html");
+const gideonSitePath = path.join(frontendPath, "Gideon-Amos");
+const gideonSiteIndex = path.join(gideonSitePath, "index.html");
 const frontendBuilt = fs.existsSync(frontendIndex);
 const francescaSiteBuilt = fs.existsSync(francescaSiteIndex);
+const gideonSiteBuilt = fs.existsSync(gideonSiteIndex);
 
 if (frontendBuilt) {
   const { renderSeoHtml, resolvePageSeo } = require("./services/seo/pageSeoService");
@@ -132,6 +135,21 @@ if (frontendBuilt) {
     app.use(
       "/francesca-naymarie",
       express.static(francescaSitePath, {
+        index: "index.html",
+        setHeaders: (response, filePath) => {
+          setStaticCacheHeaders(response, filePath, frontendPath);
+        },
+      })
+    );
+  }
+  if (gideonSiteBuilt) {
+    app.get(/^\/gideon-amos\/?$/i, (req, res, next) => {
+      if (req.path === "/Gideon-Amos/") return next();
+      return res.redirect(308, "/Gideon-Amos/");
+    });
+    app.use(
+      "/Gideon-Amos",
+      express.static(gideonSitePath, {
         index: "index.html",
         setHeaders: (response, filePath) => {
           setStaticCacheHeaders(response, filePath, frontendPath);

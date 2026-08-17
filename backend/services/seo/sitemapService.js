@@ -45,6 +45,7 @@ const STATIC_PUBLIC_ROUTES = [
   { path: "/about" },
   { path: "/leadership" },
   { path: "/francesca-naymarie" },
+  { path: "/Gideon-Amos" },
   { path: "/investors" },
   { path: "/how-it-works" },
   { path: "/for-creators" },

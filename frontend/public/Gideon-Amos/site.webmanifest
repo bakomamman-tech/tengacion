@@ -1,0 +1,16 @@
+{
+  "name": "Gideon Amos",
+  "short_name": "Gideon Amos",
+  "start_url": "/Gideon-Amos/",
+  "display": "standalone",
+  "background_color": "#080a0c",
+  "theme_color": "#080a0c",
+  "icons": [
+    {
+      "src": "assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

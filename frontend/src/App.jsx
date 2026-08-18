@@ -41,6 +41,11 @@ const Search = lazy(() => import("./pages/Search"));
 const Home = lazy(() => import("./pages/Home"));
 const RechargeRafflePage = lazy(() => import("./pages/RechargeRafflePage"));
 const MillionaireGamePage = lazy(() => import("./pages/MillionaireGamePage"));
+const BrightFutureAcademyRoot = lazy(() => import("./features/brightFutureAcademy/BrightFutureAcademyRoot"));
+const BrightFutureLowercaseRedirect = lazy(async () => {
+  const module = await import("./features/brightFutureAcademy/BrightFutureAcademyRoot");
+  return { default: module.BrightFutureLowercaseRedirect };
+});
 const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 const FindCreatorsPage = lazy(() => import("./pages/FindCreatorsPage"));
 const FindFriendsPage = lazy(() => import("./pages/FindFriendsPage"));
@@ -79,6 +84,7 @@ const AdminTopUpPromoPage = lazy(() => import("./pages/AdminTopUpPromo"));
 const AdminTopUpPromoPreviewPage = lazy(() => import("./pages/AdminTopUpPromoPreview"));
 const AdminRaffleCardsPage = lazy(() => import("./pages/AdminRaffleCards"));
 const AdminMillionaireGamePage = lazy(() => import("./pages/AdminMillionaireGame"));
+const AdminBrightFutureAcademyPage = lazy(() => import("./pages/AdminBrightFutureAcademy"));
 const AdminSettingsPage = lazy(() => import("./pages/AdminSettings"));
 const AdminStoragePage = lazy(() => import("./pages/AdminStorage"));
 const CreatorHubPage = lazy(() => import("./pages/CreatorHubPage"));
@@ -205,7 +211,8 @@ export default function App() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   usePageTracking();
-  const isFocusedGameRoute = pathname === "/millionaire";
+  const isBrightFutureRoute = pathname.toLowerCase().startsWith("/bright-future-academy");
+  const isFocusedGameRoute = pathname === "/millionaire" || isBrightFutureRoute;
   const isAIProfessionalsRoute =
     pathname.toLowerCase() === "/ai-professionals-in-kaduna-state";
   const isKadahiveRoute =
@@ -218,7 +225,8 @@ export default function App() {
     pathname === "/" ||
     isCygroEnterpriseRoute ||
     pathname.startsWith("/kadahive") ||
-    isGsiRoute;
+    isGsiRoute ||
+    isBrightFutureRoute;
 
   // The public landing page must remain useful while a slow mobile connection
   // checks for an existing session. Authenticated visitors are redirected as
@@ -230,7 +238,7 @@ export default function App() {
   return (
     <>
       <WelcomeVoiceController
-        user={isKadahiveRoute || isAIProfessionalsRoute || isGsiRoute || isCygroEnterpriseRoute ? null : user}
+        user={isKadahiveRoute || isAIProfessionalsRoute || isGsiRoute || isCygroEnterpriseRoute || isBrightFutureRoute ? null : user}
       />
       <RouteSeoController />
       <Suspense fallback={<AppShellFallback />}>
@@ -325,6 +333,8 @@ export default function App() {
           <Route path="/kaduna-got-talent/register" element={<KadunaGotTalentRegisterPage user={user} />} />
           <Route path="/summer-bootcamp/register" element={<SummerBootcampRegisterPage />} />
           <Route path="/millionaire/register" element={<MillionaireRegisterPage />} />
+          <Route caseSensitive path="/Bright-Future-Academy/*" element={<BrightFutureAcademyRoot />} />
+          <Route caseSensitive path="/bright-future-academy/*" element={<BrightFutureLowercaseRedirect />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -1073,6 +1083,14 @@ export default function App() {
             element={
               <AdminRoute user={user}>
                 <AdminMillionaireGamePage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/bright-future-academy"
+            element={
+              <AdminRoute user={user}>
+                <AdminBrightFutureAcademyPage user={user} />
               </AdminRoute>
             }
           />

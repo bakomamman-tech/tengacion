@@ -170,13 +170,17 @@ const isPublicMarketplaceRoute = (pathname) =>
 const isPublicGsiRecordRoute = (pathname) =>
   /^\/gsi\/records\/[a-zA-Z0-9_-]+$/i.test(pathname);
 
+const isPublicBrightFutureRoute = (pathname) =>
+  /^\/bright-future-academy(?:\/(?:register|leaderboard|participants))?$/i.test(pathname);
+
 const isHandledPublicRoute = (pathname) =>
   PUBLIC_STATIC_PATHS.has(pathname)
   || isPublicCreatorRoute(pathname)
   || isPublicCreatorAliasRoute(pathname)
   || isPublicDetailRoute(pathname)
   || isPublicMarketplaceRoute(pathname)
-  || isPublicGsiRecordRoute(pathname);
+  || isPublicGsiRecordRoute(pathname)
+  || isPublicBrightFutureRoute(pathname);
 
 export default function RouteSeoController() {
   const location = useLocation();

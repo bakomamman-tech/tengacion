@@ -130,7 +130,7 @@ app.use(
   cors({
     origin: corsOrigin,
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     exposedHeaders: [REQUEST_ID_HEADER],
   })
@@ -224,6 +224,7 @@ app.use("/api/talent-show", require("./routes/talentShow"));
 app.use("/api/summer-bootcamp", require("./routes/summerBootcamp"));
 app.use("/api/recharge-raffle", require("./routes/rechargeRaffle"));
 app.use("/api/millionaire", require("./routes/millionaireGame"));
+app.use("/api/bright-future-academy", require("./routes/brightFutureAcademy"));
 app.use("/api/top-up-promo", require("./routes/topUpPromo"));
 app.use("/api/search", require("./routes/search"));
 app.use("/api/assistant", require("./routes/assistant"));

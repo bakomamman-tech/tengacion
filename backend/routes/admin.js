@@ -408,6 +408,7 @@ router.use("/assistant", require("./adminAssistant"));
 router.use("/marketplace", require("./marketplaceAdminRoutes"));
 router.use("/raffle", require("./adminRaffle"));
 router.use("/millionaire", require("./adminMillionaire"));
+router.use("/bright-future-academy", require("./adminBrightFutureAcademy"));
 router.use("/top-up-promo", require("./adminTopUpPromo"));
 
 router.get("/system/readiness", async (_req, res) => {

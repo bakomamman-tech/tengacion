@@ -31,6 +31,7 @@ const NAV_GROUPS = [
       { key: "tuition-payments", label: "Tuition Payments", icon: "finance", path: "/admin/tuition-payments" },
       { key: "raffle", label: "Raffle Cards", icon: "spark", path: "/admin/recharge-raffle" },
       { key: "millionaire", label: "Millionaire Game", icon: "spark", path: "/admin/millionaire" },
+      { key: "bright-future", label: "Bright Future Academy", icon: "spark", path: "/admin/bright-future-academy" },
     ],
   },
   {

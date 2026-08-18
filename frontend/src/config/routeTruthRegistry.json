@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "lastReviewed": "2026-08-09",
+  "lastReviewed": "2026-08-18",
   "routeAnalyticsContract": {
     "eventType": "route_viewed",
     "version": 1,
@@ -175,6 +175,20 @@
       "kpi": "Creator profile open rate",
       "featureFlag": null,
       "testEvidence": ["frontend/src/pages/__tests__/FindCreatorsPage.test.jsx", "frontend/src/pages/__tests__/PublicCategoryPage.test.jsx"]
+    },
+    {
+      "id": "bright_future_academy",
+      "title": "Bright Future Academy Smart School Portal and CBT Challenge",
+      "status": "production",
+      "surface": "education",
+      "access": "mixed",
+      "canonicalPath": "/Bright-Future-Academy",
+      "appPaths": ["/Bright-Future-Academy/*", "/bright-future-academy/*"],
+      "dataAuthority": "BrightFutureParticipant, BrightFutureExamAttempt, BrightFutureQuestion and BrightFutureCompetitionConfig server records; Candidate ID sessions authenticate school portal access without a Tengacion social account.",
+      "ownerRole": "Institutional Products Owner",
+      "kpi": "Verified CBT completion and privacy-safe student participation",
+      "featureFlag": null,
+      "testEvidence": ["backend/tests/brightFutureAcademy.test.js", "frontend/src/features/brightFutureAcademy/BrightFutureAcademy.test.jsx"]
     },
     {
       "id": "marketplace",
@@ -582,7 +596,7 @@
       "surface": "admin",
       "access": "admin",
       "canonicalPath": "/admin/dashboard",
-      "appPaths": ["/admin", "/admin/dashboard", "/admin/users", "/admin/content", "/admin/marketplace", "/admin/transactions", "/admin/tuition-payments", "/admin/creator-earnings", "/admin/assurance", "/admin/creators/:creatorId", "/admin/audit-logs", "/admin/reports", "/admin/moderation", "/admin/moderation/cases/:caseId", "/admin/analytics", "/admin/assistant", "/admin/assistant/metrics", "/admin/assistant/reviews", "/admin/assistant/evals", "/admin/messages", "/admin/campaigns", "/admin/top-up-bank-account-promo", "/admin/top-up-bank-account-promo/preview", "/admin/recharge-raffle", "/admin/millionaire", "/admin/settings", "/admin/storage", "/admin/institutions/kadahive"],
+      "appPaths": ["/admin", "/admin/dashboard", "/admin/users", "/admin/content", "/admin/marketplace", "/admin/transactions", "/admin/tuition-payments", "/admin/creator-earnings", "/admin/assurance", "/admin/creators/:creatorId", "/admin/audit-logs", "/admin/reports", "/admin/moderation", "/admin/moderation/cases/:caseId", "/admin/analytics", "/admin/assistant", "/admin/assistant/metrics", "/admin/assistant/reviews", "/admin/assistant/evals", "/admin/messages", "/admin/campaigns", "/admin/top-up-bank-account-promo", "/admin/top-up-bank-account-promo/preview", "/admin/recharge-raffle", "/admin/millionaire", "/admin/bright-future-academy", "/admin/settings", "/admin/storage", "/admin/institutions/kadahive"],
       "dataAuthority": "Admin, moderation, audit, finance, storage and analytics APIs.",
       "ownerRole": "Internal Operations Owner",
       "kpi": "Verified operational task completion",

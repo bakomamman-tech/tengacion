@@ -14,6 +14,7 @@ const ADMIN_ITEMS = [
   { key: "top-up-promo", label: "Top-Up Bank Account Promo", path: "/admin/top-up-bank-account-promo" },
   { key: "raffle", label: "Raffle Cards", path: "/admin/recharge-raffle" },
   { key: "millionaire", label: "Millionaire Game", path: "/admin/millionaire" },
+  { key: "bright-future", label: "Bright Future Academy", path: "/admin/bright-future-academy" },
   { key: "marketplace", label: "Marketplace", path: "/admin/marketplace" },
   { key: "transactions", label: "Transactions", path: "/admin/transactions" },
   { key: "tuition-payments", label: "Online Tuition Payments", path: "/admin/tuition-payments" },
@@ -36,6 +37,7 @@ export default function AdminShell({ title, subtitle = "", user, actions = null,
     if (location.pathname.startsWith("/admin/storage")) {return "/admin/storage";}
     if (location.pathname.startsWith("/admin/recharge-raffle")) {return "/admin/recharge-raffle";}
     if (location.pathname.startsWith("/admin/millionaire")) {return "/admin/millionaire";}
+    if (location.pathname.startsWith("/admin/bright-future-academy")) {return "/admin/bright-future-academy";}
     if (location.pathname.startsWith("/admin/top-up-bank-account-promo")) {return "/admin/top-up-bank-account-promo";}
     return ADMIN_ITEMS.find((item) => location.pathname.startsWith(item.path))?.path || "/admin/dashboard";
   }, [location.pathname]);

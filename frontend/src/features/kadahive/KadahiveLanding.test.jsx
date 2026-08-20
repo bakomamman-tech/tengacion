@@ -56,6 +56,7 @@ describe("Kadahive public website", () => {
     expect(screen.getByText("Aug 2021")).toBeInTheDocument();
     expect(screen.getByText(/Mallam Nasir El-Rufai/)).toBeInTheDocument();
     expect(screen.getByText("Brand identity & design")).toBeInTheDocument();
+    expect(screen.queryByText(/historical programme fee/i)).not.toBeInTheDocument();
     expect(screen.getAllByAltText("KADA Hive Innovation & Tech Hub")).toHaveLength(2);
     screen.getAllByAltText("KADA Hive Innovation & Tech Hub").forEach((logo) => {
       expect(logo).toHaveAttribute("src", "/assets/kadahive/kadahive-logo-polished.png");

@@ -397,7 +397,6 @@ export default function KadahiveLanding() {
                   <li>19 December 2025 – 16 January 2026</li>
                   <li>10:00am – 2:00pm daily</li>
                   <li>Digital certificate and instructor support</li>
-                  <li>Historical programme fee: ₦50,000</li>
                 </ul>
                 <Link to="/kadahive/programmes/kids-code">
                   Explore the complete programme archive <span>↗</span>

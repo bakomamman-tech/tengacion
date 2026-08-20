@@ -518,7 +518,7 @@ function ProgrammeFooter({ title, body }) {
           <Link className="kh-btn kh-btn--amber" to="/kadahive/register">
             Join the community <span>↗</span>
           </Link>
-          <a className="kh-btn kh-btn--ghost" href="mailto:info@kadahivehub.com">
+          <a className="kh-btn kh-btn--ghost" href="mailto:sady9043@gmail.com">
             Email Kadahive
           </a>
         </div>

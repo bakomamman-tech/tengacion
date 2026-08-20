@@ -51,6 +51,15 @@ describe("Kadahive public website", () => {
     expect(screen.getByText("Bank of Industry")).toBeInTheDocument();
     expect(screen.getByText("Kaduna State Government")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Co-working spaces" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "07066326192" })).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: "sady9043@gmail.com" })).toHaveLength(2);
+    expect(screen.getByText("Aug 2021")).toBeInTheDocument();
+    expect(screen.getByText(/Mallam Nasir El-Rufai/)).toBeInTheDocument();
+    expect(screen.getByText("Brand identity & design")).toBeInTheDocument();
+    expect(screen.getAllByAltText("KADA Hive Innovation & Tech Hub")).toHaveLength(2);
+    screen.getAllByAltText("KADA Hive Innovation & Tech Hub").forEach((logo) => {
+      expect(logo).toHaveAttribute("src", "/assets/kadahive/kadahive-logo-polished.png");
+    });
     expect(
       screen.getByRole("img", { name: /kaduna innovators collaborating/i })
     ).toHaveAttribute("src", "/assets/kadahive/kadahive-innovation-hero.png");

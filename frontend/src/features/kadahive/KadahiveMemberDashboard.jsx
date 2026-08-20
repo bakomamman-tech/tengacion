@@ -487,7 +487,7 @@ export default function KadahiveMemberDashboard() {
                     <li>You will see approval or feedback in this portal.</li>
                     <li>For large public events, include your setup and audience needs.</li>
                   </ul>
-                  <a href="mailto:info@kadahivehub.com">Need help? Email the hub team →</a>
+                  <a href="mailto:sady9043@gmail.com">Need help? Email the hub team →</a>
                 </aside>
               </div>
             </section>

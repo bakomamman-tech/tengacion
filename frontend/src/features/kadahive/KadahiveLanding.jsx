@@ -53,6 +53,19 @@ const BENEFITS = [
   ["Project collaboration", "Find the people, tools and rooms to build together."],
 ];
 
+const PROGRAMME_TRACKS = [
+  "Digital skills training",
+  "Brand identity & design",
+  "Content creation",
+  "Animation & 3D",
+  "Graphic design",
+  "Data science",
+  "Programming & internet",
+  "Product design",
+  "Flutter",
+  "PlayTech for children",
+];
+
 const FALLBACK_EVENTS = [
   {
     _id: "ai-workshop",
@@ -143,9 +156,9 @@ export default function KadahiveLanding() {
         <div className="kh-container kh-topline__inner">
           <span>Kaduna&apos;s home for builders, founders and future-ready talent.</span>
           <div>
-            <a href="tel:+2348061234567">+234 806 123 4567</a>
+            <a href="tel:+2347066326192">07066326192</a>
             <span aria-hidden="true">•</span>
-            <a href="mailto:info@kadahivehub.com">info@kadahivehub.com</a>
+            <a href="mailto:sady9043@gmail.com">sady9043@gmail.com</a>
             <span className="kh-powered">Powered by Tengacion</span>
           </div>
         </div>
@@ -293,12 +306,9 @@ export default function KadahiveLanding() {
                 classroom.
               </p>
               <div className="kh-programme__tracks" id="kh-programme-title">
-                <span>Software development</span>
-                <span>Data science</span>
-                <span>Artificial intelligence</span>
-                <span>Digital marketing</span>
-                <span>Cybersecurity</span>
-                <span>Entrepreneurship</span>
+                {PROGRAMME_TRACKS.map((track) => (
+                  <span key={track}>{track}</span>
+                ))}
               </div>
               <Link className="kh-text-link" to="/kadahive/register">
                 Find your place at Kadahive <span>→</span>
@@ -466,6 +476,21 @@ export default function KadahiveLanding() {
                 Our work is simple to say and demanding to deliver: give people the skills,
                 environment, relationships and confidence to create valuable solutions.
               </p>
+              <div className="kh-history-card" aria-label="KADA Hive official opening">
+                <time dateTime="2021-08-13">
+                  <strong>13</strong>
+                  <span>Aug 2021</span>
+                </time>
+                <div>
+                  <span>Official opening</span>
+                  <h3>A landmark for Kaduna&apos;s innovation community.</h3>
+                  <p>
+                    KADA Hive Innovation &amp; Technology Hub was officially declared open by
+                    His Excellency Mallam Nasir El-Rufai (CFR), then Executive Governor of
+                    Kaduna State.
+                  </p>
+                </div>
+              </div>
               <div className="kh-about__values">
                 <span>Practical learning</span>
                 <span>Inclusive access</span>
@@ -523,8 +548,8 @@ export default function KadahiveLanding() {
             <h3>Contact us</h3>
             <address>
               <span>11B Sambo Road, City Centre, Kaduna</span>
-              <a href="tel:+2348061234567">+234 806 123 4567</a>
-              <a href="mailto:info@kadahivehub.com">info@kadahivehub.com</a>
+              <a href="tel:+2347066326192">07066326192</a>
+              <a href="mailto:sady9043@gmail.com">sady9043@gmail.com</a>
             </address>
           </div>
         </div>

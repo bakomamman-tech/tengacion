@@ -11,11 +11,13 @@ const app = require("../app");
 const { QUESTIONS, SUBJECT_DEFINITIONS } = require("../data/brightFutureQuestionBank");
 const BrightFutureExamAttempt = require("../models/BrightFutureExamAttempt");
 const BrightFutureParticipant = require("../models/BrightFutureParticipant");
+const BrightFutureQuestion = require("../models/BrightFutureQuestion");
 const User = require("../models/User");
 const {
   buildAdminOverview,
   getExamState,
   getLeaderboard,
+  listAdminQuestions,
   listPublicParticipants,
   loginParticipant,
   recordViolation,
@@ -119,6 +121,23 @@ describe("Bright Future Academy CBT", () => {
       .rejects.toMatchObject({ status: 422, code: "validation_failed", payload: { details: { password: expect.any(String) } } });
     await expect(registerParticipant(registration({ guardianPhone: "08038888888", passwordConfirmation: "Different2026!" })))
       .rejects.toMatchObject({ status: 422, code: "validation_failed", payload: { details: { passwordConfirmation: expect.any(String) } } });
+  });
+
+  test("shows only the current 50-question bank in admin question management", async () => {
+    await BrightFutureQuestion.create({
+      questionId: "bfa-legacy-math-01",
+      subject: "mathematics",
+      order: 1,
+      prompt: "Legacy question that should no longer appear in the admin bank.",
+      options: ["One", "Two", "Three", "Four", "Five"],
+      correctIndex: 0,
+      active: true,
+    });
+    const questions = await listAdminQuestions();
+    expect(questions).toHaveLength(50);
+    expect(questions.map((question) => question.questionId)).not.toContain("bfa-legacy-math-01");
+    await expect(BrightFutureQuestion.findOne({ questionId: "bfa-legacy-math-01" }).lean())
+      .resolves.toMatchObject({ active: false });
   });
 
   test("preserves legacy guardian-phone access and lets an admin reset a password without exposing stored secrets", async () => {

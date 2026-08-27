@@ -1077,8 +1077,7 @@ const updateCompetitionControls = async (payload = {}, adminUserId = null) => {
 };
 
 const listAdminQuestions = async () => {
-  await ensureQuestionBankSeeded();
-  return BrightFutureQuestion.find({}).sort({ subject: 1, order: 1 });
+  return ensureQuestionBankSeeded();
 };
 
 const updateAdminQuestion = async (questionId, payload = {}) => {

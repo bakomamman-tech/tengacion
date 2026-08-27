@@ -14,6 +14,7 @@
     "repair:user-media": "node scripts/repairUserMediaFields.js",
     "release:safe-moderation-holds": "node scripts/releaseSafeModerationHolds.js",
     "reset:admin-password": "node scripts/resetAdminPassword.js",
+    "reset:bright-future-exams": "node scripts/resetBrightFutureExams.js",
     "audit:legacy-media": "node scripts/reportLegacyMedia.js",
     "backfill:gsi-journal": "node scripts/backfillGsiJournalRegistry.js",
     "report:legacy-media": "node scripts/reportLegacyMedia.js",

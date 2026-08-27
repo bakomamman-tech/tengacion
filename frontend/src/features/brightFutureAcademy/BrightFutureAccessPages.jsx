@@ -9,7 +9,7 @@ import useBrightFuture from "./useBrightFuture";
 
 const EMPTY_FORM = {
   firstName: "", middleName: "", lastName: "", gender: "", classLevel: "", schoolName: "",
-  state: "", lga: "", age: "", guardianPhone: "", studentPhone: "",
+  state: "", lga: "", age: "", guardianPhone: "", studentPhone: "", password: "", passwordConfirmation: "",
 };
 
 const FieldError = ({ children }) => children ? <small className="bfa-field-error">{children}</small> : null;
@@ -62,7 +62,7 @@ export function BrightFutureRegistrationPage() {
             <strong>{success.candidateId}</strong>
             <div><p><b>{success.fullName}</b><span>Candidate</span></p><p><b>{success.classLevel}</b><span>Class</span></p><p><b>{success.schoolName}</b><span>School</span></p></div>
           </div>
-          <div className="bfa-notice bfa-notice--gold"><strong>Keep your Candidate ID safe.</strong><p>You will need it together with your parent or guardian's phone number whenever you return.</p></div>
+          <div className="bfa-notice bfa-notice--gold"><strong>Keep your Candidate ID and password safe.</strong><p>You will need both whenever you return. An administrator can locate your BFA reference and reset a forgotten password.</p></div>
           <button className="bfa-button bfa-button--primary bfa-button--large" type="button" onClick={() => navigate(`${CANONICAL_ROOT}/dashboard`)}>Proceed to Student Dashboard →</button>
         </section>
       </BrightFutureLayout>
@@ -77,14 +77,14 @@ export function BrightFutureRegistrationPage() {
           <span className="bfa-status-pill"><i />{registrationClosed ? "Registration paused" : "Registration open"}</span>
           <h1>Begin your bright future.</h1>
           <p>Join a premium school portal and a fair national academic challenge designed for curious, determined learners.</p>
-          <ul><li><span>01</span><div><strong>Create your student profile</strong><small>No email or Tengacion account required.</small></div></li><li><span>02</span><div><strong>Receive a secure Candidate ID</strong><small>Generated only by the Bright Future server.</small></div></li><li><span>03</span><div><strong>Enter the four-subject challenge</strong><small>One official attempt with verified results.</small></div></li></ul>
+          <ul><li><span>01</span><div><strong>Create your student profile</strong><small>No email or Tengacion account required.</small></div></li><li><span>02</span><div><strong>Receive a secure Candidate ID</strong><small>Generated only by the Bright Future server.</small></div></li><li><span>03</span><div><strong>Enter the five-category challenge</strong><small>One official attempt with verified results.</small></div></li></ul>
           <div className="bfa-access-aside__quote">“Education is the passport to the future.”<small>Learning principle</small></div>
         </aside>
         <div className="bfa-form-card">
           <p className="bfa-eyebrow">Student registration</p>
           <h2>Create your student profile</h2>
           <p>Use accurate basic information. We ask only for what is needed to run the competition safely.</p>
-          <div className="bfa-same-exam-note"><span>!</span><p><strong>One shared national examination</strong>Students from Basic One through SSS 3 answer the same 40 reasoning-led questions.</p></div>
+          <div className="bfa-same-exam-note"><span>!</span><p><strong>One shared national examination</strong>Students from Basic One through SSS 3 answer the same 50 fairly difficult questions.</p></div>
           {error ? <div className="bfa-alert" role="alert">{error}</div> : null}
           {registrationClosed ? <div className="bfa-alert" role="alert">Registration is currently closed. You can still sign in if you already have a Candidate ID.</div> : null}
           <form className="bfa-registration-form" onSubmit={submit} noValidate>
@@ -116,6 +116,13 @@ export function BrightFutureRegistrationPage() {
                 <label>Student phone <small>Optional</small><input type="tel" name="studentPhone" value={form.studentPhone} onChange={update} inputMode="tel" /><FieldError>{fieldErrors.studentPhone}</FieldError></label>
               </div>
             </fieldset>
+            <fieldset disabled={registrationClosed || submitting}>
+              <legend>Secure student password</legend>
+              <div className="bfa-form-grid">
+                <label>Password <b>*</b><input type="password" name="password" value={form.password} onChange={update} autoComplete="new-password" minLength="8" required /><FieldError>{fieldErrors.password}</FieldError><small>Use 8-72 characters with at least one letter and one number.</small></label>
+                <label>Confirm password <b>*</b><input type="password" name="passwordConfirmation" value={form.passwordConfirmation} onChange={update} autoComplete="new-password" minLength="8" required /><FieldError>{fieldErrors.passwordConfirmation}</FieldError></label>
+              </div>
+            </fieldset>
             <button className="bfa-button bfa-button--primary bfa-button--large bfa-form-submit" type="submit" disabled={registrationClosed || submitting}>{submitting ? <><span className="bfa-spinner" /> Creating secure profile…</> : "Complete Registration →"}</button>
           </form>
           <p className="bfa-form-footer">Already registered? <Link to={`${CANONICAL_ROOT}/login`}>Access your student dashboard</Link></p>
@@ -129,7 +136,7 @@ export function BrightFutureLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { acceptSession } = useBrightFuture();
-  const [form, setForm] = useState({ candidateId: "", guardianPhone: "" });
+  const [form, setForm] = useState({ candidateId: "", password: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const returnTo = useMemo(() => location.state?.from?.startsWith(CANONICAL_ROOT) ? location.state.from : `${CANONICAL_ROOT}/dashboard`, [location.state]);
@@ -151,18 +158,18 @@ export function BrightFutureLoginPage() {
 
   return (
     <BrightFutureLayout>
-      <SeoHead title="Student Login | Bright Future Academy" description="Return to your Bright Future Academy student portal with your Candidate ID and guardian phone number." canonical={`${CANONICAL_ROOT}/login`} robots="noindex,follow" />
+      <SeoHead title="Student Login | Bright Future Academy" description="Return to your Bright Future Academy student portal with your Candidate ID and password." canonical={`${CANONICAL_ROOT}/login`} robots="noindex,follow" />
       <section className="bfa-login-section">
         <div className="bfa-login-art"><div className="bfa-login-art__orb"><span>✦</span><strong>Welcome<br />back.</strong></div><p>Continue learning. Continue competing. Continue building your bright future.</p></div>
         <div className="bfa-login-card">
-          <p className="bfa-eyebrow">Returning student</p><h1>Access your dashboard</h1><p>Enter the Candidate ID from your registration and the same parent or guardian phone number.</p>
+          <p className="bfa-eyebrow">Returning student</p><h1>Access your dashboard</h1><p>Enter the Candidate ID from your registration and your student password.</p>
           {error ? <div className="bfa-alert" role="alert">{error}</div> : null}
           <form onSubmit={submit}>
             <label>Candidate ID<input value={form.candidateId} onChange={(event) => setForm((current) => ({ ...current, candidateId: event.target.value.toUpperCase() }))} placeholder="BFA-2026-000001" autoCapitalize="characters" required /></label>
-            <label>Parent / guardian phone<input type="tel" value={form.guardianPhone} onChange={(event) => setForm((current) => ({ ...current, guardianPhone: event.target.value }))} placeholder="0803 123 4567" inputMode="tel" required /></label>
+            <label>Student password<input type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} autoComplete="current-password" required /></label>
             <button type="submit" className="bfa-button bfa-button--primary bfa-button--large" disabled={submitting}>{submitting ? "Checking secure access…" : "Open Student Dashboard →"}</button>
           </form>
-          <div className="bfa-login-help"><span>?</span><p><strong>Cannot find your Candidate ID?</strong>Ask your parent or guardian to check the registration confirmation. An administrator can also locate your record privately.</p></div>
+          <div className="bfa-login-help"><span>?</span><p><strong>Forgot your password or BFA reference?</strong>An administrator can privately locate your Candidate ID and issue a new password. Students registered before passwords were introduced can enter their guardian phone number in the password field.</p></div>
           <p className="bfa-form-footer">New to Bright Future Academy? <Link to={`${CANONICAL_ROOT}/register`}>Register now</Link></p>
         </div>
       </section>

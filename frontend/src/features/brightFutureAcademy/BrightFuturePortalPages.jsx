@@ -31,7 +31,7 @@ export function BrightFutureDashboardPage() {
     <BrightFutureLayout portal activeKey="dashboard">
       <PortalHeading eyebrow="Student dashboard" title={`Good day, ${candidate.firstName}.`} copy="Your learning, competition progress and school information are organised here." action={<Link className="bfa-button bfa-button--primary" to={`${CANONICAL_ROOT}/exam/instructions`}>{candidate.examCompleted ? "View my result" : candidate.examStarted ? "Resume examination" : "Enter CBT Challenge"} →</Link>} />
       <section className="bfa-dashboard-hero">
-        <div><StatusBadge tone={candidate.examCompleted ? "green" : "gold"}>{examLabel}</StatusBadge><h2>Bright Future Academy<br /><span>National CBT Challenge</span></h2><p>40 questions · 4 subjects · 50 seconds per question</p><div className="bfa-dashboard-progress"><span style={{ width: candidate.examCompleted ? "100%" : candidate.examStarted ? "35%" : "0%" }} /></div></div>
+        <div><StatusBadge tone={candidate.examCompleted ? "green" : "gold"}>{examLabel}</StatusBadge><h2>Bright Future Academy<br /><span>National CBT Challenge</span></h2><p>50 questions · 5 categories · 50 seconds per question</p><div className="bfa-dashboard-progress"><span style={{ width: candidate.examCompleted ? "100%" : candidate.examStarted ? "35%" : "0%" }} /></div></div>
         <div className="bfa-dashboard-hero__id"><small>Candidate ID</small><strong>{candidate.candidateId}</strong><span>{candidate.classLevel} · {candidate.state}</span></div>
       </section>
       <section className="bfa-quick-grid" aria-label="Student portal areas">
@@ -39,7 +39,7 @@ export function BrightFutureDashboardPage() {
           ["profile", "◉", "My Profile", "Review your official student information.", `${CANONICAL_ROOT}/profile`],
           ["exam", "✦", "CBT Examination", candidate.examCompleted ? "Your official attempt is complete." : "Read the rules and begin securely.", `${CANONICAL_ROOT}/exam/instructions`],
           ["result", "▥", "My Result", candidate.examCompleted ? "View scores and current ranking." : "Available after final submission.", `${CANONICAL_ROOT}/result`],
-          ["subjects", "◇", "Official Subjects", "Explore the four competition subjects.", `${CANONICAL_ROOT}/subjects`],
+          ["subjects", "◇", "Challenge Categories", "Explore the five competition categories.", `${CANONICAL_ROOT}/subjects`],
           ["assignments", "✓", "Assignments", "View structured starter assignments.", `${CANONICAL_ROOT}/assignments`],
           ["attendance", "▦", "Attendance", "See the school portal attendance preview.", `${CANONICAL_ROOT}/attendance`],
           ["announcements", "◌", "Announcements", "Competition and academic updates.", `${CANONICAL_ROOT}/announcements`],
@@ -48,7 +48,7 @@ export function BrightFutureDashboardPage() {
       </section>
       <div className="bfa-dashboard-columns">
         <section className="bfa-portal-panel"><div className="bfa-panel-title"><div><p className="bfa-eyebrow">Latest updates</p><h2>Announcements</h2></div><Link to={`${CANONICAL_ROOT}/announcements`}>View all</Link></div>{ANNOUNCEMENTS.slice(0, 3).map((item) => <article className="bfa-announcement-line" key={item.title}><span>{item.tag.slice(0, 1)}</span><div><small>{item.tag} · {item.date}</small><strong>{item.title}</strong></div></article>)}</section>
-        <section className="bfa-portal-panel"><div className="bfa-panel-title"><div><p className="bfa-eyebrow">Live standings</p><h2>Top candidates</h2></div><Link to={`${CANONICAL_ROOT}/leaderboard`}>Full board</Link></div>{leaders.map((entry, index) => <article className="bfa-leader-line" key={entry.candidateId}><span>{["🥇", "🥈", "🥉"][index]}</span><div><strong>{entry.displayName}</strong><small>{entry.schoolName}</small></div><b>{entry.score}/40</b></article>)}{!leaders.length ? <div className="bfa-panel-empty">Verified results will appear here.</div> : null}</section>
+        <section className="bfa-portal-panel"><div className="bfa-panel-title"><div><p className="bfa-eyebrow">Live standings</p><h2>Top candidates</h2></div><Link to={`${CANONICAL_ROOT}/leaderboard`}>Full board</Link></div>{leaders.map((entry, index) => <article className="bfa-leader-line" key={entry.candidateId}><span>{["🥇", "🥈", "🥉"][index]}</span><div><strong>{entry.displayName}</strong><small>{entry.schoolName}</small></div><b>{entry.score}/{entry.maximumScore || 50}</b></article>)}{!leaders.length ? <div className="bfa-panel-empty">Verified results will appear here.</div> : null}</section>
       </div>
     </BrightFutureLayout>
   );
@@ -88,7 +88,7 @@ export function BrightFutureProfilePage() {
 }
 
 export function BrightFutureSubjectsPage() {
-  return <BrightFutureLayout portal activeKey="subjects"><PortalHeading eyebrow="Academic programme" title="Official competition subjects" copy="Each subject contributes 10 questions to the same 40-question national challenge." /><div className="bfa-subject-detail-grid">{SUBJECTS.map((subject, index) => <article className={`bfa-subject-detail is-${subject.tone}`} key={subject.key}><span>{subject.mark}</span><small>Subject {index + 1} · 10 marks</small><h2>{subject.name}</h2><p>{subject.copy}</p><ul>{["Reasoning-led questions", "Five options per question", "One verified correct answer"].map((item) => <li key={item}>✓ {item}</li>)}</ul></article>)}</div><div className="bfa-notice"><strong>Fair across class levels</strong><p>The challenge prioritises reasoning, numeracy, literacy, observation and practical understanding instead of highly specialised senior-only topics.</p></div></BrightFutureLayout>;
+  return <BrightFutureLayout portal activeKey="subjects"><PortalHeading eyebrow="Competition categories" title="Official challenge categories" copy="Each category contributes 10 fairly difficult questions to the same 50-question national challenge." /><div className="bfa-subject-detail-grid">{SUBJECTS.map((subject, index) => <article className={`bfa-subject-detail is-${subject.tone}`} key={subject.key}><span>{subject.mark}</span><small>Category {index + 1} · 10 marks</small><h2>{subject.name}</h2><p>{subject.copy}</p><ul>{["Challenging knowledge and reasoning", "Five options per question", "One verified correct answer"].map((item) => <li key={item}>✓ {item}</li>)}</ul></article>)}</div><div className="bfa-notice"><strong>One shared challenge</strong><p>All registered students receive the same five category groups with question and option order randomised by the secure server.</p></div></BrightFutureLayout>;
 }
 
 export function BrightFutureAssignmentsPage() {

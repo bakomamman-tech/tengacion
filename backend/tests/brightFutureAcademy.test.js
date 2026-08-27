@@ -13,6 +13,7 @@ const BrightFutureExamAttempt = require("../models/BrightFutureExamAttempt");
 const BrightFutureParticipant = require("../models/BrightFutureParticipant");
 const User = require("../models/User");
 const {
+  buildAdminOverview,
   getExamState,
   getLeaderboard,
   listPublicParticipants,
@@ -20,6 +21,7 @@ const {
   recordViolation,
   registerParticipant,
   resetAdminAttempt,
+  resetAdminPassword,
   startExam,
   submitAnswer,
 } = require("../services/brightFutureAcademyService");
@@ -38,6 +40,8 @@ const registration = (overrides = {}) => ({
   lga: "Kaduna North",
   guardianPhone: "08031234567",
   studentPhone: "",
+  password: "Bright2026!",
+  passwordConfirmation: "Bright2026!",
   ...overrides,
 });
 
@@ -72,9 +76,9 @@ describe("Bright Future Academy CBT", () => {
     if (mongod) await mongod.stop();
   });
 
-  test("ships exactly ten validated five-option questions for each of four subjects", () => {
-    expect(QUESTIONS).toHaveLength(40);
-    expect(SUBJECT_DEFINITIONS).toHaveLength(4);
+  test("ships exactly ten validated five-option questions for each of five challenging categories", () => {
+    expect(QUESTIONS).toHaveLength(50);
+    expect(SUBJECT_DEFINITIONS).toHaveLength(5);
     for (const subject of SUBJECT_DEFINITIONS) {
       expect(QUESTIONS.filter((question) => question.subject === subject.key)).toHaveLength(10);
     }
@@ -86,7 +90,7 @@ describe("Bright Future Academy CBT", () => {
     }
   });
 
-  test("registers without email, creates a server candidate ID, blocks duplicates and supports guardian-phone login", async () => {
+  test("registers without email, creates a server candidate ID, blocks duplicates and supports password login", async () => {
     const result = await registerParticipant(registration(), { ip: "127.0.0.1" });
     expect(result.candidate).toMatchObject({
       candidateId: "BFA-2026-000001",
@@ -103,13 +107,39 @@ describe("Bright Future Academy CBT", () => {
 
     await expect(loginParticipant({
       candidateId: result.candidate.candidateId.toLowerCase(),
-      guardianPhone: "+2348031234567",
+      password: "Bright2026!",
     })).resolves.toMatchObject({ candidate: { candidateId: "BFA-2026-000001" } });
 
     await expect(loginParticipant({
       candidateId: result.candidate.candidateId,
-      guardianPhone: "08000000000",
+      password: "WrongPassword1",
     })).rejects.toMatchObject({ status: 401, code: "invalid_candidate_credentials" });
+
+    await expect(registerParticipant(registration({ guardianPhone: "08039999999", password: "", passwordConfirmation: "" })))
+      .rejects.toMatchObject({ status: 422, code: "validation_failed", payload: { details: { password: expect.any(String) } } });
+    await expect(registerParticipant(registration({ guardianPhone: "08038888888", passwordConfirmation: "Different2026!" })))
+      .rejects.toMatchObject({ status: 422, code: "validation_failed", payload: { details: { passwordConfirmation: expect.any(String) } } });
+  });
+
+  test("preserves legacy guardian-phone access and lets an admin reset a password without exposing stored secrets", async () => {
+    const registered = await registerParticipant(registration());
+    await BrightFutureParticipant.updateOne(
+      { candidateId: registered.candidate.candidateId },
+      { $unset: { passwordHash: 1, credentialsUpdatedAt: 1 } }
+    );
+    await expect(loginParticipant({
+      candidateId: registered.candidate.candidateId,
+      password: "08031234567",
+    })).resolves.toMatchObject({ candidate: { candidateId: registered.candidate.candidateId } });
+
+    const participant = await BrightFutureParticipant.findOne({ candidateId: registered.candidate.candidateId });
+    const reset = await resetAdminPassword(participant._id);
+    expect(reset.credentials).toMatchObject({ candidateId: registered.candidate.candidateId, temporaryPassword: expect.stringMatching(/^BFA-/) });
+    expect(JSON.stringify(reset.student)).not.toContain("passwordHash");
+    await expect(loginParticipant({ candidateId: registered.candidate.candidateId, password: reset.credentials.temporaryPassword }))
+      .resolves.toMatchObject({ candidate: { candidateId: registered.candidate.candidateId } });
+    await expect(loginParticipant({ candidateId: registered.candidate.candidateId, password: "08031234567" }))
+      .rejects.toMatchObject({ status: 401, code: "invalid_candidate_credentials" });
   });
 
   test("delivers only the current randomized question and never exposes the answer key", async () => {
@@ -122,7 +152,7 @@ describe("Bright Future Academy CBT", () => {
 
     expect(startResponse.body.attempt.currentQuestion).toMatchObject({
       number: 1,
-      totalQuestions: 40,
+      totalQuestions: 50,
       options: expect.any(Array),
     });
     expect(startResponse.body.attempt.currentQuestion.options).toHaveLength(5);
@@ -153,7 +183,7 @@ describe("Bright Future Academy CBT", () => {
     let now = new Date("2026-08-18T11:00:00.000Z");
     let state = await startExam(participant._id, { now });
 
-    for (let index = 0; index < 40; index += 1) {
+    for (let index = 0; index < 50; index += 1) {
       const secureAttempt = await BrightFutureExamAttempt.findById(state.attempt.id)
         .select("+questions.correctPresentedIndex +questions.correct +questions.idempotencyKey");
       const current = secureAttempt.questions[secureAttempt.currentQuestionIndex];
@@ -168,17 +198,19 @@ describe("Bright Future Academy CBT", () => {
     const completed = await BrightFutureParticipant.findById(participant._id);
     expect(completed).toMatchObject({
       examCompleted: true,
-      totalScore: 40,
+      maximumScore: 50,
+      totalScore: 50,
       percentage: 100,
-      totalCorrect: 40,
+      totalCorrect: 50,
       totalWrong: 0,
       totalUnanswered: 0,
     });
     expect(completed.subjectScores).toMatchObject({
-      mathematics: 10,
-      english: 10,
-      basicScienceTechnology: 10,
-      socialStudies: 10,
+      nigerianEntertainment: 10,
+      football: 10,
+      technology: 10,
+      generalEnglish: 10,
+      stem: 10,
     });
     await expect(startExam(participant._id, { now: new Date(now.getTime() + 1000) })).rejects.toMatchObject({
       status: 409,
@@ -204,18 +236,20 @@ describe("Bright Future Academy CBT", () => {
     expect(completed).toMatchObject({ examCompleted: true, violationCount: 3, submissionReason: "violation_limit" });
   });
 
-  test("ranks by score, Mathematics, English and time while keeping public data private", async () => {
+  test("ranks current and legacy results fairly while keeping public data private", async () => {
     const first = await registerParticipant(registration({ guardianPhone: "08031111111" }));
     const second = await registerParticipant(registration({ firstName: "Chidi", lastName: "Okafor", guardianPhone: "08032222222" }));
     const firstRecord = await BrightFutureParticipant.findOne({ candidateId: first.candidate.candidateId });
     const secondRecord = await BrightFutureParticipant.findOne({ candidateId: second.candidate.candidateId });
-    await BrightFutureParticipant.updateOne({ _id: firstRecord._id }, { $set: { examCompleted: true, totalScore: 30, percentage: 75, subjectScores: { mathematics: 7, english: 8, basicScienceTechnology: 8, socialStudies: 7 }, totalTimeUsed: 900 } });
-    await BrightFutureParticipant.updateOne({ _id: secondRecord._id }, { $set: { examCompleted: true, totalScore: 30, percentage: 75, subjectScores: { mathematics: 8, english: 6, basicScienceTechnology: 8, socialStudies: 8 }, totalTimeUsed: 1000 } });
+    await BrightFutureParticipant.updateOne({ _id: firstRecord._id }, { $set: { examCompleted: true, maximumScore: 40, totalScore: 32, percentage: 80, subjectScores: { mathematics: 7, english: 8, basicScienceTechnology: 9, socialStudies: 8 }, totalTimeUsed: 900 } });
+    await BrightFutureParticipant.updateOne({ _id: secondRecord._id }, { $set: { examCompleted: true, maximumScore: 50, totalScore: 40, percentage: 80, subjectScores: { nigerianEntertainment: 8, football: 9, technology: 8, generalEnglish: 7, stem: 8 }, totalTimeUsed: 1000 } });
 
     const leaderboard = await getLeaderboard();
-    expect(leaderboard.entries[0]).toMatchObject({ displayName: "Chidi O.", rank: 1, score: 30 });
+    expect(leaderboard.entries[0]).toMatchObject({ displayName: "Chidi O.", rank: 1, score: 40, maximumScore: 50, percentage: 80 });
+    expect(leaderboard.entries[1]).toMatchObject({ displayName: "Amina B.", rank: 2, score: 32, maximumScore: 40, percentage: 80 });
     expect(leaderboard.entries[0].candidateId).toContain("••");
     expect(leaderboard.entries[0]).not.toHaveProperty("guardianPhone");
+    await expect(buildAdminOverview()).resolves.toMatchObject({ averageScore: 40, highestScore: 40, lowestScore: 40, maximumScore: 50 });
     const publicList = await listPublicParticipants({ search: "Unity" });
     expect(publicList.participants[0]).not.toHaveProperty("studentPhone");
     expect(publicList.participants[0]).not.toHaveProperty("age");

@@ -7,6 +7,12 @@ const CLASS_LEVELS = [
 
 const SubjectScoresSchema = new mongoose.Schema(
   {
+    nigerianEntertainment: { type: Number, default: 0, min: 0, max: 10 },
+    football: { type: Number, default: 0, min: 0, max: 10 },
+    technology: { type: Number, default: 0, min: 0, max: 10 },
+    generalEnglish: { type: Number, default: 0, min: 0, max: 10 },
+    stem: { type: Number, default: 0, min: 0, max: 10 },
+    // Legacy fields preserve score breakdowns from completed 40-question attempts.
     mathematics: { type: Number, default: 0, min: 0, max: 10 },
     english: { type: Number, default: 0, min: 0, max: 10 },
     basicScienceTechnology: { type: Number, default: 0, min: 0, max: 10 },
@@ -29,6 +35,8 @@ const BrightFutureParticipantSchema = new mongoose.Schema(
   {
     candidateId: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
     duplicateKey: { type: String, required: true, unique: true, select: false },
+    passwordHash: { type: String, default: "", select: false },
+    credentialsUpdatedAt: { type: Date, default: null },
     firstName: { type: String, required: true, trim: true, maxlength: 50 },
     middleName: { type: String, default: "", trim: true, maxlength: 50 },
     lastName: { type: String, required: true, trim: true, maxlength: 50 },
@@ -53,11 +61,12 @@ const BrightFutureParticipantSchema = new mongoose.Schema(
     attemptNumber: { type: Number, default: 0, min: 0 },
     retakeAuthorized: { type: Boolean, default: false },
     subjectScores: { type: SubjectScoresSchema, default: () => ({}) },
-    totalScore: { type: Number, default: 0, min: 0, max: 40, index: true },
+    maximumScore: { type: Number, default: 40, min: 40, max: 50 },
+    totalScore: { type: Number, default: 0, min: 0, max: 50, index: true },
     percentage: { type: Number, default: 0, min: 0, max: 100 },
-    totalCorrect: { type: Number, default: 0, min: 0, max: 40 },
-    totalWrong: { type: Number, default: 0, min: 0, max: 40 },
-    totalUnanswered: { type: Number, default: 0, min: 0, max: 40 },
+    totalCorrect: { type: Number, default: 0, min: 0, max: 50 },
+    totalWrong: { type: Number, default: 0, min: 0, max: 50 },
+    totalUnanswered: { type: Number, default: 0, min: 0, max: 50 },
     totalTimeUsed: { type: Number, default: 0, min: 0 },
     averageResponseTime: { type: Number, default: 0, min: 0 },
     ranking: { type: Number, default: null, min: 1, index: true },

@@ -20,17 +20,19 @@ vi.mock("../../features/brightFutureAcademy/brightFutureApi", () => ({
   adminUpdateBrightFutureQuestion: vi.fn(),
   adminUpdateBrightFutureStudent: vi.fn(),
   adminResetBrightFutureAttempt: vi.fn(),
+  adminResetBrightFuturePassword: vi.fn(),
 }));
 
 describe("Bright Future Academy admin console", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.adminGetBrightFutureOverview.mockResolvedValue({ overview: { totalRegistrations: 24, totalCompleted: 12, inProgress: 2, averageScore: 28.5, registrationsPerClass: [], subjectAverages: {} } });
-    api.adminGetBrightFutureStudents.mockResolvedValue({ students: [{ id: "1", fullName: "Amina Bello", candidateId: "BFA-2026-000001", status: "active", classLevel: "JSS 2", schoolName: "Unity Academy", state: "Kaduna", lga: "Kaduna North", competitionStatus: "completed", examCompleted: true, totalScore: 32, percentage: 80, ranking: 1, attemptNumber: 1, violationCount: 0 }], total: 1 });
+    api.adminGetBrightFutureStudents.mockResolvedValue({ students: [{ id: "1", fullName: "Amina Bello", candidateId: "BFA-2026-000001", status: "active", classLevel: "JSS 2", schoolName: "Unity Academy", state: "Kaduna", lga: "Kaduna North", competitionStatus: "completed", examCompleted: true, totalScore: 40, maximumScore: 50, percentage: 80, ranking: 1, attemptNumber: 1, violationCount: 0, credentialMode: "password" }], total: 1 });
     api.adminGetBrightFutureResults.mockResolvedValue({ results: [], total: 0 });
     api.adminGetBrightFutureLeaderboard.mockResolvedValue({ entries: [] });
     api.adminGetBrightFutureControls.mockResolvedValue({ controls: { competitionStatus: "examination_open", registrationOpen: true, examinationOpen: true, leaderboardVisible: true, winnerVisible: true, detailedResultsVisible: false, questionTimerSeconds: 50, allowedViolations: 3 } });
     api.adminGetBrightFutureQuestions.mockResolvedValue({ questions: [] });
+    api.adminResetBrightFuturePassword.mockResolvedValue({ credentials: { candidateId: "BFA-2026-000001", temporaryPassword: "BFA-NewPass-7" } });
   });
 
   it("loads real competition overview metrics and the student administration table", async () => {
@@ -50,5 +52,17 @@ describe("Bright Future Academy admin console", () => {
     expect(screen.getByLabelText("Allowed violations")).toHaveValue(3);
     expect(screen.getByText("Detailed answer review public")).toBeInTheDocument();
     await waitFor(() => expect(api.adminGetBrightFutureControls).toHaveBeenCalled());
+  });
+
+  it("lets an admin recover a BFA reference and issue a private replacement password", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<MemoryRouter><AdminBrightFutureAcademy user={{ role: "admin" }} /></MemoryRouter>);
+    await screen.findByText("24");
+    fireEvent.click(screen.getByRole("button", { name: "Students" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Recover access" }));
+    expect(await screen.findByRole("dialog", { name: "New student credentials" })).toBeInTheDocument();
+    expect(screen.getByText("BFA-NewPass-7")).toBeInTheDocument();
+    expect(api.adminResetBrightFuturePassword).toHaveBeenCalledWith("1", expect.objectContaining({ reason: expect.any(String) }));
+    confirm.mockRestore();
   });
 });

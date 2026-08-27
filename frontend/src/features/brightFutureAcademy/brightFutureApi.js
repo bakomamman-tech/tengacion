@@ -90,3 +90,4 @@ export const adminGetBrightFutureQuestions = () => apiRequest(`${API_BASE}/admin
 export const adminUpdateBrightFutureQuestion = (questionId, body) => apiRequest(`${API_BASE}/admin/bright-future-academy/questions/${encodeURIComponent(questionId)}`, adminOptions("PATCH", body));
 export const adminUpdateBrightFutureStudent = (id, body) => apiRequest(`${API_BASE}/admin/bright-future-academy/students/${encodeURIComponent(id)}`, adminOptions("PATCH", body));
 export const adminResetBrightFutureAttempt = (id, body = {}) => apiRequest(`${API_BASE}/admin/bright-future-academy/students/${encodeURIComponent(id)}/reset-attempt`, adminOptions("POST", body));
+export const adminResetBrightFuturePassword = (id, body = {}) => apiRequest(`${API_BASE}/admin/bright-future-academy/students/${encodeURIComponent(id)}/reset-password`, adminOptions("POST", body));

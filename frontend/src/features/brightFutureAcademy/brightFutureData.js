@@ -15,10 +15,18 @@ export const NIGERIAN_STATES = [
 ];
 
 export const SUBJECTS = [
-  { key: "mathematics", name: "Mathematics", mark: "∑", tone: "violet", copy: "Numeracy, patterns, geometry and logical problem-solving." },
-  { key: "english", name: "English Language", mark: "Aa", tone: "blue", copy: "Vocabulary, grammar, comprehension and language reasoning." },
-  { key: "basicScienceTechnology", name: "Basic Science & Technology", mark: "⚛", tone: "green", copy: "Living things, energy, machines, technology and scientific thinking." },
-  { key: "socialStudies", name: "Social Studies", mark: "◎", tone: "gold", copy: "Citizenship, culture, community, cooperation and national values." },
+  { key: "nigerianEntertainment", name: "Nigerian Music & Movies", mark: "NG", tone: "gold", copy: "Challenging Nigerian music, film, filmmaker and entertainment-awards trivia." },
+  { key: "football", name: "UEFA, LaLiga & African Football", mark: "Goal", tone: "green", copy: "European competitions, Spanish football, Nigerian teams and African football history." },
+  { key: "technology", name: "Tech, Tengacion.com & Silicon Valley", mark: "Tech", tone: "blue", copy: "Internet foundations, Tengacion creator discovery and Silicon Valley history." },
+  { key: "generalEnglish", name: "General English", mark: "Aa", tone: "violet", copy: "Advanced vocabulary, grammar, inference, punctuation and language reasoning." },
+  { key: "stem", name: "Mathematics & Science/STEM", mark: "STEM", tone: "green", copy: "Multi-step mathematics, physics, chemistry, biology and scientific reasoning." },
+];
+
+export const LEGACY_SUBJECTS = [
+  { key: "mathematics", name: "Mathematics", mark: "M", tone: "violet" },
+  { key: "english", name: "English Language", mark: "Aa", tone: "blue" },
+  { key: "basicScienceTechnology", name: "Basic Science & Technology", mark: "BST", tone: "green" },
+  { key: "socialStudies", name: "Social Studies", mark: "SS", tone: "gold" },
 ];
 
 export const PORTAL_NAV = [
@@ -36,7 +44,7 @@ export const PORTAL_NAV = [
 
 export const ANNOUNCEMENTS = [
   { tag: "Competition", title: "National CBT Challenge registration is open", date: "18 August 2026", copy: "Eligible pupils and students from Basic One through SSS 3 can register without an email address." },
-  { tag: "Examination", title: "Read the examination rules before starting", date: "18 August 2026", copy: "The challenge contains 40 questions, gives 50 seconds per question and permits one official attempt." },
+  { tag: "Examination", title: "Read the examination rules before starting", date: "18 August 2026", copy: "The challenge contains 50 questions, gives 50 seconds per question and permits one official attempt." },
   { tag: "Results", title: "Provisional results appear after submission", date: "18 August 2026", copy: "Scores and current rank update from verified server records. Final champion status follows publication by the school." },
   { tag: "Academic", title: "Independent reading hour every Wednesday", date: "12 August 2026", copy: "Students are encouraged to read one age-appropriate book and share a short reflection with their class." },
 ];

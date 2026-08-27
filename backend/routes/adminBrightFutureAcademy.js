@@ -11,6 +11,7 @@ const {
   listAdminResults,
   listAdminStudents,
   resetAdminAttempt,
+  resetAdminPassword,
   serializePublicConfig,
   updateAdminQuestion,
   updateAdminStudent,
@@ -65,6 +66,20 @@ router.post("/students/:id/reset-attempt", requireStepUp({ adminOnly: true }), a
     reason: String(req.body?.reason || "Administrator-authorized retake"),
   }).catch(() => null);
   res.json({ student });
+}));
+
+router.post("/students/:id/reset-password", requireStepUp({ adminOnly: true }), asyncRoute(async (req, res) => {
+  const result = await resetAdminPassword(req.params.id);
+  await writeAuditLog({
+    req,
+    actorId: req.user.id,
+    action: "bright_future.password_reset",
+    targetType: "BrightFutureParticipant",
+    targetId: req.params.id,
+    reason: String(req.body?.reason || "Administrator-assisted access recovery"),
+    metadata: { candidateId: result.credentials.candidateId },
+  }).catch(() => null);
+  res.set("Cache-Control", "no-store").json(result);
 }));
 
 router.get("/controls", asyncRoute(async (_req, res) => {

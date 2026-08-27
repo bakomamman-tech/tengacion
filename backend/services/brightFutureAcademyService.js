@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 
@@ -16,7 +17,14 @@ const CANDIDATE_TOKEN_AUDIENCE = "bright-future-academy";
 const CANDIDATE_TOKEN_ISSUER = "tengacion";
 const COMPLETED_ATTEMPT_STATUSES = ["completed", "auto_submitted"];
 const ANSWER_TRANSPORT_GRACE_MS = 1_500;
+const TOTAL_QUESTIONS = QUESTIONS.length;
 const SUBJECT_SCORE_KEYS = Object.freeze({
+  nigerian_entertainment: "nigerianEntertainment",
+  football: "football",
+  technology: "technology",
+  general_english: "generalEnglish",
+  stem: "stem",
+  // Legacy mappings keep in-progress 40-question attempts resumable.
   mathematics: "mathematics",
   english: "english",
   basic_science_technology: "basicScienceTechnology",
@@ -85,6 +93,14 @@ const buildValidationError = (details) =>
     code: "validation_failed",
     payload: { details },
   });
+
+const validateCandidatePassword = (value) => {
+  const password = String(value || "");
+  if (password.length < 8 || password.length > 72 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    throw buildValidationError({ password: "Use 8-72 characters with at least one letter and one number." });
+  }
+  return password;
+};
 
 const validateProfile = (payload = {}) => {
   const data = {
@@ -174,6 +190,7 @@ const serializePublicConfig = (entry) => ({
 });
 
 const ensureQuestionBankSeeded = async () => {
+  const currentQuestionIds = QUESTIONS.map((question) => question.questionId);
   const operations = QUESTIONS.map((question) => ({
     updateOne: {
       filter: { questionId: question.questionId },
@@ -182,7 +199,11 @@ const ensureQuestionBankSeeded = async () => {
     },
   }));
   await BrightFutureQuestion.bulkWrite(operations, { ordered: false });
-  return BrightFutureQuestion.find({}).sort({ subject: 1, order: 1 });
+  await BrightFutureQuestion.updateMany(
+    { questionId: { $nin: currentQuestionIds }, active: true },
+    { $set: { active: false } }
+  );
+  return BrightFutureQuestion.find({ questionId: { $in: currentQuestionIds } }).sort({ subject: 1, order: 1 });
 };
 
 const nextCandidateId = async (now = new Date()) => {
@@ -215,6 +236,7 @@ const serializeCandidate = (participant) => ({
   examCompleted: Boolean(participant.examCompleted),
   resultAvailable: Boolean(participant.examCompleted),
   ranking: participant.ranking || null,
+  maximumScore: Number(participant.maximumScore || TOTAL_QUESTIONS),
 });
 
 const registerParticipant = async (payload, { ip = "", userAgent = "", now = new Date() } = {}) => {
@@ -223,6 +245,10 @@ const registerParticipant = async (payload, { ip = "", userAgent = "", now = new
     throw new BrightFutureError("Registration is not open at the moment.", { status: 403, code: "registration_closed" });
   }
   const data = validateProfile(payload);
+  const password = validateCandidatePassword(payload.password);
+  if (password !== String(payload.passwordConfirmation || "")) {
+    throw buildValidationError({ passwordConfirmation: "The passwords do not match." });
+  }
   const duplicateKey = secureDigest([
     data.firstName.toLowerCase(), data.lastName.toLowerCase(), data.guardianPhone, data.schoolName.toLowerCase(),
   ].join("|"));
@@ -239,6 +265,9 @@ const registerParticipant = async (payload, { ip = "", userAgent = "", now = new
       ...data,
       candidateId,
       duplicateKey,
+      passwordHash: await bcrypt.hash(password, 12),
+      credentialsUpdatedAt: now,
+      maximumScore: TOTAL_QUESTIONS,
       registrationTimestamp: now,
       registrationMetadata: {
         ipHash: ip ? secureDigest(ip) : "",
@@ -261,15 +290,18 @@ const registerParticipant = async (payload, { ip = "", userAgent = "", now = new
   }
 };
 
-const loginParticipant = async ({ candidateId, guardianPhone } = {}) => {
+const loginParticipant = async ({ candidateId, password, guardianPhone } = {}) => {
   const normalizedId = normalizeCandidateId(candidateId);
-  const normalizedPhone = normalizePhone(guardianPhone);
-  if (!/^BFA-\d{4}-\d{6}$/.test(normalizedId) || !normalizedPhone) {
-    throw new BrightFutureError("Enter a valid Candidate ID and guardian phone number.", { status: 422, code: "invalid_login" });
+  const suppliedSecret = String(password || guardianPhone || "");
+  if (!/^BFA-\d{4}-\d{6}$/.test(normalizedId) || !suppliedSecret) {
+    throw new BrightFutureError("Enter a valid Candidate ID and password.", { status: 422, code: "invalid_login" });
   }
-  const participant = await BrightFutureParticipant.findOne({ candidateId: normalizedId }).select("+guardianPhone");
-  if (!participant || !safePhoneMatches(participant.guardianPhone, normalizedPhone)) {
-    throw new BrightFutureError("Candidate ID or guardian phone number is incorrect.", { status: 401, code: "invalid_candidate_credentials" });
+  const participant = await BrightFutureParticipant.findOne({ candidateId: normalizedId }).select("+guardianPhone +passwordHash");
+  const validPassword = participant?.passwordHash
+    ? await bcrypt.compare(suppliedSecret, participant.passwordHash)
+    : Boolean(participant && normalizePhone(suppliedSecret) && safePhoneMatches(participant.guardianPhone, normalizePhone(suppliedSecret)));
+  if (!participant || !validPassword) {
+    throw new BrightFutureError("Candidate ID or password is incorrect.", { status: 401, code: "invalid_candidate_credentials" });
   }
   if (participant.status !== "active") {
     throw new BrightFutureError("This candidate account is not currently active. Contact the competition administrator.", {
@@ -354,7 +386,7 @@ const currentQuestionPayload = (attempt, now = new Date()) => {
     subjectLabel: question.subjectLabel,
     number: question.order,
     subjectQuestionNumber: ((question.order - 1) % 10) + 1,
-    totalQuestions: 40,
+    totalQuestions: attempt.questions.length,
     prompt: question.prompt,
     options: question.options,
     presentedAt: question.presentedAt,
@@ -369,8 +401,8 @@ const serializeAttempt = (attempt, now = new Date()) => ({
   attemptNumber: attempt.attemptNumber,
   currentQuestionIndex: attempt.currentQuestionIndex,
   answeredCount: attempt.questions.filter((question) => question.answeredAt || question.unanswered).length,
-  totalQuestions: 40,
-  progressPercentage: Math.round((attempt.currentQuestionIndex / 40) * 100),
+  totalQuestions: attempt.questions.length,
+  progressPercentage: Math.round((attempt.currentQuestionIndex / attempt.questions.length) * 100),
   violationCount: attempt.violationCount,
   allowedViolations: attempt.allowedViolations,
   startedAt: attempt.startedAt,
@@ -381,17 +413,27 @@ const serializeAttempt = (attempt, now = new Date()) => ({
 });
 
 const rankingTuple = (participant) => [
-  Number(participant.totalScore || 0),
-  Number(participant.subjectScores?.mathematics || 0),
-  Number(participant.subjectScores?.english || 0),
+  Number(participant.percentage || 0),
+  Number(participant.subjectScores?.stem || participant.subjectScores?.mathematics || 0),
+  Number(participant.subjectScores?.generalEnglish || participant.subjectScores?.english || 0),
   Number(participant.totalTimeUsed || 0),
 ];
 const sameRankTuple = (left, right) =>
   left && right && left[0] === right[0] && left[1] === right[1] && left[2] === right[2] && left[3] === right[3];
 
+const compareRanking = (left, right) => {
+  const leftTuple = rankingTuple(left);
+  const rightTuple = rankingTuple(right);
+  for (let index = 0; index < 3; index += 1) {
+    if (leftTuple[index] !== rightTuple[index]) return rightTuple[index] - leftTuple[index];
+  }
+  if (leftTuple[3] !== rightTuple[3]) return leftTuple[3] - rightTuple[3];
+  return new Date(left.examCompletedAt || 0).getTime() - new Date(right.examCompletedAt || 0).getTime();
+};
+
 const recalculateRankings = async () => {
-  const participants = await BrightFutureParticipant.find({ status: "active", examCompleted: true })
-    .sort({ totalScore: -1, "subjectScores.mathematics": -1, "subjectScores.english": -1, totalTimeUsed: 1, examCompletedAt: 1 });
+  const participants = await BrightFutureParticipant.find({ status: "active", examCompleted: true });
+  participants.sort(compareRanking);
   let previousTuple = null;
   let currentRank = 0;
   const ranked = participants.map((participant, index) => {
@@ -434,7 +476,8 @@ const finalizeAttempt = async (attempt, participant, reason, now = new Date()) =
         : 0;
     }
   }
-  const scores = { mathematics: 0, english: 0, basicScienceTechnology: 0, socialStudies: 0 };
+  const scores = Object.fromEntries([...new Set(Object.values(SUBJECT_SCORE_KEYS))].map((key) => [key, 0]));
+  const questionCount = attempt.questions.length;
   let totalCorrect = 0;
   let totalWrong = 0;
   let totalUnanswered = 0;
@@ -444,30 +487,33 @@ const finalizeAttempt = async (attempt, participant, reason, now = new Date()) =
       totalUnanswered += 1;
     } else if (question.correct) {
       totalCorrect += 1;
-      scores[SUBJECT_SCORE_KEYS[question.subject]] += 1;
+      const scoreKey = SUBJECT_SCORE_KEYS[question.subject];
+      if (scoreKey) scores[scoreKey] += 1;
     } else {
       totalWrong += 1;
     }
     totalResponseMs += Number(question.responseTimeMs || 0);
   }
   attempt.status = reason === "violation_limit" ? "auto_submitted" : "completed";
-  attempt.currentQuestionIndex = 40;
+  attempt.currentQuestionIndex = questionCount;
   attempt.completedAt = now;
   attempt.submissionReason = reason;
   attempt.subjectScores = scores;
+  attempt.maximumScore = questionCount;
   attempt.totalScore = totalCorrect;
-  attempt.percentage = Math.round((totalCorrect / 40) * 10000) / 100;
+  attempt.percentage = Math.round((totalCorrect / questionCount) * 10000) / 100;
   attempt.totalCorrect = totalCorrect;
   attempt.totalWrong = totalWrong;
   attempt.totalUnanswered = totalUnanswered;
   attempt.totalTimeUsed = Math.round(totalResponseMs / 1000);
-  attempt.averageResponseTime = Math.round((totalResponseMs / 40 / 1000) * 100) / 100;
+  attempt.averageResponseTime = Math.round((totalResponseMs / questionCount / 1000) * 100) / 100;
   await attempt.save();
 
   participant.examCompleted = true;
   participant.examCompletedAt = now;
   participant.competitionStatus = attempt.status === "auto_submitted" ? "auto_submitted" : "completed";
   participant.subjectScores = scores;
+  participant.maximumScore = questionCount;
   participant.totalScore = attempt.totalScore;
   participant.percentage = attempt.percentage;
   participant.totalCorrect = totalCorrect;
@@ -547,6 +593,7 @@ const startExam = async (participantId, { now = new Date() } = {}) => {
       questions: attemptQuestions,
       timerSeconds: competition.questionTimerSeconds,
       allowedViolations: competition.allowedViolations,
+      maximumScore: attemptQuestions.length,
       startedAt: now,
     });
   } catch (error) {
@@ -686,13 +733,19 @@ const serializeResult = (participant, competition, attempt = null) => {
   const result = {
     candidate: serializeCandidate(participant),
     subjectScores: {
+      nigerianEntertainment: Number(participant.subjectScores?.nigerianEntertainment || 0),
+      football: Number(participant.subjectScores?.football || 0),
+      technology: Number(participant.subjectScores?.technology || 0),
+      generalEnglish: Number(participant.subjectScores?.generalEnglish || 0),
+      stem: Number(participant.subjectScores?.stem || 0),
+      // Legacy scores remain available for completed accounts from the old test.
       mathematics: Number(participant.subjectScores?.mathematics || 0),
       english: Number(participant.subjectScores?.english || 0),
       basicScienceTechnology: Number(participant.subjectScores?.basicScienceTechnology || 0),
       socialStudies: Number(participant.subjectScores?.socialStudies || 0),
     },
     totalScore: participant.totalScore,
-    maximumScore: 40,
+    maximumScore: Number(participant.maximumScore || attempt?.maximumScore || 40),
     percentage: participant.percentage,
     totalCorrect: participant.totalCorrect,
     totalWrong: participant.totalWrong,
@@ -738,6 +791,7 @@ const serializeLeaderboardEntry = (participant) => ({
   schoolName: participant.schoolName,
   state: participant.state,
   score: participant.totalScore,
+  maximumScore: Number(participant.maximumScore || 40),
   percentage: participant.percentage,
   completionTime: participant.totalTimeUsed,
   winnerStatus: participant.winnerStatus,
@@ -787,8 +841,8 @@ const listPublicParticipants = async (filters = {}) => {
   const maxScore = Number(filters.maxScore);
   if (Number.isFinite(minScore) || Number.isFinite(maxScore)) {
     query.totalScore = {};
-    if (Number.isFinite(minScore)) query.totalScore.$gte = clamp(minScore, 0, 40, 0);
-    if (Number.isFinite(maxScore)) query.totalScore.$lte = clamp(maxScore, 0, 40, 40);
+    if (Number.isFinite(minScore)) query.totalScore.$gte = clamp(minScore, 0, TOTAL_QUESTIONS, 0);
+    if (Number.isFinite(maxScore)) query.totalScore.$lte = clamp(maxScore, 0, TOTAL_QUESTIONS, TOTAL_QUESTIONS);
   }
   const term = cleanText(filters.search, 100);
   if (term) {
@@ -808,6 +862,7 @@ const listPublicParticipants = async (filters = {}) => {
       state: participant.state,
       completed: Boolean(participant.examCompleted),
       score: participant.examCompleted ? participant.totalScore : null,
+      maximumScore: Number(participant.maximumScore || 40),
       percentage: participant.examCompleted ? participant.percentage : null,
     })),
     total,
@@ -828,13 +883,14 @@ const settleOverdueAttempts = async (now = new Date()) => {
 
 const buildAdminOverview = async () => {
   await settleOverdueAttempts();
+  const normalizedScore = { $multiply: [{ $ifNull: ["$percentage", 0] }, TOTAL_QUESTIONS / 100] };
   const [totalRegistrations, totalCompleted, inProgress, aggregates, schools, states, classBreakdown, stateBreakdown] = await Promise.all([
     BrightFutureParticipant.countDocuments({}),
     BrightFutureParticipant.countDocuments({ examCompleted: true }),
     BrightFutureParticipant.countDocuments({ competitionStatus: "in_progress" }),
     BrightFutureParticipant.aggregate([
       { $match: { examCompleted: true } },
-      { $group: { _id: null, averageScore: { $avg: "$totalScore" }, highestScore: { $max: "$totalScore" }, lowestScore: { $min: "$totalScore" }, averageCompletionTime: { $avg: "$totalTimeUsed" }, violations: { $sum: "$violationCount" }, math: { $avg: "$subjectScores.mathematics" }, english: { $avg: "$subjectScores.english" }, science: { $avg: "$subjectScores.basicScienceTechnology" }, social: { $avg: "$subjectScores.socialStudies" } } },
+      { $group: { _id: null, averageScore: { $avg: normalizedScore }, highestScore: { $max: normalizedScore }, lowestScore: { $min: normalizedScore }, averageCompletionTime: { $avg: "$totalTimeUsed" }, violations: { $sum: "$violationCount" }, entertainment: { $avg: "$subjectScores.nigerianEntertainment" }, football: { $avg: "$subjectScores.football" }, technology: { $avg: "$subjectScores.technology" }, english: { $avg: "$subjectScores.generalEnglish" }, stem: { $avg: "$subjectScores.stem" } } },
     ]),
     BrightFutureParticipant.distinct("schoolName"),
     BrightFutureParticipant.distinct("state"),
@@ -843,10 +899,11 @@ const buildAdminOverview = async () => {
   ]);
   const values = aggregates[0] || {};
   const subjectAverages = {
-    mathematics: Number((values.math || 0).toFixed(2)),
-    english: Number((values.english || 0).toFixed(2)),
-    basicScienceTechnology: Number((values.science || 0).toFixed(2)),
-    socialStudies: Number((values.social || 0).toFixed(2)),
+    nigerianEntertainment: Number((values.entertainment || 0).toFixed(2)),
+    football: Number((values.football || 0).toFixed(2)),
+    technology: Number((values.technology || 0).toFixed(2)),
+    generalEnglish: Number((values.english || 0).toFixed(2)),
+    stem: Number((values.stem || 0).toFixed(2)),
   };
   const subjectEntries = Object.entries(subjectAverages).sort((left, right) => left[1] - right[1]);
   return {
@@ -855,8 +912,9 @@ const buildAdminOverview = async () => {
     inProgress,
     completionRate: totalRegistrations ? Math.round((totalCompleted / totalRegistrations) * 10000) / 100 : 0,
     averageScore: Number((values.averageScore || 0).toFixed(2)),
-    highestScore: values.highestScore || 0,
-    lowestScore: values.lowestScore || 0,
+    highestScore: Number((values.highestScore || 0).toFixed(2)),
+    lowestScore: Number((values.lowestScore || 0).toFixed(2)),
+    maximumScore: TOTAL_QUESTIONS,
     averageCompletionTime: Math.round(values.averageCompletionTime || 0),
     integrityViolations: values.violations || 0,
     schoolsRepresented: schools.length,
@@ -878,7 +936,11 @@ const buildAdminParticipantQuery = (filters = {}) => {
   const term = cleanText(filters.search, 100);
   if (term) {
     const regex = new RegExp(escapeRegex(term), "i");
-    query.$or = [{ firstName: regex }, { middleName: regex }, { lastName: regex }, { candidateId: regex }, { schoolName: regex }, { state: regex }];
+    const normalizedPhone = normalizePhone(term);
+    query.$or = [
+      { firstName: regex }, { middleName: regex }, { lastName: regex }, { candidateId: regex },
+      { schoolName: regex }, { state: regex }, ...(normalizedPhone ? [{ guardianPhone: normalizedPhone }, { studentPhone: normalizedPhone }] : []),
+    ];
   }
   return query;
 };
@@ -893,6 +955,7 @@ const serializeAdminParticipant = (participant) => ({
   retakeAuthorized: participant.retakeAuthorized,
   subjectScores: participant.subjectScores,
   totalScore: participant.totalScore,
+  maximumScore: Number(participant.maximumScore || 40),
   percentage: participant.percentage,
   totalCorrect: participant.totalCorrect,
   totalWrong: participant.totalWrong,
@@ -903,6 +966,7 @@ const serializeAdminParticipant = (participant) => ({
   violationEvents: participant.violationEvents,
   submissionReason: participant.submissionReason,
   winnerStatus: participant.winnerStatus,
+  credentialMode: participant.passwordHash ? "password" : "guardian_phone",
 });
 
 const listAdminStudents = async (filters = {}) => {
@@ -911,7 +975,7 @@ const listAdminStudents = async (filters = {}) => {
   const limit = clamp(filters.limit, 1, 100, 50);
   const query = buildAdminParticipantQuery(filters);
   const [students, total] = await Promise.all([
-    BrightFutureParticipant.find(query).select("+guardianPhone +studentPhone +registrationMetadata.ipHash +registrationMetadata.userAgent").sort({ registrationTimestamp: -1 }).skip((page - 1) * limit).limit(limit),
+    BrightFutureParticipant.find(query).select("+guardianPhone +studentPhone +passwordHash +registrationMetadata.ipHash +registrationMetadata.userAgent").sort({ registrationTimestamp: -1 }).skip((page - 1) * limit).limit(limit),
     BrightFutureParticipant.countDocuments(query),
   ]);
   return { students: students.map(serializeAdminParticipant), total, page, pages: Math.max(1, Math.ceil(total / limit)) };
@@ -927,7 +991,7 @@ const listAdminResults = async (filters = {}) => {
 
 const updateAdminStudent = async (participantId, payload = {}) => {
   if (!mongoose.Types.ObjectId.isValid(participantId)) throw new BrightFutureError("Invalid participant id.", { status: 400, code: "invalid_id" });
-  const participant = await BrightFutureParticipant.findById(participantId).select("+guardianPhone +studentPhone");
+  const participant = await BrightFutureParticipant.findById(participantId).select("+guardianPhone +studentPhone +passwordHash");
   if (!participant) throw new BrightFutureError("Candidate record was not found.", { status: 404, code: "candidate_not_found" });
   if (payload.status && ["active", "disabled", "withdrawn"].includes(payload.status)) {
     participant.status = payload.status;
@@ -944,7 +1008,7 @@ const updateAdminStudent = async (participantId, payload = {}) => {
 };
 
 const resetAdminAttempt = async (participantId) => {
-  const participant = await BrightFutureParticipant.findById(participantId);
+  const participant = await BrightFutureParticipant.findById(participantId).select("+passwordHash");
   if (!participant) throw new BrightFutureError("Candidate record was not found.", { status: 404, code: "candidate_not_found" });
   if (participant.latestAttemptId) {
     await BrightFutureExamAttempt.updateOne(
@@ -959,6 +1023,7 @@ const resetAdminAttempt = async (participantId) => {
   participant.retakeAuthorized = true;
   participant.competitionStatus = "registered";
   participant.subjectScores = {};
+  participant.maximumScore = TOTAL_QUESTIONS;
   participant.totalScore = 0;
   participant.percentage = 0;
   participant.totalCorrect = 0;
@@ -972,6 +1037,24 @@ const resetAdminAttempt = async (participantId) => {
   await participant.save();
   await recalculateRankings();
   return serializeAdminParticipant(participant);
+};
+
+const resetAdminPassword = async (participantId) => {
+  if (!mongoose.Types.ObjectId.isValid(participantId)) {
+    throw new BrightFutureError("Invalid participant id.", { status: 400, code: "invalid_id" });
+  }
+  const participant = await BrightFutureParticipant.findById(participantId).select("+guardianPhone +studentPhone +passwordHash");
+  if (!participant) {
+    throw new BrightFutureError("Candidate record was not found.", { status: 404, code: "candidate_not_found" });
+  }
+  const temporaryPassword = `BFA-${crypto.randomBytes(6).toString("base64url")}-7`;
+  participant.passwordHash = await bcrypt.hash(temporaryPassword, 12);
+  participant.credentialsUpdatedAt = new Date();
+  await participant.save();
+  return {
+    student: serializeAdminParticipant(participant),
+    credentials: { candidateId: participant.candidateId, temporaryPassword },
+  };
 };
 
 const updateCompetitionControls = async (payload = {}, adminUserId = null) => {
@@ -1045,6 +1128,7 @@ module.exports = {
   recordViolation,
   registerParticipant,
   resetAdminAttempt,
+  resetAdminPassword,
   serializeCandidate,
   serializePublicConfig,
   startExam,

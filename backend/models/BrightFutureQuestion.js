@@ -1,6 +1,12 @@
 const mongoose = require("mongoose");
 
 const SUBJECTS = [
+  "nigerian_entertainment",
+  "football",
+  "technology",
+  "general_english",
+  "stem",
+  // Retained so historical question records can be deactivated without data loss.
   "mathematics",
   "english",
   "basic_science_technology",

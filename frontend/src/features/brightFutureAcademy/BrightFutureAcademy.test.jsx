@@ -77,6 +77,8 @@ describe("Bright Future Academy portal", () => {
     expect(await screen.findByRole("heading", { name: /learn\. compete\. excel\./i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /register as a student/i })).toBeInTheDocument();
     expect(screen.getByText(/no email required/i)).toBeInTheDocument();
+    expect(screen.getByText("Challenge categories").previousSibling).toHaveTextContent("5");
+    expect(screen.getByRole("heading", { name: /five categories\. one shared challenge\./i })).toBeInTheDocument();
   });
 
   it("submits the no-email registration form and displays the server Candidate ID", async () => {
@@ -93,6 +95,8 @@ describe("Bright Future Academy portal", () => {
     await user.selectOptions(screen.getByLabelText(/^state/i), "Kaduna");
     await user.type(screen.getByLabelText(/local government area/i), "Kaduna North");
     await user.type(screen.getByLabelText(/parent \/ guardian phone/i), "08031234567");
+    await user.type(screen.getByLabelText(/^password/i), "Bright2026!");
+    await user.type(screen.getByLabelText(/confirm password/i), "Bright2026!");
     await user.click(screen.getByRole("button", { name: /complete registration/i }));
     expect(await screen.findByText("BFA-2026-000001")).toBeInTheDocument();
     expect(brightFutureApi.registerBrightFutureCandidate).toHaveBeenCalledWith(expect.not.objectContaining({ email: expect.anything() }));
@@ -119,19 +123,19 @@ describe("Bright Future Academy portal", () => {
   it("renders exactly five options for the current server-delivered question and submits a selection", async () => {
     session.token = "candidate-token";
     const currentQuestion = {
-      id: "bfa-math-01", subject: "mathematics", subjectLabel: "Mathematics", number: 1,
-      subjectQuestionNumber: 1, totalQuestions: 40, prompt: "What is 15% of 240?",
-      options: ["24", "30", "36", "40", "45"], deadlineAt: new Date(Date.now() + 50_000).toISOString(),
+      id: "bfa-football-01", subject: "football", subjectLabel: "UEFA, LaLiga, Nigerian and African Football", number: 1,
+      subjectQuestionNumber: 1, totalQuestions: 50, prompt: "Which club won the first five European Cups?",
+      options: ["AC Milan", "Bayern Munich", "Liverpool", "Real Madrid", "Sporting CP"], deadlineAt: new Date(Date.now() + 50_000).toISOString(),
     };
     brightFutureApi.getBrightFutureExam.mockResolvedValue({ attempt: { id: "attempt-1", status: "in_progress", currentQuestion, violationCount: 0, allowedViolations: 3 } });
-    brightFutureApi.answerBrightFutureExam.mockResolvedValue({ attempt: { id: "attempt-1", status: "in_progress", currentQuestion: { ...currentQuestion, id: "bfa-math-02", number: 2, prompt: "Next question" } } });
+    brightFutureApi.answerBrightFutureExam.mockResolvedValue({ attempt: { id: "attempt-1", status: "in_progress", currentQuestion: { ...currentQuestion, id: "bfa-football-02", number: 2, prompt: "Next question" } } });
     const user = userEvent.setup();
     renderFeature("/exam");
     const options = await screen.findAllByRole("radio");
     expect(options).toHaveLength(5);
     await user.click(options[2]);
     await user.click(screen.getByRole("button", { name: /submit & continue/i }));
-    await waitFor(() => expect(brightFutureApi.answerBrightFutureExam).toHaveBeenCalledWith(expect.objectContaining({ questionId: "bfa-math-01", selectedOptionIndex: 2 })));
+    await waitFor(() => expect(brightFutureApi.answerBrightFutureExam).toHaveBeenCalledWith(expect.objectContaining({ questionId: "bfa-football-01", selectedOptionIndex: 2 })));
     expect(await screen.findByText("Next question")).toBeInTheDocument();
   });
 });

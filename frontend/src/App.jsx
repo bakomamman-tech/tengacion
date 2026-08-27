@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "re
 
 import AdminRoute from "./components/AdminRoute";
 import InstallPrompt from "./components/InstallPrompt";
+import LowBandwidthController from "./components/LowBandwidthController";
 import TengacionAssistantDock from "./components/assistant/TengacionAssistantDock";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RouteSeoController from "./components/seo/RouteSeoController";
@@ -237,6 +238,7 @@ export default function App() {
 
   return (
     <>
+      <LowBandwidthController />
       <WelcomeVoiceController
         user={isKadahiveRoute || isAIProfessionalsRoute || isGsiRoute || isCygroEnterpriseRoute || isBrightFutureRoute ? null : user}
       />

@@ -97,6 +97,24 @@ const {
 const {
   buildExecutiveOperatingDashboard,
 } = require("../services/executiveOperatingDashboardService");
+const {
+  buildLaunchGrowthOperatingSystem,
+  createRevenueCampaign,
+  enrollCreatorLifecycleProgram,
+  preflightPayoutAutomation,
+  updateCreatorLifecycleEnrollment,
+  updateRevenueCampaign,
+} = require("../services/launchGrowthOperatingService");
+const {
+  buildScaleEvidenceOperatingSystem,
+  createCalendarEntry,
+  createExpansionBet,
+  createPartnerPilot,
+  updateCalendarEntry,
+  updateExpansionBet,
+  updatePartnerPilot,
+  upsertSloPolicy,
+} = require("../services/scaleEvidenceOperatingService");
 const { buildReadinessPayload } = require("../services/healthService");
 const {
   getStorageActionCatalog,
@@ -2940,6 +2958,305 @@ router.get("/analytics/executive-operating-dashboard", async (req, res) => {
   } catch (err) {
     const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
     return res.status(code).json({ error: err.message || "Failed to load the executive operating dashboard" });
+  }
+});
+
+router.get("/analytics/launch-growth-operating-system", async (req, res) => {
+  try {
+    return res.json(await buildLaunchGrowthOperatingSystem(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = Number(err?.status || 0) || (/invalid/i.test(String(err?.message || "")) ? 400 : 500);
+    console.error("Admin launch growth operating system error:", req.requestId, err);
+    return res.status(code).json({
+      error: err.message || "Failed to load the launch growth operating system",
+      details: err?.details || undefined,
+      requestId: req.requestId,
+    });
+  }
+});
+
+router.post("/finance/payout-automation/preflight", adminMutationLimiter, async (req, res) => {
+  try {
+    const result = await preflightPayoutAutomation({
+      requestIds: req.body?.requestIds,
+      limit: req.body?.limit,
+    });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.payout_automation.preflight",
+      targetType: "CreatorPayoutRequest",
+      targetId: "batch_candidates",
+      reason: "Controlled payout automation preflight",
+      metadata: {
+        evaluated: result.decisions.length,
+        candidates: result.candidateRequestIds.length,
+        moneyMovementAuthorized: false,
+      },
+    });
+    return res.json(result);
+  } catch (err) {
+    const code = Number(err?.status || 0) || 500;
+    return res.status(code).json({
+      error: err.message || "Failed to preflight payout requests",
+      details: err?.details || undefined,
+    });
+  }
+});
+
+router.post("/growth/creator-programs/enroll", adminMutationLimiter, async (req, res) => {
+  try {
+    const enrollment = await enrollCreatorLifecycleProgram({
+      creatorProfileId: req.body?.creatorProfileId,
+      programKey: req.body?.programKey,
+      ownerName: req.body?.ownerName,
+      ownerRole: req.body?.ownerRole,
+      adminNote: req.body?.adminNote,
+      adminUserId: req.user.id,
+    });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.creator_lifecycle.enroll",
+      targetType: "CreatorLifecycleEnrollment",
+      targetId: enrollment.id,
+      reason: enrollment.adminNote || enrollment.entryReason,
+      metadata: {
+        creatorProfileId: enrollment.creatorProfileId,
+        programKey: enrollment.programKey,
+        status: enrollment.status,
+      },
+    });
+    return res.status(201).json({ success: true, enrollment });
+  } catch (err) {
+    const code = Number(err?.status || 0)
+      || (Number(err?.code || 0) === 11000 ? 409 : 0)
+      || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to enroll creator", details: err?.details || undefined });
+  }
+});
+
+router.patch("/growth/creator-programs/:enrollmentId", adminMutationLimiter, async (req, res) => {
+  try {
+    const enrollment = await updateCreatorLifecycleEnrollment({
+      enrollmentId: req.params.enrollmentId,
+      updates: req.body || {},
+      adminUserId: req.user.id,
+    });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.creator_lifecycle.update",
+      targetType: "CreatorLifecycleEnrollment",
+      targetId: enrollment.id,
+      reason: enrollment.adminNote || "Creator lifecycle enrollment updated",
+      metadata: { programKey: enrollment.programKey, status: enrollment.status },
+    });
+    return res.json({ success: true, enrollment });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update creator lifecycle enrollment", details: err?.details || undefined });
+  }
+});
+
+router.post("/growth/revenue-campaigns", adminMutationLimiter, async (req, res) => {
+  try {
+    const campaign = await createRevenueCampaign({ payload: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.revenue_campaign.create",
+      targetType: "RevenueCampaign",
+      targetId: campaign.id,
+      reason: "Reversible revenue campaign created",
+      metadata: {
+        campaignKey: campaign.campaignKey,
+        type: campaign.type,
+        ledgerTrackingKey: campaign.ledgerTrackingKey,
+      },
+    });
+    return res.status(201).json({ success: true, campaign });
+  } catch (err) {
+    const code = Number(err?.status || 0)
+      || (Number(err?.code || 0) === 11000 ? 409 : 0)
+      || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to create revenue campaign", details: err?.details || undefined });
+  }
+});
+
+router.patch("/growth/revenue-campaigns/:campaignId", adminMutationLimiter, async (req, res) => {
+  try {
+    const campaign = await updateRevenueCampaign({
+      campaignId: req.params.campaignId,
+      updates: req.body || {},
+      adminUserId: req.user.id,
+    });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.revenue_campaign.update",
+      targetType: "RevenueCampaign",
+      targetId: campaign.id,
+      reason: String(req.body?.reason || "Campaign configuration updated").trim(),
+      metadata: {
+        campaignKey: campaign.campaignKey,
+        status: campaign.status,
+        readinessState: campaign.readinessState,
+      },
+    });
+    return res.json({ success: true, campaign });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update revenue campaign", details: err?.details || undefined });
+  }
+});
+
+router.get("/analytics/scale-evidence-operating-system", async (req, res) => {
+  try {
+    return res.json(await buildScaleEvidenceOperatingSystem(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = Number(err?.status || 0) || (/invalid/i.test(String(err?.message || "")) ? 400 : 500);
+    console.error("Admin scale evidence operating system error:", req.requestId, err);
+    return res.status(code).json({
+      error: err.message || "Failed to load the scale evidence operating system",
+      details: err?.details || undefined,
+      requestId: req.requestId,
+    });
+  }
+});
+
+router.post("/growth/calendar", adminMutationLimiter, async (req, res) => {
+  try {
+    const entry = await createCalendarEntry({ payload: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.growth_calendar.create",
+      targetType: "GrowthCalendarEntry",
+      targetId: entry.id,
+      reason: "Four-week growth calendar entry created",
+      metadata: { entryKey: entry.entryKey, type: entry.type, reportingKey: entry.reportingKey },
+    });
+    return res.status(201).json({ success: true, entry });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (Number(err?.code || 0) === 11000 ? 409 : 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to create calendar entry", details: err?.details || undefined });
+  }
+});
+
+router.patch("/growth/calendar/:entryId", adminMutationLimiter, async (req, res) => {
+  try {
+    const entry = await updateCalendarEntry({ entryId: req.params.entryId, updates: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.growth_calendar.update",
+      targetType: "GrowthCalendarEntry",
+      targetId: entry.id,
+      reason: String(req.body?.reason || "Growth calendar entry updated").trim(),
+      metadata: { entryKey: entry.entryKey, status: entry.status, readinessState: entry.readinessState },
+    });
+    return res.json({ success: true, entry });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update calendar entry", details: err?.details || undefined });
+  }
+});
+
+router.patch("/reliability/slo-policies/:key", adminMutationLimiter, async (req, res) => {
+  try {
+    const policy = await upsertSloPolicy({ key: req.params.key, payload: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.slo_policy.update",
+      targetType: "ProductionSloPolicy",
+      targetId: policy.key,
+      reason: String(req.body?.reason || "").trim(),
+      metadata: { targetPercent: policy.targetPercent, windowDays: policy.windowDays, errorBudgetMinutes: policy.errorBudgetMinutes },
+    });
+    return res.json({ success: true, policy });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update SLO policy", details: err?.details || undefined });
+  }
+});
+
+router.post("/partnerships/pilots", adminMutationLimiter, async (req, res) => {
+  try {
+    const pilot = await createPartnerPilot({ payload: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.partner_pilot.create",
+      targetType: "PartnerPilot",
+      targetId: pilot.id,
+      reason: "Bounded partner pilot created",
+      metadata: { pilotKey: pilot.pilotKey, type: pilot.type, sponsored: pilot.sponsored, disclosureLabel: pilot.disclosureLabel },
+    });
+    return res.status(201).json({ success: true, pilot });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (Number(err?.code || 0) === 11000 ? 409 : 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to create partner pilot", details: err?.details || undefined });
+  }
+});
+
+router.patch("/partnerships/pilots/:pilotId", adminMutationLimiter, async (req, res) => {
+  try {
+    const pilot = await updatePartnerPilot({ pilotId: req.params.pilotId, updates: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.partner_pilot.update",
+      targetType: "PartnerPilot",
+      targetId: pilot.id,
+      reason: String(req.body?.reason || "Partner pilot updated").trim(),
+      metadata: { pilotKey: pilot.pilotKey, status: pilot.status, sponsored: pilot.sponsored, disclosureLabel: pilot.disclosureLabel },
+    });
+    return res.json({ success: true, pilot });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update partner pilot", details: err?.details || undefined });
+  }
+});
+
+router.post("/growth/expansion-bets", adminMutationLimiter, async (req, res) => {
+  try {
+    const bet = await createExpansionBet({ payload: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.expansion_bet.create",
+      targetType: "ExpansionBet",
+      targetId: bet.id,
+      reason: "Expansion bet created in research state",
+      metadata: { betKey: bet.betKey, marketOrSegment: bet.marketOrSegment, costCap: bet.costCap, currency: bet.currency },
+    });
+    return res.status(201).json({ success: true, bet });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (Number(err?.code || 0) === 11000 ? 409 : 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to create expansion bet", details: err?.details || undefined });
+  }
+});
+
+router.patch("/growth/expansion-bets/:betId", adminMutationLimiter, async (req, res) => {
+  try {
+    const operatingSystem = await buildScaleEvidenceOperatingSystem({ range: "30d" });
+    const expansionPaused = Boolean(operatingSystem.sloBudgets?.summary?.expansionPaused);
+    const bet = await updateExpansionBet({ betId: req.params.betId, updates: req.body || {}, adminUserId: req.user.id, expansionPaused });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.expansion_bet.update",
+      targetType: "ExpansionBet",
+      targetId: bet.id,
+      reason: String(req.body?.reason || "Expansion bet updated").trim(),
+      metadata: { betKey: bet.betKey, state: bet.state, recommendedState: bet.recommendedState, expansionPaused },
+    });
+    return res.json({ success: true, bet });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update expansion bet", details: err?.details || undefined });
   }
 });
 

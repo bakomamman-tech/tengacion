@@ -160,13 +160,14 @@ describe("Tengacion Millionaire game", () => {
   });
 
   test("serves three protected stages and makes the one Ask AI suggestion incorrect", async () => {
+    const testNow = new Date();
     const user = await createUser({ completeProfile: true });
     const token = await issueSessionToken(user._id);
     await registerPlayer(token).expect(201);
 
     const started = {
       body: await startMillionaireAttempt(user._id, {
-        now: LIVE_NOW,
+        now: testNow,
         random: () => 0,
       }),
     };
@@ -193,7 +194,7 @@ describe("Tengacion Millionaire game", () => {
         userId: user._id,
         questionId: question.id,
         selectedIndex: question.correctIndex,
-        now: new Date(LIVE_NOW.getTime() + 5000),
+        now: new Date(),
       }),
     };
     expect(answer.body.answerResult.correct).toBe(true);
@@ -370,12 +371,13 @@ describe("Tengacion Millionaire game", () => {
   });
 
   test("banks earned winnings after a wrong answer and enforces the six-month replay window", async () => {
+    const testNow = new Date();
     const user = await createUser({ completeProfile: true });
     const token = await issueSessionToken(user._id);
     await registerPlayer(token).expect(201);
     const started = {
       body: await startMillionaireAttempt(user._id, {
-        now: LIVE_NOW,
+        now: testNow,
         random: () => 0,
       }),
     };
@@ -407,7 +409,7 @@ describe("Tengacion Millionaire game", () => {
 
     await expect(
       startMillionaireAttempt(user._id, {
-        now: new Date(LIVE_NOW.getTime() + 10_000),
+        now: new Date(),
         random: () => 0,
       })
     ).rejects.toMatchObject({ code: "six_month_cooldown", status: 409 });

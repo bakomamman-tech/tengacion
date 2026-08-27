@@ -15,6 +15,8 @@ import {
   Line,
 } from "recharts";
 import AdminShell from "../components/AdminShell";
+import LaunchGrowthOperatingPanels from "../components/admin/LaunchGrowthOperatingPanels";
+import ScaleEvidenceOperatingPanels from "../components/admin/ScaleEvidenceOperatingPanels";
 import {
   adminGetAnalyticsOverview,
   adminGetAnalyticsUserGrowth,
@@ -25,6 +27,8 @@ import {
   adminGetAnalyticsFanRetention,
   adminGetAnalyticsRecommendations,
   adminGetExecutiveOperatingDashboard,
+  adminGetLaunchGrowthOperatingSystem,
+  adminGetScaleEvidenceOperatingSystem,
   adminUpdateRecommendationPolicy,
   adminGetAnalyticsEngagement,
   adminGetAnalyticsTopCreators,
@@ -174,6 +178,31 @@ export default function AdminAnalyticsPage({ user }) {
     metrics: [],
     actions: [],
   });
+  const [launchGrowthOperatingSystem, setLaunchGrowthOperatingSystem] = useState({
+    summary: {},
+    roadmapPackages: [],
+    payoutAutomation: { summary: {}, decisions: [] },
+    creatorLifecycle: { summary: {}, programSummary: [], launchCohortCandidates: [] },
+    fanLifecycle: { summary: {}, subscriptionDiagnostics: {}, fans: [] },
+    firstWeekActivation: { summary: {}, states: [], bySource: [] },
+    revenueCampaigns: { summary: {}, campaigns: [] },
+    supportTrust: { summary: {}, queues: [], macros: [] },
+    launchGovernance: { launchReport: {} },
+  });
+  const [scaleEvidenceOperatingSystem, setScaleEvidenceOperatingSystem] = useState({
+    summary: {},
+    roadmapPackages: [],
+    campaignCalendar: { summary: {}, entries: [], missingFourWeekTypes: [] },
+    fanRetention: { summary: {}, byType: {}, interventions: [] },
+    partnerReporting: { privacyBoundary: {}, commerce: {} },
+    akusoLaunchCopilot: { capabilities: [], evalSuites: [] },
+    sloBudgets: { summary: {}, policies: [] },
+    performanceCost: { summary: {}, instrumentationGaps: [], lowBandwidth: {} },
+    partnerPilots: { types: [], pilots: [] },
+    governance: { checklists: [] },
+    scaleReport: { sections: {}, decision: {} },
+    expansionScorecard: { bets: [], scoreInputs: [] },
+  });
   const [recommendationPolicyDraft, setRecommendationPolicyDraft] = useState({});
   const [recommendationPolicyReason, setRecommendationPolicyReason] = useState("");
   const [recommendationPolicyNotice, setRecommendationPolicyNotice] = useState("");
@@ -226,6 +255,8 @@ export default function AdminAnalyticsPage({ user }) {
         fanRetentionPayload,
         recommendationPayload,
         executiveDashboardPayload,
+        launchGrowthPayload,
+        scaleEvidencePayload,
         engagementPayload,
         topCreatorsPayload,
         topContentPayload,
@@ -243,6 +274,8 @@ export default function AdminAnalyticsPage({ user }) {
         adminGetAnalyticsFanRetention(filterParams),
         adminGetAnalyticsRecommendations(filterParams),
         adminGetExecutiveOperatingDashboard(filterParams),
+        adminGetLaunchGrowthOperatingSystem(filterParams),
+        adminGetScaleEvidenceOperatingSystem(filterParams),
         adminGetAnalyticsEngagement(filterParams),
         adminGetAnalyticsTopCreators({ ...filterParams, mode: creatorMode }),
         adminGetAnalyticsTopContent(filterParams),
@@ -274,6 +307,8 @@ export default function AdminAnalyticsPage({ user }) {
       setRecommendationDiagnostics(recommendationPayload || { summary: {}, surfaces: [], policy: {} });
       setRecommendationPolicyDraft(recommendationPayload?.policy || {});
       setExecutiveDashboard(executiveDashboardPayload || { summary: {}, metrics: [], actions: [] });
+      setLaunchGrowthOperatingSystem(launchGrowthPayload || { summary: {}, roadmapPackages: [] });
+      setScaleEvidenceOperatingSystem(scaleEvidencePayload || { summary: {}, roadmapPackages: [] });
       setEngagement(engagementPayload || { series: [] });
       setTopCreators(topCreatorsPayload || { items: [] });
       setTopContent(topContentPayload || { items: [] });
@@ -309,7 +344,7 @@ export default function AdminAnalyticsPage({ user }) {
   const exportJson = () => {
     downloadBlob({
       filename: `tengacion-admin-analytics-${filters.range}.json`,
-      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, productScorecard, fanRetention, recommendationDiagnostics, executiveDashboard, engagement, topCreators, topContent, recentActivity, systemAlerts, reliabilityHealth, reportsSummary }, null, 2),
+      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, productScorecard, fanRetention, recommendationDiagnostics, executiveDashboard, launchGrowthOperatingSystem, scaleEvidenceOperatingSystem, engagement, topCreators, topContent, recentActivity, systemAlerts, reliabilityHealth, reportsSummary }, null, 2),
       type: "application/json",
     });
   };
@@ -448,6 +483,10 @@ export default function AdminAnalyticsPage({ user }) {
 
       {!loading ? (
         <div className="adminx-analytics-grid">
+          <LaunchGrowthOperatingPanels payload={launchGrowthOperatingSystem} navigate={navigate} />
+
+          <ScaleEvidenceOperatingPanels payload={scaleEvidenceOperatingSystem} navigate={navigate} />
+
           <section className="adminx-panel adminx-panel--span-12">
             <div className="adminx-panel-head">
               <div>

@@ -1,6 +1,6 @@
 # Tengacion World-Class Roadmap Implementation Tracker
 
-Last updated: 15 August 2026
+Last updated: 27 August 2026
 
 This document is the authoritative implementation record for the Facebook benchmark roadmap. A work package is marked complete only after its definition of done is implemented and verified. Planning documents and code presence alone do not count as completion.
 
@@ -38,7 +38,7 @@ This document is the authoritative implementation record for the Facebook benchm
 | Phase 2 | Trust, data rights and server authority | IN PROGRESS |
 | Phase 3 | Complete high-value product loops | IN PROGRESS |
 | Phase 4 | Recommendation quality and responsible monetization | IN PROGRESS |
-| Phase 5 | Regional ecosystem scale | NOT STARTED |
+| Phase 5 | Regional ecosystem scale | IN PROGRESS |
 
 ### Growth and operating-system work packages
 
@@ -49,6 +49,36 @@ This document is the authoritative implementation record for the Facebook benchm
 | RECOMMEND-001 | Add recommendation trust and diversity controls | COMPLETE | Discovery enforces audited global creator-cap, content-streak, exploration, hide/report and conversion controls; sparse samples cannot affect ranking, server-owned logs establish creator attribution, and Admin Analytics exposes diagnostics and bounded tuning. |
 | AI-GATE-001 | Gate Akuso changes with eval and review policy | COMPLETE | The release command generates attachable eval evidence and blocks static regressions; the authenticated gate adds live review-backlog policy and blocks unresolved high-risk safety or abuse reviews. |
 | OPS-001 | Launch the executive operating dashboard | COMPLETE | Admin Analytics combines commercial, creator, fan, recommendation, Akuso, support and reliability signals with current/prior week, four-week, target, status and drilldown contracts, including truthful no-data states. |
+
+### Next-ten launch and growth work packages
+
+| ID | Work package | Status | Verification record |
+|---|---|---|---|
+| PAYOUT-AUTO-001 | Add controlled payout automation | COMPLETE | Server-owned preflight automates eligibility, balance, duplicate, batch-candidate and retry checks while first, high-value, changed-method, trust-risk and verification-risk payouts remain human-reviewed; the capability cannot authorize money movement and has an environment rollback flag. |
+| CREATOR-LIFECYCLE-001 | Mature creator lifecycle programs | COMPLETE | Real profile, catalog, sale, subscription, payout and trust evidence assigns six bounded lifecycle programs; durable enrollment records carry owners, checklists, metrics and status history. |
+| FAN-LIFECYCLE-001 | Mature fan lifecycle and subscription retention | COMPLETE | Server events and purchases classify seven fan stages and expose failed renewals, scheduled cancellations, later-paid recoveries, cancellation reasons and renewal-after-creator-activity evidence. |
+| LAUNCH-GOV-001 | Prepare launch and governance review | COMPLETE | One bounded launch report separates live, manual and automated capabilities, known risks, blockers and next investments; blocked gates or breached support SLAs hold expansion. |
+| LAUNCH-CENTER-001 | Create the launch readiness command center | COMPLETE | The existing Assurance gates, rollback plans and support macros are reused by the next-ten operating report and remain the launch authority for checkout, entitlement, payout, upload, live, discovery, notification, Akuso and queue coverage. |
+| CREATOR-COHORT-001 | Select and prepare the first creator launch cohort | COMPLETE | Cohort candidates require catalog, category, profile, payout and trust evidence plus a durable manual promotion confirmation; missing criteria remain visible and cannot be treated as ready. |
+| FAN-ACTIVATION-001 | Instrument first-week fan activation | COMPLETE | Account creation and allowlisted server events produce source-attributed browse, follow, save, preview, paid, subscription and return stages with truthful stalled-state reporting. |
+| CAMPAIGN-001 | Prepare reversible revenue campaigns | COMPLETE | A durable campaign model enforces owners, time bounds, eligible scope, price rules, margin, refund handling, success metrics, ledger keys and rollback plans before activation; status transitions are audited and final states cannot be reactivated. |
+| SUPPORT-OPS-001 | Harden public support and trust operations | COMPLETE | Five queue-specific SLA policies, grounded launch support macros and high-risk escalation owners are visible in Admin Analytics; overdue open items produce blocked status. |
+| CREATOR-PROGRAM-001 | Launch creator cohort programs | COMPLETE | Six named programs define entry triggers, task lists, grounded Akuso template keys, target metrics and graduation conditions; creator membership and progress are durable and admin-audited. |
+
+### Next-ten scale evidence work packages
+
+| ID | Work package | Status | Verification record |
+|---|---|---|---|
+| SCALE-031-02 | Run the first campaign and drop calendar | COMPLETE | Durable four-week entries cover six launch types, enforce owner/window/audience/objective/CTA/reporting/scope readiness, and report campaign signals plus equal-window eligible-creator baselines. |
+| SCALE-031-03 | Improve fan lifecycle retention | COMPLETE | Seven intervention states are derived from server events and purchases; lifecycle, relationship, freshness, engagement, consent, complaint, and frequency-cap decisions expose suppression reasons. |
+| SCALE-031-04 | Package partner-ready reporting | COMPLETE | One aggregate-only partner schema packages cohort, campaign, live, subscription, retention, commerce, payout, support, and moderation evidence while excluding user, payment, private-content, safety-case, and Akuso-memory data. |
+| SCALE-031-05 | Expand Akuso into a launch copilot | COMPLETE | Six launch template types use Akuso's real policy and review path with deterministic fallbacks and five launch-specific eval suites covering campaign, cohort, escalation, finance refusal, and privacy boundaries. |
+| SCALE-061-01 | Define production SLOs and error budgets | COMPLETE | Nine SLO policies combine durable reviewed targets with live reliability evidence, owners, runbooks, user impact, rollback, tickets, error-budget use, and expansion-blocking states. |
+| SCALE-061-02 | Optimize performance, cost, and low-bandwidth paths | COMPLETE | The operating report exposes latency/payload/Akuso/notification evidence and gaps; a shared Save-Data/2G controller prevents eager media preload with automatic and manual modes. |
+| SCALE-061-03 | Create partner and sponsor pilots | COMPLETE | Five durable pilot types require owner, scopes, geography, offer, reports, rights/moderation, finance, exit, and review evidence; sponsored pilots require visible disclosure. |
+| SCALE-061-04 | Formalize governance and compliance readiness | COMPLETE | Eight operational checklists preserve counsel boundaries, evidence requirements, and audited manual-override rules across finance, rights, privacy, consent, recommendations, and Akuso. |
+| SCALE-061-05 | Publish the 90-day launch and scale report | COMPLETE | A single evidence pack reports launch, cohort, commerce, retention, campaign, partner, reliability, support, moderation, Akuso, risk, and investment data with one bounded scale decision. |
+| EXPANSION-001 | Build the expansion scorecard | COMPLETE | Durable bets require ten scored inputs plus owner, cohort, gate, cost cap, metric, stop condition, and review date; exhausted or uninstrumented SLOs prevent controlled-launch or expand transitions. |
 
 ### Phase 1 work packages
 
@@ -63,8 +93,23 @@ This document is the authoritative implementation record for the Facebook benchm
 | ID | Work package | Status | Verification record |
 |---|---|---|---|
 | SAFETY-001 | Make account blocking authoritative and user-manageable | COMPLETE | Privacy Settings now provides searchable, server-confirmed limited-account lists; canonical blocks remove relationship links and are enforced mutually across people discovery, profiles, feeds, creator follows, contacts, friend requests and every direct-message write transport, while unblocking never fabricates restored relationships. |
-
 ## Change log
+
+
+### 27 August 2026
+
+- Completed the next ten scale-evidence packages: campaign calendar, fan retention interventions, partner reporting, Akuso launch copilot, production SLOs, performance/low-bandwidth controls, partner pilots, governance readiness, the 90-day scale report, and expansion scoring.
+- Added `GrowthCalendarEntry`, `ProductionSloPolicy`, `PartnerPilot`, and `ExpansionBet` as durable authorities with bounded state transitions, named ownership, review dates, reasons, and audit evidence.
+- Added one admin operating view that composes current launch-growth and reliability evidence. Notification sends are not treated as delivery; missing provider delivery/failure telemetry explicitly pauses expansion.
+- Added six Akuso launch template profiles and five safety/quality eval fixtures while preserving human publication review, finance refusal, privacy, prompt-injection, and deterministic-fallback boundaries.
+- Added automatic Save-Data/2G media-preload reduction and documented the operating, privacy, partner, SLO, rollback, counsel, and expansion contracts in `docs/tengacion-next-ten-scale-evidence-controls.md`.
+
+- Completed the next ten operating and controlled-launch packages: payout automation preflight, creator lifecycle, fan/subscription lifecycle, launch governance, command-center integration, creator cohort preparation, first-week activation, reversible campaigns, public support/trust operations and repeatable creator cohort programs.
+- Added `CreatorLifecycleEnrollment` and `RevenueCampaign` as durable authorities with constrained states, owner fields, checklist or readiness evidence, and history. Admin mutations are authenticated, rate-limited and audit logged.
+- Added one bounded server-owned operating report to Admin Analytics with launch decisions, payout safety, creator candidates, fan risks, activation source funnels, campaign readiness and support SLA queues. Exported JSON includes the same completeness limits.
+- Kept automation inside explicit safety boundaries: payout preflight never authorizes money movement, campaigns cannot activate without ledger and rollback evidence, and creator promotion readiness requires a recorded manual confirmation.
+- Documented the operating, privacy, mutation and rollback contracts in `docs/tengacion-next-ten-launch-growth-controls.md`.
+- Verification passed: 11 focused backend roadmap tests (7 service and 4 protected-route cases), 2 focused frontend operating-panel tests, backend syntax, repository-wide frontend lint, inert-control and encoding audits, the diff check, and the frontend production build.
 
 ### 15 August 2026
 

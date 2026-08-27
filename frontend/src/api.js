@@ -2985,6 +2985,102 @@ export const adminGetExecutiveOperatingDashboard = (params = {}) => {
   });
 };
 
+export const adminGetLaunchGrowthOperatingSystem = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/analytics/launch-growth-operating-system?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminGetScaleEvidenceOperatingSystem = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/analytics/scale-evidence-operating-system?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminCreateGrowthCalendarEntry = (payload = {}) =>
+  request(`${API_BASE}/admin/growth/calendar`, {
+    method: "POST", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminUpdateGrowthCalendarEntry = (entryId, payload = {}) =>
+  request(`${API_BASE}/admin/growth/calendar/${encodeURIComponent(entryId || "")}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminUpdateSloPolicy = (key, payload = {}) =>
+  request(`${API_BASE}/admin/reliability/slo-policies/${encodeURIComponent(key || "")}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminCreatePartnerPilot = (payload = {}) =>
+  request(`${API_BASE}/admin/partnerships/pilots`, {
+    method: "POST", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminUpdatePartnerPilot = (pilotId, payload = {}) =>
+  request(`${API_BASE}/admin/partnerships/pilots/${encodeURIComponent(pilotId || "")}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminCreateExpansionBet = (payload = {}) =>
+  request(`${API_BASE}/admin/growth/expansion-bets`, {
+    method: "POST", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminUpdateExpansionBet = (betId, payload = {}) =>
+  request(`${API_BASE}/admin/growth/expansion-bets/${encodeURIComponent(betId || "")}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminPreflightPayoutAutomation = (payload = {}) =>
+  request(`${API_BASE}/admin/finance/payout-automation/preflight`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+    timeoutMs: 45000,
+  });
+
+export const adminEnrollCreatorLifecycleProgram = (payload = {}) =>
+  request(`${API_BASE}/admin/growth/creator-programs/enroll`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const adminUpdateCreatorLifecycleEnrollment = (enrollmentId, payload = {}) =>
+  request(`${API_BASE}/admin/growth/creator-programs/${encodeURIComponent(enrollmentId || "")}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const adminCreateRevenueCampaign = (payload = {}) =>
+  request(`${API_BASE}/admin/growth/revenue-campaigns`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const adminUpdateRevenueCampaign = (campaignId, payload = {}) =>
+  request(`${API_BASE}/admin/growth/revenue-campaigns/${encodeURIComponent(campaignId || "")}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const adminUpdateRecommendationPolicy = (payload = {}) =>
   request(`${API_BASE}/admin/analytics/recommendations/policy`, {
     method: "PATCH",

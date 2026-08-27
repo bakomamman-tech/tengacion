@@ -27,6 +27,12 @@ const WRITING_CONTENT_TYPES = [
   "talent_competition",
   "rewrite",
   "summary",
+  "creator_checklist",
+  "campaign_copy",
+  "support_navigation",
+  "payout_explanation",
+  "renewal_help",
+  "incident_summary",
 ];
 
 const normalizeWritingPreferences = (value = {}) => ({
@@ -134,6 +140,54 @@ const buildWritingFallbackDraft = ({
       `${prefix}: ${cleanSource}`,
       `Cleaner version: ${cleanSource}. ${lengthHint}`,
       `Polished version: ${cleanSource}. Written ${audienceTail}.`,
+    ]);
+  }
+
+  if (contentType === "creator_checklist") {
+    return buildVariants([
+      `Launch checklist for ${cleanTopic}: [ ] confirm profile and rights [ ] verify payout readiness [ ] review preview and price [ ] schedule announcement [ ] confirm support path.`,
+      `Preflight for ${cleanTopic}: [ ] owner named [ ] audience defined [ ] success metric set [ ] rollback ready [ ] final human review complete.`,
+      `Fan-readiness checklist: [ ] offer is clear [ ] entitlement is clear [ ] renewal or refund terms are visible [ ] reminder consent is respected.`,
+    ]);
+  }
+
+  if (contentType === "campaign_copy") {
+    return buildVariants([
+      `${prefix}: ${cleanTopic}. See the preview, understand the offer, and choose whether it is right for you.`,
+      `Campaign draft: ${cleanTopic} is ready ${audienceTail}. Review the details and use the official Tengacion action when you are ready.`,
+      `Reminder draft: ${cleanTopic} is coming up. Save it for later or opt out of reminders at any time.`,
+    ]);
+  }
+
+  if (contentType === "support_navigation") {
+    return buildVariants([
+      `For ${cleanTopic}, open Tengacion Help & Support, choose the closest issue type, and include the affected screen and time. Do not share passwords, OTPs, or full payment details.`,
+      `Support path: review the on-screen status first, then use the built-in support form if it remains unresolved. Keep the ticket reference for follow-up.`,
+      `Escalation note: describe the user-visible impact, when it started, and the safe action already tried. Leave private credentials out of the report.`,
+    ]);
+  }
+
+  if (contentType === "payout_explanation") {
+    return buildVariants([
+      `Payout explanation for ${cleanTopic}: readiness means identity, account, balance, and review checks are complete. Akuso cannot approve or move money.`,
+      `Creator-facing note: check the secure payout page for status and any required action. Never send bank credentials, passwords, or OTPs in chat.`,
+      `Operations draft: explain the current payout state, the next reviewed step, and the expected update path without promising a transfer time that is not verified.`,
+    ]);
+  }
+
+  if (contentType === "renewal_help") {
+    return buildVariants([
+      `Renewal help for ${cleanTopic}: review the membership status, renewal date, benefits, and cancellation controls on the official subscription page.`,
+      `If renewal failed, use the secure payment-update flow and confirm access status afterward. Akuso will not collect payment details.`,
+      `If you no longer want renewal, use the visible cancellation control; access rules and end date should remain clear before confirmation.`,
+    ]);
+  }
+
+  if (contentType === "incident_summary") {
+    return buildVariants([
+      `Incident draft — ${cleanTopic}. Status: investigating. User impact: confirm scope. Mitigation: record the safe action in progress. Next update: add a verified time.`,
+      `Operations summary — ${cleanTopic}. Include start time, affected surface, owner, current state, rollback, and ticket. Exclude private user and payment data.`,
+      `Resolved-summary draft — ${cleanTopic}. State what users experienced, what restored service, remaining follow-up, and the next evidence review without assigning unverified blame.`,
     ]);
   }
 

@@ -14,7 +14,10 @@ const {
   getUploadRoute,
   getUserProfileRoute,
 } = require("../services/assistant/tools/shared");
-const { buildWritingFallbackDraft } = require("../services/assistant/writingProfiles");
+const {
+  WRITING_CONTENT_TYPES,
+  buildWritingFallbackDraft,
+} = require("../services/assistant/writingProfiles");
 const { buildAkusoContext } = require("../services/akusoContextBuilder");
 const { buildAkusoPromptBundle } = require("../services/akusoPromptBuilder");
 const { evaluateAkusoPolicy, POLICY_BUCKETS } = require("../services/akusoPolicyService");
@@ -899,7 +902,10 @@ const buildWritingFallback = ({ input, context, policyResult }) => {
     ...context.preferences,
     ...input.preferences,
   });
-  const contentType = inferWritingContentType(input.message || input.prompt || "");
+  const requestedContentType = String(input.contentType || "").trim().toLowerCase();
+  const contentType = WRITING_CONTENT_TYPES.includes(requestedContentType)
+    ? requestedContentType
+    : inferWritingContentType(input.message || input.prompt || "");
   const drafts = buildWritingFallbackDraft({
     task: contentType === "rewrite" ? "rewrite" : "draft",
     contentType,

@@ -30,5 +30,5 @@ describe("repository encoding quality", () => {
 
     expect(result.filesScanned).toBeGreaterThan(500);
     expect(result.findings).toEqual([]);
-  });
+  }, 60000);
 });

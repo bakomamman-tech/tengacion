@@ -73,6 +73,8 @@ vi.mock("../../api", () => ({
   adminGetAnalyticsUserGrowth: vi.fn(),
   adminGetExecutiveOperatingDashboard: vi.fn(),
   adminUpdateRecommendationPolicy: vi.fn(),
+  adminGetLaunchGrowthOperatingSystem: vi.fn().mockResolvedValue({}),
+  adminGetScaleEvidenceOperatingSystem: vi.fn().mockResolvedValue({}),
 }));
 
 const emptyAnalyticsPayload = { summary: {}, series: [], items: [], alerts: [] };

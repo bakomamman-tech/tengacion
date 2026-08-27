@@ -33,9 +33,6 @@ const PUBLIC_STATIC_PATHS = new Set([
   "/tovido-anthony-foundation",
   "/tovido_anthony_foundation",
   "/foundation/tovido-anthony",
-  "/neheze-farms",
-  "/neheze_farms",
-  "/farms/neheze-farms",
   "/cygro-enterprise",
   "/safety",
   "/child-safety",
@@ -56,7 +53,6 @@ const PUBLIC_STATIC_PATHS = new Set([
   "/contact",
   "/developer-contact",
   "/marketplace",
-  "/gsi",
 ]);
 
 const NOINDEX_RULES = [
@@ -167,9 +163,6 @@ const isPublicDetailRoute = (pathname) =>
 const isPublicMarketplaceRoute = (pathname) =>
   /^\/marketplace\/(?:product|store)\/[^/]+$/i.test(pathname);
 
-const isPublicGsiRecordRoute = (pathname) =>
-  /^\/gsi\/records\/[a-zA-Z0-9_-]+$/i.test(pathname);
-
 const isPublicBrightFutureRoute = (pathname) =>
   /^\/bright-future-academy(?:\/(?:register|leaderboard|participants))?$/i.test(pathname);
 
@@ -179,7 +172,6 @@ const isHandledPublicRoute = (pathname) =>
   || isPublicCreatorAliasRoute(pathname)
   || isPublicDetailRoute(pathname)
   || isPublicMarketplaceRoute(pathname)
-  || isPublicGsiRecordRoute(pathname)
   || isPublicBrightFutureRoute(pathname);
 
 export default function RouteSeoController() {

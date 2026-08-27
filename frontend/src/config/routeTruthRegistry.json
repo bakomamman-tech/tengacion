@@ -67,12 +67,12 @@
       "surface": "public",
       "access": "public",
       "canonicalPath": "/pyrexx-singz",
-      "appPaths": ["/pyrexx-singz", "/pyrexx_singz", "/artist/pyrexx-singz", "/artist/pyrexx_singz", "/tovido-anthony-foundation", "/tovido_anthony_foundation", "/foundation/tovido-anthony", "/neheze-farms", "/neheze_farms", "/farms/neheze-farms", "/cygro-enterprise"],
+      "appPaths": ["/pyrexx-singz", "/pyrexx_singz", "/artist/pyrexx-singz", "/artist/pyrexx_singz", "/tovido-anthony-foundation", "/tovido_anthony_foundation", "/foundation/tovido-anthony", "/cygro-enterprise"],
       "dataAuthority": "Repository-owned profile content and media.",
       "ownerRole": "Institutional Products Owner",
       "kpi": "Qualified profile engagement",
       "featureFlag": null,
-      "testEvidence": ["frontend/src/pages/__tests__/LeadershipPage.test.jsx", "frontend/src/pages/__tests__/NehezeFarmsPage.test.jsx", "frontend/src/pages/__tests__/TovidoAnthonyFoundationPage.test.jsx", "frontend/src/pages/__tests__/CygroEnterprisePage.test.jsx"]
+      "testEvidence": ["frontend/src/pages/__tests__/LeadershipPage.test.jsx", "frontend/src/pages/__tests__/TovidoAnthonyFoundationPage.test.jsx", "frontend/src/pages/__tests__/CygroEnterprisePage.test.jsx"]
     },
     {
       "id": "schools_and_training",
@@ -101,24 +101,6 @@
   "kpi": "Active programme members",
   "featureFlag": null,
   "testEvidence": ["frontend/src/features/kadahive/KadahiveLanding.test.jsx", "backend/tests/kadahive.test.js"]
-},
-{
-  "id": "gsi_team_archive",
-  "title": "GSI Team Archive research scoring",
-  "status": "beta",
-  "surface": "institution",
-  "access": "public",
-  "canonicalPath": "/gsi",
-  "appPaths": ["/gsi", "/gsi/research", "/gsi/papers/new", "/gsi/papers/:recordId", "/gsi/records/:recordId"],
-  "dataAuthority": "GSI journal onboarding, OpenAlex research metadata, scoring and archived public records.",
-  "ownerRole": "Institutional Products Owner",
-  "kpi": "Verified journal scoring and public research record access",
-  "featureFlag": null,
-  "testEvidence": [
-    "backend/tests/gsiArchiveService.test.js",
-    "backend/tests/gsiOpenAlexService.test.js",
-    "backend/tests/gsiScoringService.test.js"
-  ]
 },
 {
   "id": "ai_professionals_kaduna",

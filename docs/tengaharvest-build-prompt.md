@@ -23,7 +23,7 @@ Create and wire these React routes:
 - `/tengaharvest/farmer`
 - `/tengaharvest/provider`
 
-Treat all `/tengaharvest` routes as public/auth-optional routes in `frontend/src/App.jsx` and suppress unrelated Tengacion promotional overlays/assistant UI on these focused pages, following the existing GSI/Kadahive patterns.
+Treat all `/tengaharvest` routes as public/auth-optional routes in `frontend/src/App.jsx` and suppress unrelated Tengacion promotional overlays/assistant UI on these focused pages, following the existing Kadahive pattern.
 
 ## Required API mount
 
@@ -73,7 +73,7 @@ const isTengaHarvestRoute =
 
 Include `isTengaHarvestRoute` in `isAuthOptionalRoute`.
 
-Ensure `WelcomeVoiceController`, `TopUpPromoDiscovery`, `InstallPrompt`, and `TengacionAssistantDock` do not intrude on TengaHarvest focused routes, mirroring the existing GSI focused-route behavior.
+Ensure `WelcomeVoiceController`, `TopUpPromoDiscovery`, `InstallPrompt`, and `TengacionAssistantDock` do not intrude on TengaHarvest focused routes, mirroring the existing focused-route behavior.
 
 Add routes near the other public microsites:
 
@@ -174,7 +174,7 @@ The feature is done when:
 - a farmer can request an approved service;
 - impact counters are based on real database records;
 - tests pass;
-- no existing Tengacion/GSI/Kadahive flows regress;
+- no existing Tengacion or Kadahive flows regress;
 - documentation explains the pilot, business model and next build phases.
 
 Do not merge directly to `main` without reviewing the diff and running the relevant frontend/backend tests.

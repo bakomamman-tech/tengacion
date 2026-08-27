@@ -29,7 +29,6 @@ const LeadershipPage = lazy(() => import("./pages/LeadershipPage"));
 const InvestorPitchPage = lazy(() => import("./pages/InvestorPitchPage"));
 const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
 const TovidoAnthonyFoundationPage = lazy(() => import("./pages/TovidoAnthonyFoundationPage"));
-const NehezeFarmsPage = lazy(() => import("./pages/NehezeFarmsPage"));
 const CygroEnterprisePage = lazy(() => import("./pages/CygroEnterprisePage"));
 const AIProfessionalsKadunaPage = lazy(() => import("./pages/AIProfessionalsKadunaPage"));
 const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
@@ -171,21 +170,6 @@ const KadahiveSuperAdminPage = lazy(
 const KadahiveProgrammeArchive = lazy(
   () => import("./features/kadahive/KadahiveProgrammeArchive")
 );
-const GsiJournalOnboardingPage = lazy(
-  () => import("./features/gsi/GsiJournalOnboardingPage")
-);
-const GsiPublicRecordPage = lazy(
-  () => import("./features/gsi/GsiPublicRecordPage")
-);
-const GsiPaperSubmissionPage = lazy(
-  () => import("./features/gsi/GsiPaperSubmissionPage")
-);
-const GsiPaperRecordPage = lazy(
-  () => import("./features/gsi/GsiPaperRecordPage")
-);
-const GsiResearchDashboard = lazy(
-  () => import("./features/gsi/GsiResearchDashboard")
-);
 
 function AppShellFallback({ message = "Loading Tengacion..." }) {
   return (
@@ -220,13 +204,11 @@ export default function App() {
     pathname === "/kadahive" ||
     pathname.startsWith("/kadahive/") ||
     pathname === "/admin/institutions/kadahive";
-  const isGsiRoute = pathname === "/gsi" || pathname.startsWith("/gsi/");
   const isCygroEnterpriseRoute = pathname === "/cygro-enterprise";
   const isAuthOptionalRoute =
     pathname === "/" ||
     isCygroEnterpriseRoute ||
     pathname.startsWith("/kadahive") ||
-    isGsiRoute ||
     isBrightFutureRoute;
 
   // The public landing page must remain useful while a slow mobile connection
@@ -240,18 +222,13 @@ export default function App() {
     <>
       <LowBandwidthController />
       <WelcomeVoiceController
-        user={isKadahiveRoute || isAIProfessionalsRoute || isGsiRoute || isCygroEnterpriseRoute || isBrightFutureRoute ? null : user}
+        user={isKadahiveRoute || isAIProfessionalsRoute || isCygroEnterpriseRoute || isBrightFutureRoute ? null : user}
       />
       <RouteSeoController />
       <Suspense fallback={<AppShellFallback />}>
         <Routes>
           <Route path="/" element={user ? <Navigate to="/home" replace /> : <PublicHomePage />} />
           <Route path="/kadahive" element={<KadahiveLanding />} />
-          <Route path="/gsi" element={<GsiJournalOnboardingPage />} />
-          <Route path="/gsi/research" element={<GsiResearchDashboard />} />
-          <Route path="/gsi/papers/new" element={<GsiPaperSubmissionPage />} />
-          <Route path="/gsi/papers/:recordId" element={<GsiPaperRecordPage />} />
-          <Route path="/gsi/records/:recordId" element={<GsiPublicRecordPage />} />
           <Route
             path="/kadahive/programmes/kids-code"
             element={<KadahiveProgrammeArchive programme="kids" />}
@@ -299,9 +276,6 @@ export default function App() {
           <Route path="/tovido-anthony-foundation" element={<TovidoAnthonyFoundationPage />} />
           <Route path="/tovido_anthony_foundation" element={<TovidoAnthonyFoundationPage />} />
           <Route path="/foundation/tovido-anthony" element={<TovidoAnthonyFoundationPage />} />
-          <Route path="/neheze-farms" element={<NehezeFarmsPage />} />
-          <Route path="/neheze_farms" element={<NehezeFarmsPage />} />
-          <Route path="/farms/neheze-farms" element={<NehezeFarmsPage />} />
           <Route path="/cygro-enterprise" element={<CygroEnterprisePage />} />
           <Route
             path="/AI-Professionals-In-Kaduna-State"
@@ -1122,7 +1096,7 @@ export default function App() {
           />
         </Routes>
       </Suspense>
-      {user && !isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isGsiRoute && !isCygroEnterpriseRoute ? (
+      {user && !isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isCygroEnterpriseRoute ? (
         <TopUpPromoDiscovery
           user={user}
           onExploreTip={(tip) => {
@@ -1140,8 +1114,8 @@ export default function App() {
           }}
         />
       ) : null}
-      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isGsiRoute && !isCygroEnterpriseRoute ? <InstallPrompt /> : null}
-      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isGsiRoute && !isCygroEnterpriseRoute ? (
+      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isCygroEnterpriseRoute ? <InstallPrompt /> : null}
+      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isCygroEnterpriseRoute ? (
         <TengacionAssistantDock />
       ) : null}
     </>

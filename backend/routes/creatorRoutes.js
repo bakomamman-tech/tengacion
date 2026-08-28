@@ -22,6 +22,9 @@ const {
   registerCreator,
   createCreatorPayoutRequest,
   createCreatorWithdrawal,
+  createCreatorLaunchPlan,
+  createCreatorReferral,
+  updateCreatorLaunchPlan,
   updatePodcastSeries,
   updateCreatorProfile,
 } = require("../controllers/creatorController");
@@ -36,6 +39,9 @@ router.post("/register", auth, registerCreator);
 router.put("/profile", auth, updateCreatorProfile);
 router.get("/dashboard", auth, getCreatorDashboard);
 router.post("/growth-experiments/events", auth, creatorAuth, recordCreatorGrowthExperiment);
+router.post("/launch-plans", auth, creatorAuth, createCreatorLaunchPlan);
+router.patch("/launch-plans/:planId", auth, creatorAuth, updateCreatorLaunchPlan);
+router.post("/referrals", auth, creatorAuth, createCreatorReferral);
 router.get("/discovery/insights", auth, getCreatorDiscoveryInsights);
 router.get("/discovery/content/:itemType/:itemId", auth, getCreatorDiscoveryContentInsights);
 router.get("/subscriptions/analytics", auth, getCreatorSubscriptionAnalytics);

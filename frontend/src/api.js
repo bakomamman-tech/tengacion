@@ -1444,6 +1444,34 @@ export const getCreatorDashboard = () =>
     cache: "no-store",
   });
 
+export const createCreatorLaunchPlan = (payload = {}) =>
+  request(`${API_BASE}/creator/launch-plans`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const updateCreatorLaunchPlan = (planId, payload = {}) =>
+  request(`${API_BASE}/creator/launch-plans/${encodeURIComponent(planId || "")}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const createCreatorReferral = (payload = {}) =>
+  request(`${API_BASE}/creator/referrals`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const recordReferralMilestone = (token, milestone) =>
+  request(`${API_BASE}/referrals/${encodeURIComponent(token || "")}/milestones`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    body: JSON.stringify({ milestone }),
+  });
+
 export const checkEntitlement = ({ itemType, itemId }) =>
   request(
     `${API_BASE}/entitlements/check?itemType=${encodeURIComponent(itemType || "")}&itemId=${encodeURIComponent(itemId || "")}`,
@@ -3006,6 +3034,52 @@ export const adminGetScaleEvidenceOperatingSystem = (params = {}) => {
     timeoutMs: 45000,
   });
 };
+
+export const adminGetExpansionPlatformOperatingSystem = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/analytics/expansion-platform-operating-system?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminReviewCreatorLaunchPlan = (planId, payload = {}) =>
+  request(`${API_BASE}/admin/growth/creator-launch-plans/${encodeURIComponent(planId || "")}/review`, {
+    method: "PATCH", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminCreateExpansionExperiment = (payload = {}) =>
+  request(`${API_BASE}/admin/growth/experiments`, {
+    method: "POST", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminUpdateExpansionExperiment = (experimentId, payload = {}) =>
+  request(`${API_BASE}/admin/growth/experiments/${encodeURIComponent(experimentId || "")}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminCreateAutomationSuggestion = (payload = {}) =>
+  request(`${API_BASE}/admin/operations/automation-suggestions`, {
+    method: "POST", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminReviewAutomationSuggestion = (suggestionId, payload = {}) =>
+  request(`${API_BASE}/admin/operations/automation-suggestions/${encodeURIComponent(suggestionId || "")}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminCreateGovernanceDecision = (payload = {}) =>
+  request(`${API_BASE}/admin/governance/decisions`, {
+    method: "POST", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
+
+export const adminUpdateGovernanceDecision = (decisionId, payload = {}) =>
+  request(`${API_BASE}/admin/governance/decisions/${encodeURIComponent(decisionId || "")}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),
+  });
 
 export const adminCreateGrowthCalendarEntry = (payload = {}) =>
   request(`${API_BASE}/admin/growth/calendar`, {

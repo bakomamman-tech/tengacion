@@ -982,9 +982,11 @@ describe("Akuso services", () => {
       expect.objectContaining({
         creator_onboarding: expect.objectContaining({ total: 2, passed: 2 }),
         creator_workflow: expect.objectContaining({ total: 4, passed: 4 }),
-        policy_denial: expect.objectContaining({ total: 7, passed: 7 }),
+        policy_denial: expect.objectContaining({ total: 11, passed: 11 }),
         route_quality: expect.objectContaining({ total: 5, passed: 5 }),
         subscriptions: expect.objectContaining({ total: 3, passed: 3 }),
+        expansion: expect.objectContaining({ total: 6, passed: 6 }),
+        platform: expect.objectContaining({ total: 2, passed: 2 }),
       })
     );
     expect(results.summary.byRoute).toEqual(

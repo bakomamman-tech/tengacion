@@ -33,6 +33,12 @@ const WRITING_CONTENT_TYPES = [
   "payout_explanation",
   "renewal_help",
   "incident_summary",
+  "referral_guidance",
+  "fan_lifecycle_guidance",
+  "support_macro_draft",
+  "cohort_summary",
+  "partner_report_summary",
+  "offer_setup_guidance",
 ];
 
 const normalizeWritingPreferences = (value = {}) => ({
@@ -188,6 +194,54 @@ const buildWritingFallbackDraft = ({
       `Incident draft — ${cleanTopic}. Status: investigating. User impact: confirm scope. Mitigation: record the safe action in progress. Next update: add a verified time.`,
       `Operations summary — ${cleanTopic}. Include start time, affected surface, owner, current state, rollback, and ticket. Exclude private user and payment data.`,
       `Resolved-summary draft — ${cleanTopic}. State what users experienced, what restored service, remaining follow-up, and the next evidence review without assigning unverified blame.`,
+    ]);
+  }
+
+  if (contentType === "referral_guidance") {
+    return buildVariants([
+      `Referral guidance for ${cleanTopic}: create a Tengacion share link, use the intended creator, content, campaign, partner, fan, or live source, and review only aggregate activation results.`,
+      `Privacy note: creators and partners may see aggregate opens and milestones, never private fan-level behavior or identity rows.`,
+      `Trust reminder: avoid aggressive incentives, hidden tracking claims, or repeated prompts; consent, complaints, and frequency limits remain active.`,
+    ]);
+  }
+
+  if (contentType === "fan_lifecycle_guidance") {
+    return buildVariants([
+      `Fan lifecycle guidance for ${cleanTopic}: use the current relationship stage, freshness, consent, complaint, and frequency state before suggesting a return path.`,
+      `Support note: an at-risk fan should receive recovery or support guidance, not a promotional prompt.`,
+      `Privacy note: explain aggregate relationship movement without revealing an individual fan's private actions.`,
+    ]);
+  }
+
+  if (contentType === "support_macro_draft") {
+    return buildVariants([
+      `Support draft for ${cleanTopic}: confirm the visible status, state the safe next step, preserve the ticket reference, and escalate to the accountable queue when evidence is incomplete.`,
+      `Review boundary: this is a draft from approved support guidance; a support operator owns the final reply and escalation decision.`,
+      `Privacy boundary: exclude passwords, OTPs, full payment data, private content, and unnecessary identity details.`,
+    ]);
+  }
+
+  if (contentType === "cohort_summary") {
+    return buildVariants([
+      `Cohort summary for ${cleanTopic}: state the thesis, launch gates, acquisition source, creator and fan activation, retention, commerce, support, moderation, reliability, and stop-condition evidence.`,
+      `Decision draft: choose expand, repeat with changes, hold, or exit, and identify missing attribution before recommending growth.`,
+      `Evidence note: separate zero activity from missing instrumentation and cite the operating metrics used.`,
+    ]);
+  }
+
+  if (contentType === "partner_report_summary") {
+    return buildVariants([
+      `Partner-safe summary for ${cleanTopic}: use aggregate campaign, creator, commerce, support, moderation, and reliability measures from the approved report contract.`,
+      `Exclude user identifiers, payment details, private content, safety-case details, and Akuso memory from the report.`,
+      `Renewal draft: state goals, outcomes, incidents, risks, and the next bounded offer without unsupported audience or impact claims.`,
+    ]);
+  }
+
+  if (contentType === "offer_setup_guidance") {
+    return buildVariants([
+      `Offer setup for ${cleanTopic}: choose a paid drop, bundle, subscription package, live event pass, or marketplace spotlight from the creator launch planner.`,
+      `Readiness checklist: confirm metadata, cover and preview, price, payout readiness, fan update plan, success metric, stop condition, and required review.`,
+      `Authority note: Akuso may explain or draft but cannot approve finance, campaign, live, marketplace, moderation, or public publication decisions.`,
     ]);
   }
 

@@ -17,6 +17,7 @@ import {
 import AdminShell from "../components/AdminShell";
 import LaunchGrowthOperatingPanels from "../components/admin/LaunchGrowthOperatingPanels";
 import ScaleEvidenceOperatingPanels from "../components/admin/ScaleEvidenceOperatingPanels";
+import ExpansionPlatformOperatingPanels from "../components/admin/ExpansionPlatformOperatingPanels";
 import {
   adminGetAnalyticsOverview,
   adminGetAnalyticsUserGrowth,
@@ -29,6 +30,7 @@ import {
   adminGetExecutiveOperatingDashboard,
   adminGetLaunchGrowthOperatingSystem,
   adminGetScaleEvidenceOperatingSystem,
+  adminGetExpansionPlatformOperatingSystem,
   adminUpdateRecommendationPolicy,
   adminGetAnalyticsEngagement,
   adminGetAnalyticsTopCreators,
@@ -203,6 +205,22 @@ export default function AdminAnalyticsPage({ user }) {
     scaleReport: { sections: {}, decision: {} },
     expansionScorecard: { bets: [], scoreInputs: [] },
   });
+  const [expansionPlatformOperatingSystem, setExpansionPlatformOperatingSystem] = useState({
+    summary: {},
+    roadmapPackages: [],
+    creatorPlaybooks: { catalog: [], plans: [], summary: {} },
+    referralAttribution: { summary: {}, bySource: [], privacyBoundary: {} },
+    dataAndExperiments: { eventTaxonomy: [], metricContracts: [], experiments: [] },
+    expansionCohorts: { reviews: [], scorecard: {} },
+    fanRelationships: { stages: [], summary: {} },
+    operationsAutomation: { suggestions: [] },
+    akusoExpansion: { capabilities: [], evalSuites: [] },
+    unitEconomics: { summary: {}, instrumentationGaps: [], topLevers: [] },
+    partnerPackages: { renewals: [], sponsorPackage: {} },
+    expansionGovernance: { controlMap: [], decisions: [] },
+    nextRoadmap: { secondaryBets: [], rankedCandidates: [] },
+    platform: { objectModel: [], creatorBusinessSuite: [], fanRelationshipModel: [] },
+  });
   const [recommendationPolicyDraft, setRecommendationPolicyDraft] = useState({});
   const [recommendationPolicyReason, setRecommendationPolicyReason] = useState("");
   const [recommendationPolicyNotice, setRecommendationPolicyNotice] = useState("");
@@ -257,6 +275,7 @@ export default function AdminAnalyticsPage({ user }) {
         executiveDashboardPayload,
         launchGrowthPayload,
         scaleEvidencePayload,
+        expansionPlatformPayload,
         engagementPayload,
         topCreatorsPayload,
         topContentPayload,
@@ -276,6 +295,7 @@ export default function AdminAnalyticsPage({ user }) {
         adminGetExecutiveOperatingDashboard(filterParams),
         adminGetLaunchGrowthOperatingSystem(filterParams),
         adminGetScaleEvidenceOperatingSystem(filterParams),
+        adminGetExpansionPlatformOperatingSystem(filterParams),
         adminGetAnalyticsEngagement(filterParams),
         adminGetAnalyticsTopCreators({ ...filterParams, mode: creatorMode }),
         adminGetAnalyticsTopContent(filterParams),
@@ -309,6 +329,7 @@ export default function AdminAnalyticsPage({ user }) {
       setExecutiveDashboard(executiveDashboardPayload || { summary: {}, metrics: [], actions: [] });
       setLaunchGrowthOperatingSystem(launchGrowthPayload || { summary: {}, roadmapPackages: [] });
       setScaleEvidenceOperatingSystem(scaleEvidencePayload || { summary: {}, roadmapPackages: [] });
+      setExpansionPlatformOperatingSystem(expansionPlatformPayload || { summary: {}, roadmapPackages: [] });
       setEngagement(engagementPayload || { series: [] });
       setTopCreators(topCreatorsPayload || { items: [] });
       setTopContent(topContentPayload || { items: [] });
@@ -344,7 +365,7 @@ export default function AdminAnalyticsPage({ user }) {
   const exportJson = () => {
     downloadBlob({
       filename: `tengacion-admin-analytics-${filters.range}.json`,
-      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, productScorecard, fanRetention, recommendationDiagnostics, executiveDashboard, launchGrowthOperatingSystem, scaleEvidenceOperatingSystem, engagement, topCreators, topContent, recentActivity, systemAlerts, reliabilityHealth, reportsSummary }, null, 2),
+      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, productScorecard, fanRetention, recommendationDiagnostics, executiveDashboard, launchGrowthOperatingSystem, scaleEvidenceOperatingSystem, expansionPlatformOperatingSystem, engagement, topCreators, topContent, recentActivity, systemAlerts, reliabilityHealth, reportsSummary }, null, 2),
       type: "application/json",
     });
   };
@@ -486,6 +507,8 @@ export default function AdminAnalyticsPage({ user }) {
           <LaunchGrowthOperatingPanels payload={launchGrowthOperatingSystem} navigate={navigate} />
 
           <ScaleEvidenceOperatingPanels payload={scaleEvidenceOperatingSystem} navigate={navigate} />
+
+          <ExpansionPlatformOperatingPanels payload={expansionPlatformOperatingSystem} navigate={navigate} />
 
           <section className="adminx-panel adminx-panel--span-12">
             <div className="adminx-panel-head">

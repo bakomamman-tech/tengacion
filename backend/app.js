@@ -234,6 +234,8 @@ app.use("/api/live", require("./routes/live"));
 app.use("/api/creators", require("./routes/creators"));
 app.use("/api/creator", require("./routes/creatorAlbums"));
 app.use("/api/creator", require("./routes/creatorRoutes"));
+app.use("/api/referrals", require("./routes/referrals"));
+app.use("/r", require("./routes/referrals"));
 app.use("/api/tracks", require("./routes/tracks"));
 app.use("/api/books", require("./routes/books"));
 app.use("/api/albums", require("./routes/albums"));

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { recordCreatorGrowthExperiment } from "../../api";
 import CreatorProfileSummaryCard from "../../components/creator/CreatorProfileSummaryCard";
+import CreatorLaunchPlannerPanel from "../../components/creator/CreatorLaunchPlannerPanel";
 import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
@@ -46,7 +47,7 @@ export default function CreatorDashboardPage() {
   const [copiedTemplateKey, setCopiedTemplateKey] = useState("");
   const [dismissedExperimentKeys, setDismissedExperimentKeys] = useState([]);
   const shownExperimentKeysRef = useRef(new Set());
-  const { creatorProfile, dashboard } = useCreatorWorkspace();
+  const { creatorProfile, dashboard, refreshWorkspace } = useCreatorWorkspace();
   const creatorLanes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
   const activation = dashboard.activation || {};
   const activationSteps = Array.isArray(activation.steps) ? activation.steps : [];
@@ -54,6 +55,7 @@ export default function CreatorDashboardPage() {
     activation.nextStep || activationSteps.find((step) => !step.complete);
   const nextStepKey = nextActivationStep?.key || "";
   const operatingConsole = dashboard.operatingConsole || {};
+  const businessSuite = operatingConsole.businessSuite || {};
   const actionPrompts = Array.isArray(operatingConsole.actionPrompts)
     ? operatingConsole.actionPrompts
     : [];
@@ -285,6 +287,12 @@ export default function CreatorDashboardPage() {
             )}
           </div>
         </section>
+
+        <CreatorLaunchPlannerPanel
+          businessSuite={businessSuite}
+          creatorProfile={creatorProfile}
+          onRefresh={refreshWorkspace}
+        />
 
         <section className="creator-panel creator-catalog-quality-panel">
           <div className="creator-panel-head">

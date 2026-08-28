@@ -115,6 +115,16 @@ const {
   updatePartnerPilot,
   upsertSloPolicy,
 } = require("../services/scaleEvidenceOperatingService");
+const {
+  buildExpansionPlatformOperatingSystem,
+  createAutomationSuggestion,
+  createExpansionExperiment,
+  createGovernanceDecision,
+  reviewAutomationSuggestion,
+  reviewCreatorLaunchPlan,
+  updateExpansionExperiment,
+  updateGovernanceDecision,
+} = require("../services/expansionPlatformOperatingService");
 const { buildReadinessPayload } = require("../services/healthService");
 const {
   getStorageActionCatalog,
@@ -3257,6 +3267,158 @@ router.patch("/growth/expansion-bets/:betId", adminMutationLimiter, async (req, 
   } catch (err) {
     const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
     return res.status(code).json({ error: err.message || "Failed to update expansion bet", details: err?.details || undefined });
+  }
+});
+
+router.get("/analytics/expansion-platform-operating-system", async (req, res) => {
+  try {
+    return res.json(await buildExpansionPlatformOperatingSystem(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = Number(err?.status || 0) || (/invalid/i.test(String(err?.message || "")) ? 400 : 500);
+    console.error("Admin expansion platform operating system error:", req.requestId, err);
+    return res.status(code).json({
+      error: err.message || "Failed to load the expansion platform operating system",
+      details: err?.details || undefined,
+      requestId: req.requestId,
+    });
+  }
+});
+
+router.patch("/growth/creator-launch-plans/:planId/review", adminMutationLimiter, async (req, res) => {
+  try {
+    const plan = await reviewCreatorLaunchPlan({
+      planId: req.params.planId,
+      adminUserId: req.user.id,
+      decision: req.body?.decision,
+      note: req.body?.note,
+    });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.creator_launch_plan.review",
+      targetType: "CreatorLaunchPlan",
+      targetId: plan.id,
+      reason: String(req.body?.note || "").trim(),
+      metadata: { planKey: plan.planKey, decision: req.body?.decision, status: plan.status, riskLevel: plan.riskLevel },
+    });
+    return res.json({ success: true, plan });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to review creator launch plan", details: err?.details || undefined });
+  }
+});
+
+router.post("/growth/experiments", adminMutationLimiter, async (req, res) => {
+  try {
+    const experiment = await createExpansionExperiment({ payload: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.expansion_experiment.create",
+      targetType: "ExpansionExperiment",
+      targetId: experiment.id,
+      reason: "Governed expansion experiment created in draft state",
+      metadata: { experimentKey: experiment.experimentKey, primaryMetric: experiment.primaryMetric, guardrails: experiment.guardrailMetrics },
+    });
+    return res.status(201).json({ success: true, experiment });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (Number(err?.code || 0) === 11000 ? 409 : 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to create expansion experiment", details: err?.details || undefined });
+  }
+});
+
+router.patch("/growth/experiments/:experimentId", adminMutationLimiter, async (req, res) => {
+  try {
+    const experiment = await updateExpansionExperiment({ experimentId: req.params.experimentId, updates: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.expansion_experiment.update",
+      targetType: "ExpansionExperiment",
+      targetId: experiment.id,
+      reason: String(req.body?.reason || "Experiment configuration updated").trim(),
+      metadata: { experimentKey: experiment.experimentKey, status: experiment.status, dataQualityState: experiment.dataQualityState, decision: experiment.decision },
+    });
+    return res.json({ success: true, experiment });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update expansion experiment", details: err?.details || undefined });
+  }
+});
+
+router.post("/operations/automation-suggestions", adminMutationLimiter, async (req, res) => {
+  try {
+    const suggestion = await createAutomationSuggestion({ payload: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.automation_suggestion.create",
+      targetType: "AutomationSuggestion",
+      targetId: suggestion.id,
+      reason: "Suggestion-only operations automation record created",
+      metadata: { suggestionType: suggestion.suggestionType, confidence: suggestion.confidence, authorizesSensitiveAction: false },
+    });
+    return res.status(201).json({ success: true, suggestion });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to create automation suggestion", details: err?.details || undefined });
+  }
+});
+
+router.patch("/operations/automation-suggestions/:suggestionId", adminMutationLimiter, async (req, res) => {
+  try {
+    const suggestion = await reviewAutomationSuggestion({ suggestionId: req.params.suggestionId, decision: req.body?.decision, reason: req.body?.reason, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.automation_suggestion.review",
+      targetType: "AutomationSuggestion",
+      targetId: suggestion.id,
+      reason: String(req.body?.reason || "").trim(),
+      metadata: { suggestionType: suggestion.suggestionType, status: suggestion.status, authorizesSensitiveAction: false },
+    });
+    return res.json({ success: true, suggestion });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to review automation suggestion", details: err?.details || undefined });
+  }
+});
+
+router.post("/governance/decisions", adminMutationLimiter, async (req, res) => {
+  try {
+    const decision = await createGovernanceDecision({ payload: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.governance_decision.create",
+      targetType: "GovernanceDecision",
+      targetId: decision.id,
+      reason: "Expiring governance decision opened",
+      metadata: { decisionKey: decision.decisionKey, workflowType: decision.workflowType, riskLevel: decision.riskLevel, requiredReviewRoles: decision.requiredReviewRoles },
+    });
+    return res.status(201).json({ success: true, decision });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (Number(err?.code || 0) === 11000 ? 409 : 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to create governance decision", details: err?.details || undefined });
+  }
+});
+
+router.patch("/governance/decisions/:decisionId", adminMutationLimiter, async (req, res) => {
+  try {
+    const decision = await updateGovernanceDecision({ decisionId: req.params.decisionId, updates: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.governance_decision.update",
+      targetType: "GovernanceDecision",
+      targetId: decision.id,
+      reason: String(req.body?.reason || "Governance review updated").trim(),
+      metadata: { decisionKey: decision.decisionKey, workflowType: decision.workflowType, status: decision.status, approvedRoles: decision.approvedRoles, missingReviewRoles: decision.missingReviewRoles },
+    });
+    return res.json({ success: true, decision });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update governance decision", details: err?.details || undefined });
   }
 });
 

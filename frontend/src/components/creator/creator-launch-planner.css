@@ -1,0 +1,128 @@
+.creator-launch-planner {
+  display: grid;
+  gap: 20px;
+}
+
+.creator-launch-playbook-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.creator-launch-playbook {
+  display: grid;
+  gap: 8px;
+  min-height: 150px;
+  padding: 16px;
+  border: 1px solid var(--creator-inner-border);
+  border-radius: 18px;
+  background: var(--creator-surface-soft);
+  color: var(--creator-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.creator-launch-playbook span,
+.creator-launch-plan-card p,
+.creator-launch-plan-card small {
+  color: var(--creator-muted);
+  line-height: 1.45;
+}
+
+.creator-launch-playbook.is-selected {
+  border-color: var(--creator-focus-ring);
+  background: var(--creator-control-active);
+  box-shadow: var(--creator-control-shadow);
+}
+
+.creator-launch-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.creator-launch-form label:not(.creator-launch-check) {
+  display: grid;
+  gap: 7px;
+  color: var(--creator-text);
+  font-weight: 700;
+}
+
+.creator-launch-form input,
+.creator-launch-form select,
+.creator-launch-form textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--creator-control-border);
+  border-radius: 12px;
+  background: var(--creator-panel-strong);
+  color: var(--creator-text);
+  font: inherit;
+}
+
+.creator-launch-form__wide {
+  grid-column: 1 / -1;
+}
+
+.creator-launch-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--creator-text);
+}
+
+.creator-launch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.creator-launch-notice,
+.creator-launch-share {
+  padding: 13px 15px;
+  border: 1px solid var(--creator-inner-border);
+  border-radius: 14px;
+  background: var(--creator-surface-success);
+  color: var(--creator-text);
+}
+
+.creator-launch-share {
+  display: grid;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+
+.creator-launch-plan-list {
+  display: grid;
+  gap: 10px;
+}
+
+.creator-launch-plan-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px;
+  border: 1px solid var(--creator-inner-border);
+  border-radius: 16px;
+  background: var(--creator-surface-soft);
+}
+
+.creator-launch-plan-card p {
+  margin: 5px 0;
+}
+
+@media (max-width: 700px) {
+  .creator-launch-form {
+    grid-template-columns: 1fr;
+  }
+
+  .creator-launch-form__wide {
+    grid-column: auto;
+  }
+
+  .creator-launch-plan-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

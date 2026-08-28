@@ -6,10 +6,18 @@ const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const User = require("../models/User");
 const Video = require("../models/Video");
+const CreatorLaunchPlan = require("../models/CreatorLaunchPlan");
+const ReferralAttribution = require("../models/ReferralAttribution");
 const { buildCreatorActivationProgress } = require("../services/creatorActivationService");
 const {
   buildCreatorDashboardConsole,
 } = require("../services/creatorDashboardConsoleService");
+const {
+  buildCreatorBusinessSuite,
+  createCreatorLaunchPlan,
+  createCreatorReferral,
+  updateCreatorLaunchPlan,
+} = require("../services/expansionPlatformOperatingService");
 const {
   listCreatorGrowthExperimentEvents,
   recordCreatorGrowthExperimentEvent,
@@ -478,11 +486,19 @@ const getDashboardPayload = async ({ profile, user }) => {
     .sort({ paidAt: -1, createdAt: -1, _id: -1 })
     .lean();
 
-  const [walletSnapshot, growthEvents] = await Promise.all([
+  const [walletSnapshot, growthEvents, launchPlanRows, referralRows] = await Promise.all([
     buildCreatorWalletSnapshot({
       creatorId: profile._id,
     }),
     listCreatorGrowthExperimentEvents({ userId: user?._id || profile.userId }),
+    CreatorLaunchPlan.find({ creatorProfile: profile._id })
+      .sort({ updatedAt: -1 })
+      .limit(100)
+      .lean(),
+    ReferralAttribution.find({ creatorProfile: profile._id })
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean(),
   ]);
   const earningsByKey = walletSnapshot.itemEarningsMap || new Map();
 
@@ -617,6 +633,13 @@ const getDashboardPayload = async ({ profile, user }) => {
     profile,
     purchases,
     user,
+  });
+  operatingConsole.businessSuite = buildCreatorBusinessSuite({
+    profile,
+    payoutReadiness,
+    operatingConsole,
+    planRows: launchPlanRows,
+    referralRows,
   });
   const discoveryInsights = await buildCreatorDiscoveryInsights({
     profile,
@@ -1085,6 +1108,34 @@ exports.createCreatorWithdrawal = asyncHandler(async (req, res) => {
     success: true,
     ...payload,
   });
+});
+
+exports.createCreatorLaunchPlan = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const plan = await createCreatorLaunchPlan({
+    userId: req.user.id,
+    payload: req.body || {},
+  });
+  return res.status(201).json({ success: true, plan });
+});
+
+exports.updateCreatorLaunchPlan = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const plan = await updateCreatorLaunchPlan({
+    userId: req.user.id,
+    planId: req.params.planId,
+    updates: req.body || {},
+  });
+  return res.json({ success: true, plan });
+});
+
+exports.createCreatorReferral = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const referral = await createCreatorReferral({
+    userId: req.user.id,
+    payload: req.body || {},
+  });
+  return res.status(201).json({ success: true, referral });
 });
 
 exports.getCreatorPrivateContent = asyncHandler(async (req, res) => {

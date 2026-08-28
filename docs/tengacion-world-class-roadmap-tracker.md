@@ -1,6 +1,6 @@
 # Tengacion World-Class Roadmap Implementation Tracker
 
-Last updated: 27 August 2026
+Last updated: 28 August 2026
 
 This document is the authoritative implementation record for the Facebook benchmark roadmap. A work package is marked complete only after its definition of done is implemented and verified. Planning documents and code presence alone do not count as completion.
 
@@ -80,6 +80,31 @@ This document is the authoritative implementation record for the Facebook benchm
 | SCALE-061-05 | Publish the 90-day launch and scale report | COMPLETE | A single evidence pack reports launch, cohort, commerce, retention, campaign, partner, reliability, support, moderation, Akuso, risk, and investment data with one bounded scale decision. |
 | EXPANSION-001 | Build the expansion scorecard | COMPLETE | Durable bets require ten scored inputs plus owner, cohort, gate, cost cap, metric, stop condition, and review date; exhausted or uninstrumented SLOs prevent controlled-launch or expand transitions. |
 
+### Expansion and platform work packages
+
+| ID | Work package | Status | Verification record |
+|---|---|---|---|
+| EXPANSION-002 | Create self-serve creator launch playbooks | COMPLETE | Six creator playbooks share readiness, pricing, payout, announcement, fan-action, eligibility and post-launch metric contracts; the Creator Dashboard now provides the reusable planning path. |
+| EXPANSION-003 | Add referral and creator-share attribution | COMPLETE | Expiring safe-internal share links record eight aggregate funnel milestones across six sources; authenticated milestones require server-owned evidence, deduplicate actors with one-way hashes, and expose no fan-level row. |
+| EXPANSION-004 | Package the first repeatable campaign offers | COMPLETE | Five reusable offer packages bind eligibility, surfaces, duration, creator duties, messaging, finance guardrails, reporting, support and rollback to existing campaign authorities. |
+| EXPANSION-005 | Establish experiment and event taxonomy hygiene | COMPLETE | Ten event domains, ten metric contracts and a durable experiment authority require hypothesis, owner, cohort, allocation, metrics, guardrails, stop condition, dates and ready data quality before running. |
+| EXPANSION-006 | Launch the first expansion cohort | COMPLETE | Existing scored expansion bets now feed one weekly cohort operating view beside finance, support, moderation, reliability and Akuso evidence; environments without a controlled-launch bet report zero active cohorts instead of inventing one. |
+| EXPANSION-007 | Improve creator monetization depth | COMPLETE | Launch plans support paid drops, bundles, subscription packages, live passes and marketplace spotlights while leaving checkout, entitlement, refund and ledger authorities unchanged. |
+| EXPANSION-008 | Strengthen fan referral and community loops | COMPLETE | Eight aggregate relationship stages combine referral, discovery, content, commerce and return signals with consent, frequency, complaint, refund and trust suppression guardrails. |
+| EXPANSION-009 | Add low-risk operations automation | COMPLETE | Seven automation types can create confidence-bearing, expiring suggestions; immutable no-execution authority and recorded human dispositions keep sensitive decisions manual. |
+| EXPANSION-010 | Expand Akuso for cohort, campaign and support workflows | COMPLETE | Seven grounded expansion modes, deterministic fallbacks and eight eval suites cover playbooks, campaigns, referrals, lifecycle, support, cohort and partner-safe summaries without approval or publication authority. |
+| EXPANSION-011 | Publish the expansion cohort review | COMPLETE | The admin report composes scored thesis, gates, activation, commerce, refunds, support, moderation, reliability, Akuso and partner signals into evidence-bounded expand, repeat, hold or exit recommendations. |
+| EXPANSION-012 | Improve unit economics and operating leverage | COMPLETE | Known-only economics break down paid revenue, creator share, fees, leakage and instrumented cost proxies by governed dimensions; missing rates and costs remain visible gaps and produce leverage actions. |
+| EXPANSION-013 | Build partner renewal and sponsor packaging | COMPLETE | Existing partner pilots now produce aggregate renewal packages and one bounded sponsor contract covering disclosure, creator consent, brand safety, limits, measurement and reporting cadence. |
+| EXPANSION-014 | Mature governance for repeated expansion | COMPLETE | Durable decisions cover ten risky workflows with owners, evidence, conditions, expiry, follow-up, rollback, audited history and independent review roles for high or critical risk. |
+| EXPANSION-015 | Prepare the next expansion roadmap | COMPLETE | Eight-factor candidate scoring selects one primary recommendation, two secondary bets and explicit not-now work; the result remains a leadership-confirmation input rather than changing the roadmap automatically. |
+| PLATFORM-001 | Define the platform object model | COMPLETE | Twelve canonical object definitions map shared names, durable authorities, statuses and required ownership, eligibility, finance, analytics, support, moderation and audit dimensions. |
+| PLATFORM-002 | Design the creator business suite | COMPLETE | Eight creator modules and shared admin readiness evidence connect launch planning, catalog, offers, campaigns, audience aggregates, earnings, subscriptions and bounded Akuso help. |
+| PLATFORM-003 | Create the fan relationship model | COMPLETE | Discovered, interested, engaged, paying, subscribed, advocate, dormant and at-risk stages now share aggregate server evidence and relationship-aware prompt guardrails. |
+| PLATFORM-004 | Establish data contracts and experiment governance | COMPLETE | Reusable metric definitions expose source authority, owner, contract version and a required quality gate; invalid experiment timing or allocation cannot validate. |
+| PLATFORM-005 | Map governance controls to platform workflows | COMPLETE | Eight reusable control maps define risk, approvers, evidence, audit event, review interval and rollback for finance, sponsorship, privacy, trust, discovery and Akuso changes. |
+| PLATFORM-006 | Ship creator launch planner and offer builder | COMPLETE | Creators can create and update governed launch plans from the dashboard; elevated risk enters audited admin review, material post-approval edits invalidate that approval, and scheduled details require pause before editing. |
+
 ### Phase 1 work packages
 
 | ID | Work package | Status | Verification record |
@@ -94,6 +119,15 @@ This document is the authoritative implementation record for the Facebook benchm
 |---|---|---|---|
 | SAFETY-001 | Make account blocking authoritative and user-manageable | COMPLETE | Privacy Settings now provides searchable, server-confirmed limited-account lists; canonical blocks remove relationship links and are enforced mutually across people discovery, profiles, feeds, creator follows, contacts, friend requests and every direct-message write transport, while unblocking never fabricates restored relationships. |
 ## Change log
+
+### 28 August 2026
+
+- Implemented the next twenty roadmap packages: fourteen expansion operating loops followed by the first six platform work packages.
+- Added CreatorLaunchPlan, ReferralAttribution, ReferralAttributionEvent, ExpansionExperiment, AutomationSuggestion and GovernanceDecision as durable authorities with constrained states, evidence, expiry, review and audit boundaries.
+- Added a creator launch planner and offer builder, privacy-safe referral links, protected admin review and governance mutations, and one exported Admin Analytics view spanning playbooks, cohorts, campaigns, fan stages, economics, partners, automation, Akuso and the next-roadmap recommendation.
+- Kept operational truth explicit: missing cohorts remain zero, missing costs remain instrumentation gaps, next-roadmap scoring requires leadership confirmation, and automation or Akuso cannot approve, publish, move money, restrict accounts or perform other sensitive actions.
+- Documented the authority, state, privacy, reporting, Akuso and rollback contracts in docs/tengacion-next-twenty-expansion-platform-controls.md.
+- Verification passed: 11 focused backend contracts, 74 affected backend regressions, 8 affected frontend tests, all 47 Akuso release evaluations, changed-backend syntax, repository-wide frontend lint, action and encoding audits, the diff check, and the frontend production build.
 
 
 ### 27 August 2026

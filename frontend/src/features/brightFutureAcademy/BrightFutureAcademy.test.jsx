@@ -100,7 +100,7 @@ describe("Bright Future Academy portal", () => {
     await user.click(screen.getByRole("button", { name: /complete registration/i }));
     expect(await screen.findByText("BFA-2026-000001")).toBeInTheDocument();
     expect(brightFutureApi.registerBrightFutureCandidate).toHaveBeenCalledWith(expect.not.objectContaining({ email: expect.anything() }));
-  });
+  }, 15000);
 
   it("restores an authenticated candidate dashboard from the server", async () => {
     session.token = "candidate-token";

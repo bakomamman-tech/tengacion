@@ -125,6 +125,33 @@ const {
   updateExpansionExperiment,
   updateGovernanceDecision,
 } = require("../services/expansionPlatformOperatingService");
+const {
+  buildEcosystemNetworkOperatingSystem,
+  createCommunityLoop,
+  createCreatorServiceEnrollment,
+  createMarketReadinessReview,
+  createPartnerIntegration,
+  updateCommunityLoop,
+  updateCreatorServiceEnrollment,
+  updateMarketReadinessReview,
+  updatePartnerIntegration,
+} = require("../services/ecosystemNetworkOperatingService");
+const {
+  buildNetworkIntelligenceOperatingSystem,
+  createAutomationRegistryEntry,
+  createCreatorIntelligencePrompt,
+  createIntelligenceProduct,
+  createMetricContract,
+  createNetworkProgram,
+  createPartnerGraduation,
+  createPredictiveWarning,
+  updateAutomationRegistryEntry,
+  updateIntelligenceProduct,
+  updateMetricContract,
+  updateNetworkProgram,
+  updatePartnerGraduation,
+  updatePredictiveWarning,
+} = require("../services/networkIntelligenceOperatingService");
 const { buildReadinessPayload } = require("../services/healthService");
 const {
   getStorageActionCatalog,
@@ -3281,6 +3308,283 @@ router.get("/analytics/expansion-platform-operating-system", async (req, res) =>
       details: err?.details || undefined,
       requestId: req.requestId,
     });
+  }
+});
+
+router.get("/analytics/ecosystem-network-operating-system", async (req, res) => {
+  try {
+    return res.json(await buildEcosystemNetworkOperatingSystem(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = Number(err?.status || 0) || (/invalid/i.test(String(err?.message || "")) ? 400 : 500);
+    console.error("Admin ecosystem network operating system error:", req.requestId, err);
+    return res.status(code).json({
+      error: err.message || "Failed to load the ecosystem network operating system",
+      details: err?.details || undefined,
+      requestId: req.requestId,
+    });
+  }
+});
+
+router.get("/analytics/network-intelligence-operating-system", async (req, res) => {
+  try {
+    return res.json(await buildNetworkIntelligenceOperatingSystem(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = Number(err?.status || 0) || (/invalid/i.test(String(err?.message || "")) ? 400 : 500);
+    console.error("Admin network intelligence operating system error:", req.requestId, err);
+    return res.status(code).json({
+      error: err.message || "Failed to load the network intelligence operating system",
+      details: err?.details || undefined,
+      requestId: req.requestId,
+    });
+  }
+});
+
+const handleNetworkIntelligenceMutation = async ({ req, res, operation, successKey, action, targetType, created = false, metadata = {} }) => {
+  try {
+    const result = await operation();
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action,
+      targetType,
+      targetId: result.id,
+      reason: String(req.body?.reason || `${targetType} created`).trim(),
+      metadata: typeof metadata === "function" ? metadata(result) : metadata,
+    });
+    return res.status(created ? 201 : 200).json({ success: true, [successKey]: result });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (Number(err?.code || 0) === 11000 ? 409 : 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || `Failed to update ${targetType}`, details: err?.details || undefined });
+  }
+};
+
+router.post("/growth/network-programs", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "program", action: "admin.network_program.create", targetType: "NetworkProgramEnrollment",
+  operation: () => createNetworkProgram({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ programKey: row.programKey, programType: row.programType, status: row.status, creatorConsentRecorded: row.creatorConsentRecorded }),
+}));
+
+router.patch("/growth/network-programs/:programId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "program", action: "admin.network_program.update", targetType: "NetworkProgramEnrollment",
+  operation: () => updateNetworkProgram({ programId: req.params.programId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ programKey: row.programKey, status: row.status, outcomeEvidenceState: row.outcome?.evidenceState }),
+}));
+
+router.post("/partnerships/graduations", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "graduation", action: "admin.partner_graduation.create", targetType: "PartnerAccessGraduation",
+  operation: () => createPartnerGraduation({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ currentLevel: row.currentLevel, proposedLevel: row.proposedLevel, status: row.status, fanLevelRowsExposed: false }),
+}));
+
+router.patch("/partnerships/graduations/:graduationId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "graduation", action: "admin.partner_graduation.update", targetType: "PartnerAccessGraduation",
+  operation: () => updatePartnerGraduation({ graduationId: req.params.graduationId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ proposedLevel: row.proposedLevel, status: row.status, readyGates: row.summary?.ready, humanApprovalRecorded: row.humanApprovalRecorded }),
+}));
+
+router.post("/intelligence/metric-contracts", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "contract", action: "admin.metric_contract.create", targetType: "MetricContract",
+  operation: () => createMetricContract({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ metricKey: row.metricKey, trustState: row.trustState, canDriveDecision: row.canDriveDecision }),
+}));
+
+router.patch("/intelligence/metric-contracts/:contractId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "contract", action: "admin.metric_contract.update", targetType: "MetricContract",
+  operation: () => updateMetricContract({ contractId: req.params.contractId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ metricKey: row.metricKey, trustState: row.trustState, canDriveDecision: row.canDriveDecision }),
+}));
+
+router.post("/intelligence/products", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "product", action: "admin.intelligence_product.create", targetType: "IntelligenceProduct",
+  operation: () => createIntelligenceProduct({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ productKey: row.productKey, audience: row.audience, status: row.status, qualityState: row.qualityState }),
+}));
+
+router.patch("/intelligence/products/:productId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "product", action: "admin.intelligence_product.update", targetType: "IntelligenceProduct",
+  operation: () => updateIntelligenceProduct({ productId: req.params.productId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ productKey: row.productKey, audience: row.audience, status: row.status, qualityState: row.qualityState }),
+}));
+
+router.post("/intelligence/creator-prompts", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "prompt", action: "admin.creator_intelligence_prompt.create", targetType: "CreatorIntelligencePrompt",
+  operation: () => createCreatorIntelligencePrompt({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ promptKey: row.promptKey, status: row.status, sourceMetricKeys: row.sourceMetricKeys, confidence: row.confidence }),
+}));
+
+router.post("/intelligence/predictive-warnings", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "warning", action: "admin.predictive_warning.create", targetType: "PredictiveWarning",
+  operation: () => createPredictiveWarning({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ warningKey: row.warningKey, warningType: row.warningType, status: row.status, decisionAuthority: row.decisionAuthority }),
+}));
+
+router.patch("/intelligence/predictive-warnings/:warningId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "warning", action: "admin.predictive_warning.update", targetType: "PredictiveWarning",
+  operation: () => updatePredictiveWarning({ warningId: req.params.warningId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ warningKey: row.warningKey, warningType: row.warningType, status: row.status, decisionAuthority: row.decisionAuthority }),
+}));
+
+router.post("/operations/automation-registry", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "automation", action: "admin.automation_registry.create", targetType: "AutomationRegistryEntry",
+  operation: () => createAutomationRegistryEntry({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ automationKey: row.automationKey, state: row.state, riskLevel: row.riskLevel, executionAuthority: row.executionAuthority }),
+}));
+
+router.patch("/operations/automation-registry/:automationId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "automation", action: "admin.automation_registry.update", targetType: "AutomationRegistryEntry",
+  operation: () => updateAutomationRegistryEntry({ automationId: req.params.automationId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ automationKey: row.automationKey, state: row.state, riskLevel: row.riskLevel, executionAuthority: row.executionAuthority }),
+}));
+
+router.post("/growth/creator-services", adminMutationLimiter, async (req, res) => {
+  try {
+    const enrollment = await createCreatorServiceEnrollment({ payload: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.creator_service.enroll",
+      targetType: "CreatorServiceEnrollment",
+      targetId: enrollment.id,
+      reason: "Controlled creator service candidate created",
+      metadata: { programKey: enrollment.programKey, status: enrollment.status, serviceTier: enrollment.serviceTier },
+    });
+    return res.status(201).json({ success: true, enrollment });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (Number(err?.code || 0) === 11000 ? 409 : 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to create creator service enrollment", details: err?.details || undefined });
+  }
+});
+
+router.patch("/growth/creator-services/:enrollmentId", adminMutationLimiter, async (req, res) => {
+  try {
+    const enrollment = await updateCreatorServiceEnrollment({ enrollmentId: req.params.enrollmentId, updates: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.creator_service.update",
+      targetType: "CreatorServiceEnrollment",
+      targetId: enrollment.id,
+      reason: String(req.body?.reason || "").trim(),
+      metadata: { programKey: enrollment.programKey, status: enrollment.status, completionRate: enrollment.progress?.completionRate },
+    });
+    return res.json({ success: true, enrollment });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update creator service enrollment", details: err?.details || undefined });
+  }
+});
+
+router.post("/growth/community-loops", adminMutationLimiter, async (req, res) => {
+  try {
+    const communityLoop = await createCommunityLoop({ payload: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.community_loop.create",
+      targetType: "CommunityLoopProgram",
+      targetId: communityLoop.id,
+      reason: "Controlled fan community loop created",
+      metadata: { loopKey: communityLoop.loopKey, loopType: communityLoop.loopType, status: communityLoop.status, privateFanRowsExposed: false },
+    });
+    return res.status(201).json({ success: true, communityLoop });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (Number(err?.code || 0) === 11000 ? 409 : 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to create community loop", details: err?.details || undefined });
+  }
+});
+
+router.patch("/growth/community-loops/:loopId", adminMutationLimiter, async (req, res) => {
+  try {
+    const communityLoop = await updateCommunityLoop({ loopId: req.params.loopId, updates: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.community_loop.update",
+      targetType: "CommunityLoopProgram",
+      targetId: communityLoop.id,
+      reason: String(req.body?.reason || "").trim(),
+      metadata: { loopKey: communityLoop.loopKey, status: communityLoop.status, guardrailState: communityLoop.guardrailState, privateFanRowsExposed: false },
+    });
+    return res.json({ success: true, communityLoop });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update community loop", details: err?.details || undefined });
+  }
+});
+
+router.post("/partnerships/integrations", adminMutationLimiter, async (req, res) => {
+  try {
+    const integration = await createPartnerIntegration({ payload: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.partner_integration.create",
+      targetType: "PartnerIntegration",
+      targetId: integration.id,
+      reason: "Scoped partner integration requested",
+      metadata: { integrationKey: integration.integrationKey, level: integration.level, status: integration.status, fanLevelRowsExposed: false },
+    });
+    return res.status(201).json({ success: true, integration });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (Number(err?.code || 0) === 11000 ? 409 : 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to create partner integration", details: err?.details || undefined });
+  }
+});
+
+router.patch("/partnerships/integrations/:integrationId", adminMutationLimiter, async (req, res) => {
+  try {
+    const integration = await updatePartnerIntegration({ integrationId: req.params.integrationId, updates: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.partner_integration.update",
+      targetType: "PartnerIntegration",
+      targetId: integration.id,
+      reason: String(req.body?.reason || "").trim(),
+      metadata: { integrationKey: integration.integrationKey, level: integration.level, status: integration.status, accessState: integration.accessState },
+    });
+    return res.json({ success: true, integration });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update partner integration", details: err?.details || undefined });
+  }
+});
+
+router.post("/growth/market-readiness", adminMutationLimiter, async (req, res) => {
+  try {
+    const market = await createMarketReadinessReview({ payload: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.market_readiness.create",
+      targetType: "MarketReadinessReview",
+      targetId: market.id,
+      reason: "Multi-market readiness review created",
+      metadata: { marketKey: market.marketKey, state: market.state, controlledLaunchEligible: market.controlledLaunchEligible },
+    });
+    return res.status(201).json({ success: true, market });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (Number(err?.code || 0) === 11000 ? 409 : 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to create market readiness review", details: err?.details || undefined });
+  }
+});
+
+router.patch("/growth/market-readiness/:marketId", adminMutationLimiter, async (req, res) => {
+  try {
+    const market = await updateMarketReadinessReview({ marketId: req.params.marketId, updates: req.body || {}, adminUserId: req.user.id });
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.market_readiness.update",
+      targetType: "MarketReadinessReview",
+      targetId: market.id,
+      reason: String(req.body?.reason || "").trim(),
+      metadata: { marketKey: market.marketKey, state: market.state, readyGates: market.summary?.ready, controlledLaunchEligible: market.controlledLaunchEligible },
+    });
+    return res.json({ success: true, market });
+  } catch (err) {
+    const code = Number(err?.status || 0) || (err?.name === "ValidationError" ? 400 : 500);
+    return res.status(code).json({ error: err.message || "Failed to update market readiness review", details: err?.details || undefined });
   }
 });
 

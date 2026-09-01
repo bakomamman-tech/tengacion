@@ -87,6 +87,8 @@ Execution roadmaps for the marketplace and Akuso build cycles:
 - [`docs/tengacion-capital-30-60-90-roadmap.md`](docs/tengacion-capital-30-60-90-roadmap.md) - capital cycle for financing readiness, investor and strategic partner diligence, unit economics, capital allocation, and Akuso AI investment governance
 - [`docs/tengacion-distribution-30-60-90-roadmap.md`](docs/tengacion-distribution-30-60-90-roadmap.md) - distribution cycle for channel strategy, creator category activation, fan acquisition, partnerships, market readiness, and Akuso go-to-market governance
 - [`docs/tengacion-revenue-30-60-90-roadmap.md`](docs/tengacion-revenue-30-60-90-roadmap.md) - revenue cycle for pricing, creator monetization, fan conversion, subscriptions, commercial revenue operations, finance controls, and Akuso revenue governance
+- [`docs/tengacion-next-twenty-five-platform-ecosystem-network-controls.md`](docs/tengacion-next-twenty-five-platform-ecosystem-network-controls.md) - implemented control contract for PLATFORM-007 through PLATFORM-015, ECOSYSTEM-001 through ECOSYSTEM-015, and the bounded NETWORK-001 object model
+- [`docs/tengacion-next-thirty-network-intelligence-automation-controls.md`](docs/tengacion-next-thirty-network-intelligence-automation-controls.md) - implemented control contract for NETWORK-002 through NETWORK-015, INTELLIGENCE-001 through INTELLIGENCE-015, and the non-executing AUTOMATION-001 registry
 
 ## Creator + Artist Enhancements
 - Artist profile now exposes `links` (Spotify, Instagram, Facebook, TikTok, YouTube, Apple Music, Audiomack, Boomplay, Website) plus a `customLinks` array.

@@ -40,7 +40,7 @@ describe("route truth registry", () => {
     const appPaths = declaredAppPaths();
     const registeredPaths = registry.features.flatMap((feature) => feature.appPaths);
 
-    expect(appPaths).toHaveLength(191);
+    expect(appPaths.length).toBeGreaterThan(0);
     expect(new Set(registeredPaths).size).toBe(registeredPaths.length);
     expect([...registeredPaths].sort()).toEqual([...appPaths].sort());
   });

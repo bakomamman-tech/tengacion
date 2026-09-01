@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { recordCreatorGrowthExperiment } from "../../api";
 import CreatorProfileSummaryCard from "../../components/creator/CreatorProfileSummaryCard";
 import CreatorLaunchPlannerPanel from "../../components/creator/CreatorLaunchPlannerPanel";
+import CreatorServicesPanel from "../../components/creator/CreatorServicesPanel";
+import CreatorNetworkIntelligencePanel from "../../components/creator/CreatorNetworkIntelligencePanel";
 import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
@@ -56,6 +58,8 @@ export default function CreatorDashboardPage() {
   const nextStepKey = nextActivationStep?.key || "";
   const operatingConsole = dashboard.operatingConsole || {};
   const businessSuite = operatingConsole.businessSuite || {};
+  const creatorServices = operatingConsole.creatorServices || {};
+  const networkIntelligence = operatingConsole.networkIntelligence || {};
   const actionPrompts = Array.isArray(operatingConsole.actionPrompts)
     ? operatingConsole.actionPrompts
     : [];
@@ -291,6 +295,13 @@ export default function CreatorDashboardPage() {
         <CreatorLaunchPlannerPanel
           businessSuite={businessSuite}
           creatorProfile={creatorProfile}
+          onRefresh={refreshWorkspace}
+        />
+
+        <CreatorServicesPanel creatorServices={creatorServices} />
+
+        <CreatorNetworkIntelligencePanel
+          payload={networkIntelligence}
           onRefresh={refreshWorkspace}
         />
 

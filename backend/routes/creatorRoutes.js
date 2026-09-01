@@ -27,6 +27,7 @@ const {
   updateCreatorLaunchPlan,
   updatePodcastSeries,
   updateCreatorProfile,
+  updateCreatorIntelligenceFeedback,
 } = require("../controllers/creatorController");
 const { getPublicCreatorContent, getPublicCreatorProfile } = require("../controllers/creatorsController");
 const { createCreatorVideo } = require("../controllers/videosController");
@@ -42,6 +43,7 @@ router.post("/growth-experiments/events", auth, creatorAuth, recordCreatorGrowth
 router.post("/launch-plans", auth, creatorAuth, createCreatorLaunchPlan);
 router.patch("/launch-plans/:planId", auth, creatorAuth, updateCreatorLaunchPlan);
 router.post("/referrals", auth, creatorAuth, createCreatorReferral);
+router.patch("/intelligence/prompts/:promptId", auth, creatorAuth, updateCreatorIntelligenceFeedback);
 router.get("/discovery/insights", auth, getCreatorDiscoveryInsights);
 router.get("/discovery/content/:itemType/:itemId", auth, getCreatorDiscoveryContentInsights);
 router.get("/subscriptions/analytics", auth, getCreatorSubscriptionAnalytics);

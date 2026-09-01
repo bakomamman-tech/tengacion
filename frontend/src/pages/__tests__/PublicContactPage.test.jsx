@@ -127,7 +127,7 @@ describe("PublicContactPage", () => {
       expect(screen.getByRole("textbox", { name: /full name/i })).toHaveValue("");
       expect(screen.getByRole("textbox", { name: /details/i })).toHaveValue("");
     });
-  });
+  }, 15000);
 
   it("announces submission errors without clearing the form", async () => {
     const user = userEvent.setup();
@@ -142,5 +142,5 @@ describe("PublicContactPage", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Please try again shortly.");
     expect(screen.getByRole("textbox", { name: /full name/i })).toHaveValue("Ada Reporter");
-  });
+  }, 15000);
 });

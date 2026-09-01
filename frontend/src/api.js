@@ -1444,6 +1444,16 @@ export const getCreatorDashboard = () =>
     cache: "no-store",
   });
 
+export const updateCreatorIntelligencePrompt = (promptId, payload = {}) =>
+  request(`${API_BASE}/creator/intelligence/prompts/${encodeURIComponent(promptId || "")}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const createCreatorLaunchPlan = (payload = {}) =>
   request(`${API_BASE}/creator/launch-plans`, {
     method: "POST",
@@ -3041,6 +3051,28 @@ export const adminGetExpansionPlatformOperatingSystem = (params = {}) => {
     if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/analytics/expansion-platform-operating-system?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminGetEcosystemNetworkOperatingSystem = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/analytics/ecosystem-network-operating-system?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminGetNetworkIntelligenceOperatingSystem = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/analytics/network-intelligence-operating-system?${query.toString()}`, {
     headers: getAuthHeaders(),
     timeoutMs: 45000,
   });

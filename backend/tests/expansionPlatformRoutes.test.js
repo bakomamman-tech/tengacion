@@ -208,7 +208,7 @@ describe("expansion and platform protected routes", () => {
     await request(app)
       .post("/api/admin/operations/automation-suggestions")
       .set("Authorization", `Bearer ${firstAdmin.token}`)
-      .send({ suggestionType: "payout_queue_priority", targetType: "payout", targetId: "queue-1", title: "Review oldest verified request", suggestedAction: "Prioritize for human review", confidence: 0.8, sourceSignals: { ageHours: 48 }, authorizesSensitiveAction: true, expiresAt: "2026-09-01T00:00:00.000Z" })
+      .send({ suggestionType: "payout_queue_priority", targetType: "payout", targetId: "queue-1", title: "Review oldest verified request", suggestedAction: "Prioritize for human review", confidence: 0.8, sourceSignals: { ageHours: 48 }, authorizesSensitiveAction: true, expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() })
       .expect(201);
 
     const governance = await request(app)

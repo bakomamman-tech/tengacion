@@ -39,6 +39,19 @@ const WRITING_CONTENT_TYPES = [
   "cohort_summary",
   "partner_report_summary",
   "offer_setup_guidance",
+  "creator_service_explanation",
+  "community_loop_guidance",
+  "partner_integration_summary",
+  "ecosystem_finance_explanation",
+  "market_readiness_guidance",
+  "ecosystem_governance_summary",
+  "network_program_explanation",
+  "advocacy_health_summary",
+  "partner_graduation_summary",
+  "intelligence_summary",
+  "metric_trust_explanation",
+  "predictive_warning_summary",
+  "automation_registry_summary",
 ];
 
 const normalizeWritingPreferences = (value = {}) => ({
@@ -242,6 +255,110 @@ const buildWritingFallbackDraft = ({
       `Offer setup for ${cleanTopic}: choose a paid drop, bundle, subscription package, live event pass, or marketplace spotlight from the creator launch planner.`,
       `Readiness checklist: confirm metadata, cover and preview, price, payout readiness, fan update plan, success metric, stop condition, and required review.`,
       `Authority note: Akuso may explain or draft but cannot approve finance, campaign, live, marketplace, moderation, or public publication decisions.`,
+    ]);
+  }
+
+  if (contentType === "creator_service_explanation") {
+    return buildVariants([
+      `Creator service explanation for ${cleanTopic}: confirm eligibility, creator commitment, owner, required evidence, expected outcome, metric, graduation condition, review date, and escalation path.`,
+      `Claims boundary: describe only the defined service and stored outcome evidence; do not promise reach, earnings, approval, or a result that has not been observed.`,
+      `Commercial boundary: basic support and premium service terms remain explicit, and enrollment requires the creator's recorded consent.`,
+    ]);
+  }
+
+  if (contentType === "community_loop_guidance") {
+    return buildVariants([
+      `Community loop guidance for ${cleanTopic}: state the qualifying action, primary metric, notification cap, complaint and opt-out guardrails, ignored-prompt limit, abuse checks, stop condition, and review date.`,
+      `Privacy boundary: use aggregate relationship movement and never reveal private fan rows, identity, messages, or behavior.`,
+      `Trust boundary: consent, suppression, complaint, report, refund, creator-trust, and frequency controls can pause the loop at any time.`,
+    ]);
+  }
+
+  if (contentType === "partner_integration_summary") {
+    return buildVariants([
+      `Partner integration summary for ${cleanTopic}: state the requested access level, allowlisted aggregate data, prohibited data, approval owner, creator-consent state, expiry, revocation path, audit event, and renewal review.`,
+      `Privacy boundary: exclude payment identifiers, private user behavior, identity verification data, moderation-sensitive detail, and Akuso memory.`,
+      `Authority note: API-candidate status is a proposal only; Akuso cannot grant access, generate an export, approve a sponsor, or publish an external report.`,
+    ]);
+  }
+
+  if (contentType === "ecosystem_finance_explanation") {
+    return buildVariants([
+      `Ecosystem finance explanation for ${cleanTopic}: separate creator commerce, service-program cost, campaign, partner, sponsor, market, acquisition, payment-fee, refund, dispute, payout, support, infrastructure, and model-cost evidence.`,
+      `Evidence boundary: label missing share rates and cost proxies as instrumentation gaps and never replace them with invented assumptions.`,
+      `Authority note: operating views require ledger reconciliation before finance, partner, investor, or public use; Akuso cannot approve, refund, pay, or move money.`,
+    ]);
+  }
+
+  if (contentType === "market_readiness_guidance") {
+    return buildVariants([
+      `Market readiness guidance for ${cleanTopic}: review payment, payout, creator supply, fan demand, support, moderation, rights, partner, low-bandwidth, and data/privacy gates with evidence, owners, a cost cap, stop condition, and review date.`,
+      `Decision boundary: research, seed, hold, and exit are valid states; controlled launch or growth requires every gate and recorded human approval.`,
+      `Akuso may summarize missing evidence but cannot approve a market, partner, payment path, rights process, or expansion decision.`,
+    ]);
+  }
+
+  if (contentType === "ecosystem_governance_summary") {
+    return buildVariants([
+      `Governance summary for ${cleanTopic}: identify the owner, decision, reviewed evidence, independent approvers, change history, expiry, follow-up, stop condition, and rollback path.`,
+      `Automation boundary: checks may flag stale approvals, privacy gaps, risk spikes, or eval regressions, but a human owns every high-risk disposition.`,
+      `External-output boundary: partner, finance, investor, public, moderation-impacting, and market-launch text remains a draft until an authorized reviewer approves it.`,
+    ]);
+  }
+
+  if (contentType === "network_program_explanation") {
+    return buildVariants([
+      `Network program explanation for ${cleanTopic}: state the creator benefit, commitment, consent state, owner, collaborator or provider scope, baseline, success metric, stop condition, review date, and withdrawal path.`,
+      `Outcome boundary: separate creator, collaborator, provider, partner, campaign, and community effects; report only stored evidence and never promise incremental earnings.`,
+      `Finance boundary: purchases, creator earnings, fees, refunds, payouts, and settlements remain attributable to the ledger; Akuso cannot enroll a creator or move money.`,
+    ]);
+  }
+
+  if (contentType === "advocacy_health_summary") {
+    return buildVariants([
+      `Advocacy health summary for ${cleanTopic}: report aggregate opt-in participation, movement, referral totals, campaign performance, frequency, ignored prompts, complaints, abuse, refund or dispute, and suppression state.`,
+      `Privacy boundary: never reveal fan identities, messages, payment details, private behavior, or sensitive-category inference.`,
+      `Control boundary: a creator or operator can pause by creator, cohort, surface, or loop type; Akuso may explain a hold but cannot send a message or activate a loop.`,
+    ]);
+  }
+
+  if (contentType === "partner_graduation_summary") {
+    return buildVariants([
+      `Partner graduation summary for ${cleanTopic}: show the current and proposed access level plus reviewed data-contract, consent, privacy, security, audit, revocation, retention, finance, reliability, rate-limit, rollback, and renewal gates.`,
+      `Approval boundary: commercial enthusiasm and API-candidate status grant no export, dashboard, sponsor, campaign, credential, or API access.`,
+      `Data boundary: exclude private fan behavior, payment identifiers, identity verification, moderation-sensitive detail, and unsupported or unreconciled claims.`,
+    ]);
+  }
+
+  if (contentType === "intelligence_summary") {
+    return buildVariants([
+      `Intelligence summary for ${cleanTopic}: cite the source, observation timeframe, confidence, limitations, metric trust state, intended audience, and optional reversible action.`,
+      `Trust boundary: stale, disputed, blocked, or withdrawn metrics remain visible warnings and cannot silently drive a recommendation.`,
+      `Privacy and authority boundary: do not infer private fan behavior or approve pricing, payout, moderation, partner, API, publication, or automation decisions.`,
+    ]);
+  }
+
+  if (contentType === "metric_trust_explanation") {
+    return buildVariants([
+      `Metric trust explanation for ${cleanTopic}: name the owner, source authority, calculation, freshness window, limitations, privacy class, permitted decisions, export policy, and current trust reason.`,
+      `A trusted label requires current observed evidence; watch, stale, disputed, blocked, or withdrawn contracts cannot drive a governed decision.`,
+      `Akuso may explain the recorded state but cannot repair, reconcile, reclassify, or approve the metric contract.`,
+    ]);
+  }
+
+  if (contentType === "predictive_warning_summary") {
+    return buildVariants([
+      `Predictive warning for ${cleanTopic}: state the source metrics, observation time, confidence, possible impact, accountable owner, runbook, review path, rollback path, and next human check.`,
+      `Evidence boundary: this is a hypothesis, not a confirmed incident, and false-positive or missed-incident review remains required.`,
+      `Authority note: Akuso cannot restrict an account, change payout or entitlement state, remove content, contact users, or execute the runbook.`,
+    ]);
+  }
+
+  if (contentType === "automation_registry_summary") {
+    return buildVariants([
+      `Automation registry summary for ${cleanTopic}: state the owner, affected actor, trigger, input signals, proposed action, risk, approval requirement, audit event, visible status, pause control, rollback, success metric, guardrails, review cadence, and registry state.`,
+      `AUTOMATION-001 is a registry only: proposed, designed, or review-required records grant no pilot or active execution authority.`,
+      `Akuso may describe the candidate but cannot approve it, activate it, conceal that it is suggested or manual, or perform the action.`,
     ]);
   }
 

@@ -8,6 +8,7 @@ const User = require("../models/User");
 const Video = require("../models/Video");
 const CreatorLaunchPlan = require("../models/CreatorLaunchPlan");
 const ReferralAttribution = require("../models/ReferralAttribution");
+const CreatorServiceEnrollment = require("../models/CreatorServiceEnrollment");
 const { buildCreatorActivationProgress } = require("../services/creatorActivationService");
 const {
   buildCreatorDashboardConsole,
@@ -18,6 +19,13 @@ const {
   createCreatorReferral,
   updateCreatorLaunchPlan,
 } = require("../services/expansionPlatformOperatingService");
+const {
+  buildCreatorServices,
+} = require("../services/ecosystemNetworkOperatingService");
+const {
+  buildCreatorNetworkIntelligenceForProfile,
+  updateCreatorIntelligenceFeedback,
+} = require("../services/networkIntelligenceOperatingService");
 const {
   listCreatorGrowthExperimentEvents,
   recordCreatorGrowthExperimentEvent,
@@ -486,7 +494,7 @@ const getDashboardPayload = async ({ profile, user }) => {
     .sort({ paidAt: -1, createdAt: -1, _id: -1 })
     .lean();
 
-  const [walletSnapshot, growthEvents, launchPlanRows, referralRows] = await Promise.all([
+  const [walletSnapshot, growthEvents, launchPlanRows, referralRows, creatorServiceRows] = await Promise.all([
     buildCreatorWalletSnapshot({
       creatorId: profile._id,
     }),
@@ -498,6 +506,10 @@ const getDashboardPayload = async ({ profile, user }) => {
     ReferralAttribution.find({ creatorProfile: profile._id })
       .sort({ createdAt: -1 })
       .limit(500)
+      .lean(),
+    CreatorServiceEnrollment.find({ creatorProfile: profile._id })
+      .sort({ reviewAt: 1 })
+      .limit(100)
       .lean(),
   ]);
   const earningsByKey = walletSnapshot.itemEarningsMap || new Map();
@@ -640,6 +652,11 @@ const getDashboardPayload = async ({ profile, user }) => {
     operatingConsole,
     planRows: launchPlanRows,
     referralRows,
+  });
+  operatingConsole.creatorServices = buildCreatorServices(creatorServiceRows);
+  operatingConsole.networkIntelligence = await buildCreatorNetworkIntelligenceForProfile({
+    profileId: profile._id,
+    userId: profile.userId || user?._id,
   });
   const discoveryInsights = await buildCreatorDiscoveryInsights({
     profile,
@@ -1197,6 +1214,16 @@ exports.getCreatorDashboard = asyncHandler(async (req, res) => {
 
   const payload = await getDashboardPayload({ profile, user });
   return res.json(payload);
+});
+
+exports.updateCreatorIntelligenceFeedback = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const prompt = await updateCreatorIntelligenceFeedback({
+    promptId: req.params.promptId,
+    userId: req.user.id,
+    payload: req.body || {},
+  });
+  return res.json({ success: true, prompt });
 });
 
 exports.recordCreatorGrowthExperiment = asyncHandler(async (req, res) => {

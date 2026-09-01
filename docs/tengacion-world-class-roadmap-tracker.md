@@ -164,6 +164,36 @@ This document is the authoritative implementation record for the Facebook benchm
 | INTELLIGENCE-014 | Harden predictive operations | COMPLETE | Ten warning types require owner, sources, confidence, impact, runbook, review, rollback, resolution, and false-positive disposition; warnings are not truth. |
 | INTELLIGENCE-015 | Publish intelligence readiness report | COMPLETE | One bounded report names metric, product, warning, finance, and integration blockers plus reviewed next options. |
 | AUTOMATION-001 | Create the automation registry | COMPLETE | Durable candidates record all required owner, trigger, action, risk, approval, audit, visibility, pause, rollback, metric, guardrail, cadence, and state fields; pilot/active transitions are rejected. |
+| AUTOMATION-002 | Define automation risk levels and approvals | COMPLETE | Six reusable risk classes, nine review-gated outcomes, and five prohibited outcomes are enforced before a run can complete. |
+| AUTOMATION-003 | Choose first creator and fan automation candidates | COMPLETE | Seven creator and six fan candidate contracts bind success, guardrail, source, visibility, support, complaint, abuse, and user-control evidence. |
+| AUTOMATION-004 | Choose partner, API, finance, and operations candidates | COMPLETE | Seventeen check-or-routing candidates require owners, source signals, runbooks, review state, and next-review evidence while final sensitive decisions stay human-owned. |
+| AUTOMATION-005 | Define Akuso automation behavior | COMPLETE | Akuso can explain, draft, summarize, and route but cannot execute sensitive actions, expose private data, conceal state, or publish unreviewed output. |
+| AUTOMATION-006 | Launch automation operating dashboard | COMPLETE | Admin Analytics reports state, risk, rollout, trigger/run evidence, overrides, false positives, support, complaints, incidents, pauses, rollbacks, outcomes, and guardrails. |
+| AUTOMATION-007 | Pilot creator lifecycle automation | COMPLETE | Creator-owned run evidence supports dismiss, snooze, hide, explanation, and help controls; unconfigured environments remain empty. |
+| AUTOMATION-008 | Pilot fan lifecycle and community automation | COMPLETE | Run contracts record conversion, opt-out, complaint, ignored/suppressed, and abuse evidence without exposing fan-level rows to creators. |
+| AUTOMATION-009 | Pilot partner, API, finance, and operations checks | COMPLETE | Controlled runs remain checks, warnings, drafts, or routing until the relevant access, finance, moderation, rights, or trust authority records human review. |
+| AUTOMATION-010 | Launch Akuso automation support with gates | COMPLETE | Grounded automation profiles and release evals cover source context, refusal, private data, finance/partner boundaries, review reminders, cost, and latency. |
+| AUTOMATION-011 | Publish automation pilot review | COMPLETE | Stored outcomes support scale, stay-pilot, suggestion-only, review-gated-only, pause, or retire decisions without inferring causality. |
+| AUTOMATION-012 | Broaden low-risk creator and fan automation | COMPLETE | Active state requires reviewed pilot evidence, a scale decision, tested rollback, visible controls, and no open guardrail breach. |
+| AUTOMATION-013 | Standardize partner, API, finance, and operations checks | COMPLETE | Standard evidence tracks true/false positives, missed incidents, owner response, support impact, overrides, and sensitive review. |
+| AUTOMATION-014 | Harden automation incident and rollback discipline | COMPLETE | Nine playbook contracts plus pause, rollback, user-impact, support-copy, incident, post-review, and correction evidence keep failures containable. |
+| AUTOMATION-015 | Publish automation readiness report | COMPLETE | One bounded report names evidence, guardrail, review, and rollout blockers and never converts registry state into causal proof. |
+| ORCHESTRATION-001 | Create the workflow registry | COMPLETE | Durable definitions and runs share fourteen server-owned states, owners, teams, dependencies, approvals, audit, status, pause, rollback, metrics, and cadence. |
+| ORCHESTRATION-002 | Map workflow dependency types | COMPLETE | Fourteen dependency types require source, owner, pass, stale, override, escalation, and user-copy contracts; blocking evidence stops progression. |
+| ORCHESTRATION-003 | Choose first workflows to orchestrate | COMPLETE | Twenty-one governed recipes cover creator, fan, partner, API, finance, support, trust, rights, recommendation, and Akuso response paths. |
+| ORCHESTRATION-004 | Design dashboards and status surfaces | COMPLETE | Internal state retains risk and evidence detail while external status shows only current state, waiting party, next step, safe timing, and support path. |
+| ORCHESTRATION-005 | Define Akuso orchestration behavior | COMPLETE | Akuso remains a guide and drafting assistant with no transition, dependency, override, publication, money, access, moderation, or legal authority. |
+| ORCHESTRATION-006 | Launch orchestration operating dashboard | COMPLETE | One protected dashboard exposes definitions, runs, state, blockers, dependency health, approvals, stale work, overrides, incidents, pause, rollback, and guardrails. |
+| ORCHESTRATION-007 | Pilot creator and campaign orchestration | COMPLETE | Creator/campaign workflow runs coordinate catalog, offer, entitlement, payout, support, recommendation, and copy-review evidence through shared state. |
+| ORCHESTRATION-008 | Pilot fan lifecycle and community orchestration | COMPLETE | Fan/community definitions coordinate consent, suppression, complaint, abuse, trust, diversity, and lifecycle dependencies with aggregate-only creator outcomes. |
+| ORCHESTRATION-009 | Pilot partner, API, finance, support, and trust orchestration | COMPLETE | Sensitive workflows retain visible consent, privacy, security, reconciliation, audit, capacity, and runbook gates plus tested pause/rollback paths. |
+| ORCHESTRATION-010 | Launch Akuso orchestration support | COMPLETE | Nine eval scenarios cover state accuracy, blockers, failed dependencies, prohibited transitions, private fan data, partner, finance, public copy, and incident handoff. |
+| ORCHESTRATION-011 | Publish orchestration pilot review | COMPLETE | Definition evidence supports default, pilot, simplify, manual, pause, and retire decisions; missing runs remain not observed. |
+| ORCHESTRATION-012 | Standardize creator, campaign, and fan recipes | COMPLETE | Reusable definitions persist trigger, state, dependency, approval, status, support, pause, rollback, success, and guardrail contracts. |
+| ORCHESTRATION-013 | Standardize partner, API, finance, support, and trust recipes | COMPLETE | Sensitive recipes persist required evidence, review owner, approval, escalation, audit, rollback, incident, and external-communication rules. |
+| ORCHESTRATION-014 | Harden override, rollback, and incident orchestration | COMPLETE | Overrides require identity, reason, audit, decision time, and expiry; rollbacks and incidents preserve state, user, support, metric, and Akuso correction context. |
+| ORCHESTRATION-015 | Publish orchestration readiness report | COMPLETE | Readiness derives from configured recipes, observed runs, dependency health, guardrails, and reviewed default decisions while high-risk transitions stay human-reviewed. |
+| RESILIENCE-001 | Define critical flow SLOs and recovery objectives | COMPLETE | Fifteen critical flows have durable targets, error budgets, downtime/data-delay objectives, special delay limits, pause/rollback triggers, review, and recovery priority. |
 
 ### Phase 1 work packages
 
@@ -181,6 +211,14 @@ This document is the authoritative implementation record for the Facebook benchm
 ## Change log
 
 ### 1 September 2026
+
+- Implemented the next thirty roadmap packages: `AUTOMATION-002` through `AUTOMATION-015`, `ORCHESTRATION-001` through `ORCHESTRATION-015`, and `RESILIENCE-001`.
+- Extended the automation registry into a human-approved rollout and evidence control plane; added durable automation runs with source, review, outcome, support, incident, and user-control records.
+- Added workflow definitions and server-owned runs with fourteen states, fourteen dependency types, expiring overrides, approval gates, external status copy, pause/rollback controls, evidence reviews, and default/manual/retire decisions.
+- Added reviewed SLO, error-budget, delay, pause, rollback, and recovery-priority objectives for fifteen critical flows without claiming current reliability from configured targets.
+- Added protected audited admin mutations, creator-owned visibility/help controls, a combined Admin Analytics/JSON report, seven Akuso writing profiles, and nine Akuso release scenarios.
+- Preserved operational truth: empty pilots and runs remain not observed, blocked dependencies cannot progress, active/default graduation requires stored evidence, creators never receive fan-level or restricted evidence, and Akuso has no workflow authority.
+- Documented the full contract in `docs/tengacion-next-thirty-automation-orchestration-resilience-controls.md`.
 
 - Implemented the next thirty roadmap packages: `NETWORK-002` through `NETWORK-015`, `INTELLIGENCE-001` through `INTELLIGENCE-015`, and `AUTOMATION-001`.
 - Added durable network-program, partner-graduation, metric-contract, intelligence-product, creator-prompt, predictive-warning, and automation-registry authorities with model and route invariants.

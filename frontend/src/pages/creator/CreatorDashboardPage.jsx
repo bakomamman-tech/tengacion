@@ -6,6 +6,7 @@ import CreatorProfileSummaryCard from "../../components/creator/CreatorProfileSu
 import CreatorLaunchPlannerPanel from "../../components/creator/CreatorLaunchPlannerPanel";
 import CreatorServicesPanel from "../../components/creator/CreatorServicesPanel";
 import CreatorNetworkIntelligencePanel from "../../components/creator/CreatorNetworkIntelligencePanel";
+import CreatorAutomationOrchestrationPanel from "../../components/creator/CreatorAutomationOrchestrationPanel";
 import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
@@ -60,6 +61,7 @@ export default function CreatorDashboardPage() {
   const businessSuite = operatingConsole.businessSuite || {};
   const creatorServices = operatingConsole.creatorServices || {};
   const networkIntelligence = operatingConsole.networkIntelligence || {};
+  const automationOrchestration = operatingConsole.automationOrchestration || {};
   const actionPrompts = Array.isArray(operatingConsole.actionPrompts)
     ? operatingConsole.actionPrompts
     : [];
@@ -302,6 +304,11 @@ export default function CreatorDashboardPage() {
 
         <CreatorNetworkIntelligencePanel
           payload={networkIntelligence}
+          onRefresh={refreshWorkspace}
+        />
+
+        <CreatorAutomationOrchestrationPanel
+          payload={automationOrchestration}
           onRefresh={refreshWorkspace}
         />
 

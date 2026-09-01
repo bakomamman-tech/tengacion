@@ -27,6 +27,11 @@ const {
   updateCreatorIntelligenceFeedback,
 } = require("../services/networkIntelligenceOperatingService");
 const {
+  buildCreatorAutomationOrchestrationForProfile,
+  updateAutomationRunUserControl,
+  updateWorkflowRunUserControl,
+} = require("../services/automationOrchestrationOperatingService");
+const {
   listCreatorGrowthExperimentEvents,
   recordCreatorGrowthExperimentEvent,
 } = require("../services/creatorGrowthExperimentService");
@@ -658,6 +663,10 @@ const getDashboardPayload = async ({ profile, user }) => {
     profileId: profile._id,
     userId: profile.userId || user?._id,
   });
+  operatingConsole.automationOrchestration = await buildCreatorAutomationOrchestrationForProfile({
+    profileId: profile._id,
+    userId: profile.userId || user?._id,
+  });
   const discoveryInsights = await buildCreatorDiscoveryInsights({
     profile,
     range: "30d",
@@ -1224,6 +1233,26 @@ exports.updateCreatorIntelligenceFeedback = asyncHandler(async (req, res) => {
     payload: req.body || {},
   });
   return res.json({ success: true, prompt });
+});
+
+exports.updateCreatorAutomationControl = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const run = await updateAutomationRunUserControl({
+    runId: req.params.runId,
+    userId: req.user.id,
+    updates: req.body || {},
+  });
+  return res.json({ success: true, run });
+});
+
+exports.updateCreatorWorkflowControl = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const run = await updateWorkflowRunUserControl({
+    runId: req.params.runId,
+    userId: req.user.id,
+    updates: req.body || {},
+  });
+  return res.json({ success: true, run });
 });
 
 exports.recordCreatorGrowthExperiment = asyncHandler(async (req, res) => {

@@ -52,6 +52,13 @@ const WRITING_CONTENT_TYPES = [
   "metric_trust_explanation",
   "predictive_warning_summary",
   "automation_registry_summary",
+  "automation_fired_explanation",
+  "automation_pause_rollback_summary",
+  "workflow_state_explanation",
+  "workflow_blocker_summary",
+  "approval_packet_draft",
+  "orchestration_incident_handoff",
+  "resilience_objective_explanation",
 ];
 
 const normalizeWritingPreferences = (value = {}) => ({
@@ -359,6 +366,62 @@ const buildWritingFallbackDraft = ({
       `Automation registry summary for ${cleanTopic}: state the owner, affected actor, trigger, input signals, proposed action, risk, approval requirement, audit event, visible status, pause control, rollback, success metric, guardrails, review cadence, and registry state.`,
       `AUTOMATION-001 is a registry only: proposed, designed, or review-required records grant no pilot or active execution authority.`,
       `Akuso may describe the candidate but cannot approve it, activate it, conceal that it is suggested or manual, or perform the action.`,
+    ]);
+  }
+
+  if (contentType === "automation_fired_explanation") {
+    return buildVariants([
+      `Automation explanation for ${cleanTopic}: identify the recorded trigger, authoritative source signals, observation time, confidence, owner, bounded action or suggestion, visible status, next review, and available user controls.`,
+      `Review boundary: checks may validate or route repeated work, but payouts, refunds, account restrictions, takedowns, partner or API access, settlements, sponsored launches, and public copy remain human-approved.`,
+      `Evidence boundary: report stored outcomes, overrides, complaints, support impact, cost, and guardrails without claiming the automation caused a result.`,
+    ]);
+  }
+
+  if (contentType === "automation_pause_rollback_summary") {
+    return buildVariants([
+      `Automation pause or rollback summary for ${cleanTopic}: state the detection signal, owner, pause trigger, rollback path, affected users, support copy, incident link, and next human review.`,
+      `Keep paused, rolled-back, and retired state visible; do not imply the workflow is active or corrected until the authoritative registry and incident review say so.`,
+      `Akuso may summarize the record but cannot pause, reactivate, roll back, contact users, or change a metric contract.`,
+    ]);
+  }
+
+  if (contentType === "workflow_state_explanation") {
+    return buildVariants([
+      `Workflow state explanation for ${cleanTopic}: cite the server-owned state, start trigger, current owner, participant teams, passed and blocking dependencies, approval status, waiting party, next safe step, support path, and safe timing.`,
+      `Progression boundary: pending, failed, stale, or expired dependencies stop the workflow visibly; sensitive transitions require recorded human approval.`,
+      `External-status boundary: omit private risk details, private fan behavior, restricted partner data, and internal security evidence.`,
+    ]);
+  }
+
+  if (contentType === "workflow_blocker_summary") {
+    return buildVariants([
+      `Workflow blocker summary for ${cleanTopic}: list each dependency type, source system, owner, evidence state, stale condition, escalation path, user-visible copy, and the next review time.`,
+      `Override boundary: an override is exceptional and requires a named requester, approver, reason, audit event, decision time, and expiration; an expired override blocks progression again.`,
+      `Akuso can explain a blocker or draft an escalation note but cannot pass, override, or bypass the dependency.`,
+    ]);
+  }
+
+  if (contentType === "approval_packet_draft") {
+    return buildVariants([
+      `Approval packet draft for ${cleanTopic}: summarize required evidence, dependency health, automation checks, human review gates, owner recommendation, privacy and consent posture, finance and trust caveats, rollback readiness, and expiry.`,
+      `Decision boundary: label this as a draft and leave approval, rejection, access, money movement, moderation, rights, publication, and launch transitions to the authorized reviewer.`,
+      `Audit boundary: cite stored records and missing evidence; never invent an approval, reviewer, reconciliation result, or completed check.`,
+    ]);
+  }
+
+  if (contentType === "orchestration_incident_handoff") {
+    return buildVariants([
+      `Incident handoff for ${cleanTopic}: state current workflow state, detection signal, affected dependencies, owner, severity if recorded, pause status, rollback status, user impact, support path, and next review.`,
+      `Recovery boundary: preserve the last valid server-owned state and make missing, stale, disputed, or replayed evidence explicit.`,
+      `Akuso may draft the handoff and correction summary but cannot declare recovery, modify workflow state, execute rollback, or publish an external incident update.`,
+    ]);
+  }
+
+  if (contentType === "resilience_objective_explanation") {
+    return buildVariants([
+      `Resilience objective for ${cleanTopic}: state the critical flow, owner, measurement source, availability or latency target, error budget, maximum downtime, maximum data delay, special entitlement, payout, or partner delay where relevant, recovery priority, pause trigger, rollback trigger, and review date.`,
+      `Measurement boundary: a configured SLO or recovery objective is a target, not proof of current reliability; cite observed telemetry separately.`,
+      `Akuso may explain recovery order and draft incident communication but cannot change an SLO, spend an error budget, declare recovery, or override the incident commander.`,
     ]);
   }
 

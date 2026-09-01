@@ -152,6 +152,17 @@ const {
   updatePartnerGraduation,
   updatePredictiveWarning,
 } = require("../services/networkIntelligenceOperatingService");
+const {
+  buildAutomationOrchestrationOperatingSystem,
+  createAutomationRun,
+  createWorkflowDefinition,
+  createWorkflowRun,
+  transitionAutomationControl,
+  updateAutomationRun,
+  updateWorkflowDefinition,
+  updateWorkflowRun,
+  upsertResilienceObjective,
+} = require("../services/automationOrchestrationOperatingService");
 const { buildReadinessPayload } = require("../services/healthService");
 const {
   getStorageActionCatalog,
@@ -3339,6 +3350,20 @@ router.get("/analytics/network-intelligence-operating-system", async (req, res) 
   }
 });
 
+router.get("/analytics/automation-orchestration-operating-system", async (req, res) => {
+  try {
+    return res.json(await buildAutomationOrchestrationOperatingSystem(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = Number(err?.status || 0) || (/invalid/i.test(String(err?.message || "")) ? 400 : 500);
+    console.error("Admin automation orchestration operating system error:", req.requestId, err);
+    return res.status(code).json({
+      error: err.message || "Failed to load the automation and orchestration operating system",
+      details: err?.details || undefined,
+      requestId: req.requestId,
+    });
+  }
+});
+
 const handleNetworkIntelligenceMutation = async ({ req, res, operation, successKey, action, targetType, created = false, metadata = {} }) => {
   try {
     const result = await operation();
@@ -3434,6 +3459,54 @@ router.patch("/operations/automation-registry/:automationId", adminMutationLimit
   req, res, successKey: "automation", action: "admin.automation_registry.update", targetType: "AutomationRegistryEntry",
   operation: () => updateAutomationRegistryEntry({ automationId: req.params.automationId, updates: req.body || {}, adminUserId: req.user.id }),
   metadata: (row) => ({ automationKey: row.automationKey, state: row.state, riskLevel: row.riskLevel, executionAuthority: row.executionAuthority }),
+}));
+
+router.patch("/operations/automation-control-plane/:automationId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "automation", action: "admin.automation_control.transition", targetType: "AutomationRegistryEntry",
+  operation: () => transitionAutomationControl({ automationId: req.params.automationId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ automationKey: row.automationKey, state: row.state, riskClass: row.riskClass, scaleDecision: row.scaleDecision, executionAuthority: row.executionAuthority }),
+}));
+
+router.post("/operations/automation-runs", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "run", action: "admin.automation_run.create", targetType: "AutomationRun",
+  operation: () => createAutomationRun({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ automationKey: row.automationKey, riskClass: row.riskClass, status: row.status, humanReviewRequired: row.humanReviewRequired }),
+}));
+
+router.patch("/operations/automation-runs/:runId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "run", action: "admin.automation_run.update", targetType: "AutomationRun",
+  operation: () => updateAutomationRun({ runId: req.params.runId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ automationKey: row.automationKey, status: row.status, reviewDecision: row.review?.decision }),
+}));
+
+router.post("/orchestration/workflow-definitions", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "definition", action: "admin.workflow_definition.create", targetType: "WorkflowDefinition",
+  operation: () => createWorkflowDefinition({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ workflowKey: row.workflowKey, workflowDomain: row.workflowDomain, lifecycle: row.lifecycle }),
+}));
+
+router.patch("/orchestration/workflow-definitions/:definitionId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "definition", action: "admin.workflow_definition.update", targetType: "WorkflowDefinition",
+  operation: () => updateWorkflowDefinition({ definitionId: req.params.definitionId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ workflowKey: row.workflowKey, lifecycle: row.lifecycle, reviewDecision: row.reviewDecision }),
+}));
+
+router.post("/orchestration/workflow-runs", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "run", action: "admin.workflow_run.create", targetType: "WorkflowRun",
+  operation: () => createWorkflowRun({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ workflowKey: row.workflowKey, currentState: row.currentState, humanReviewRequired: row.humanReviewRequired }),
+}));
+
+router.patch("/orchestration/workflow-runs/:runId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "run", action: "admin.workflow_run.update", targetType: "WorkflowRun",
+  operation: () => updateWorkflowRun({ runId: req.params.runId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ workflowKey: row.workflowKey, currentState: row.currentState, approvalStatus: row.approval?.status }),
+}));
+
+router.put("/reliability/resilience-objectives/:flowKey", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "objective", action: "admin.resilience_objective.upsert", targetType: "ResilienceObjective",
+  operation: () => upsertResilienceObjective({ flowKey: req.params.flowKey, payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ flowKey: row.flowKey, status: row.status, recoveryPriority: row.recoveryPriority, humanReviewRecorded: row.humanReviewRecorded }),
 }));
 
 router.post("/growth/creator-services", adminMutationLimiter, async (req, res) => {

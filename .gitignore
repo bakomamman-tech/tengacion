@@ -50,3 +50,5 @@ audio_session/
 
 # Local mixing/mastering reports
 *_Mix_Master_Report.md
+
+audio_outputs/

@@ -43,3 +43,10 @@ gaming-play-mobile.png
 
 output/
 artifacts/
+
+# Local music production workspace
+audio_projects/
+audio_session/
+
+# Local mixing/mastering reports
+*_Mix_Master_Report.md

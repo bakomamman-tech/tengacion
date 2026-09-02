@@ -15,7 +15,6 @@ const NAV_GROUPS = [
   {
     label: "Operations",
     items: [
-      { key: "kadahive", label: "Kadahive Institution", icon: "users", path: "/admin/institutions/kadahive" },
       { key: "assistant", label: "Assistant Ops", icon: "spark", path: "/admin/assistant", dotKey: "assistant" },
       { key: "posts", label: "Posts", icon: "posts", path: "/admin/content", dotKey: "content" },
       { key: "users", label: "Users", icon: "users", path: "/admin/users" },
@@ -29,6 +28,7 @@ const NAV_GROUPS = [
     items: [
       { key: "creator-earnings", label: "Creator Earnings", icon: "finance", path: "/admin/creator-earnings" },
       { key: "tuition-payments", label: "Tuition Payments", icon: "finance", path: "/admin/tuition-payments" },
+      { key: "teacher-training", label: "Staff Training", icon: "users", path: "/admin/teacher-training" },
       { key: "raffle", label: "Raffle Cards", icon: "spark", path: "/admin/recharge-raffle" },
       { key: "millionaire", label: "Millionaire Game", icon: "spark", path: "/admin/millionaire" },
       { key: "bright-future", label: "Bright Future Academy", icon: "spark", path: "/admin/bright-future-academy" },

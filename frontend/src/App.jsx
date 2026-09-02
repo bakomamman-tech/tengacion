@@ -30,7 +30,6 @@ const InvestorPitchPage = lazy(() => import("./pages/InvestorPitchPage"));
 const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
 const TovidoAnthonyFoundationPage = lazy(() => import("./pages/TovidoAnthonyFoundationPage"));
 const CygroEnterprisePage = lazy(() => import("./pages/CygroEnterprisePage"));
-const AIProfessionalsKadunaPage = lazy(() => import("./pages/AIProfessionalsKadunaPage"));
 const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
 const TeacherTrainingPage = lazy(() => import("./pages/TeacherTrainingPage"));
 const Register = lazy(() => import("./pages/Register"));
@@ -72,6 +71,7 @@ const AdminReportsPage = lazy(() => import("./pages/AdminReports"));
 const AdminContentPage = lazy(() => import("./pages/AdminContent"));
 const AdminTransactionsPage = lazy(() => import("./pages/AdminTransactions"));
 const AdminTuitionPaymentsPage = lazy(() => import("./pages/AdminTuitionPayments"));
+const AdminTeacherTrainingPage = lazy(() => import("./pages/AdminTeacherTraining"));
 const AdminCreatorEarningsPage = lazy(() => import("./pages/AdminCreatorEarnings"));
 const AdminAssurancePage = lazy(() => import("./pages/AdminAssurance"));
 const AdminCreatorDetailPage = lazy(() => import("./pages/AdminCreatorDetail"));
@@ -153,24 +153,6 @@ const ProfessionalDashboardPage = lazyNamedExport(
   "ProfessionalDashboardPage"
 );
 const SavedPage = lazyNamedExport(loadQuickAccessPages, "SavedPage");
-const KadahiveLanding = lazy(() => import("./features/kadahive/KadahiveLanding"));
-const KadahiveAuthPage = lazy(() => import("./features/kadahive/KadahiveAuthPage"));
-const KadahiveMemberDashboard = lazy(
-  () => import("./features/kadahive/KadahiveMemberDashboard")
-);
-const KadahiveAdminDashboard = lazy(
-  () => import("./features/kadahive/KadahiveAdminDashboard")
-);
-const KadahiveAdminRoute = lazy(
-  () => import("./features/kadahive/KadahiveAdminRoute")
-);
-const KadahiveSuperAdminPage = lazy(
-  () => import("./features/kadahive/KadahiveSuperAdminPage")
-);
-const KadahiveProgrammeArchive = lazy(
-  () => import("./features/kadahive/KadahiveProgrammeArchive")
-);
-
 function AppShellFallback({ message = "Loading Tengacion..." }) {
   return (
     <div className="boot-screen">
@@ -198,17 +180,10 @@ export default function App() {
   usePageTracking();
   const isBrightFutureRoute = pathname.toLowerCase().startsWith("/bright-future-academy");
   const isFocusedGameRoute = pathname === "/millionaire" || isBrightFutureRoute;
-  const isAIProfessionalsRoute =
-    pathname.toLowerCase() === "/ai-professionals-in-kaduna-state";
-  const isKadahiveRoute =
-    pathname === "/kadahive" ||
-    pathname.startsWith("/kadahive/") ||
-    pathname === "/admin/institutions/kadahive";
   const isCygroEnterpriseRoute = pathname === "/cygro-enterprise";
   const isAuthOptionalRoute =
     pathname === "/" ||
     isCygroEnterpriseRoute ||
-    pathname.startsWith("/kadahive") ||
     isBrightFutureRoute;
 
   // The public landing page must remain useful while a slow mobile connection
@@ -222,45 +197,12 @@ export default function App() {
     <>
       <LowBandwidthController />
       <WelcomeVoiceController
-        user={isKadahiveRoute || isAIProfessionalsRoute || isCygroEnterpriseRoute || isBrightFutureRoute ? null : user}
+        user={isCygroEnterpriseRoute || isBrightFutureRoute ? null : user}
       />
       <RouteSeoController />
       <Suspense fallback={<AppShellFallback />}>
         <Routes>
           <Route path="/" element={user ? <Navigate to="/home" replace /> : <PublicHomePage />} />
-          <Route path="/kadahive" element={<KadahiveLanding />} />
-          <Route
-            path="/kadahive/programmes/kids-code"
-            element={<KadahiveProgrammeArchive programme="kids" />}
-          />
-          <Route
-            path="/kadahive/programmes/cyber-smart"
-            element={<KadahiveProgrammeArchive programme="cyber" />}
-          />
-          <Route path="/kadahive/login" element={<KadahiveAuthPage mode="login" />} />
-          <Route path="/kadahive/register" element={<KadahiveAuthPage mode="register" />} />
-          <Route
-            path="/kadahive/portal"
-            element={
-              user ? (
-                <KadahiveMemberDashboard />
-              ) : (
-                <Navigate to="/kadahive/login?returnTo=/kadahive/portal" replace />
-              )
-            }
-          />
-          <Route
-            path="/kadahive/dashboard"
-            element={<Navigate to="/kadahive/portal" replace />}
-          />
-          <Route
-            path="/kadahive/admin"
-            element={
-              <KadahiveAdminRoute user={user}>
-                <KadahiveAdminDashboard />
-              </KadahiveAdminRoute>
-            }
-          />
           <Route path="/about" element={<PublicInfoPage pageKey="about" />} />
           <Route path="/leadership" element={<LeadershipPage />} />
           <Route path="/investors" element={<InvestorPitchPage />} />
@@ -277,10 +219,6 @@ export default function App() {
           <Route path="/tovido_anthony_foundation" element={<TovidoAnthonyFoundationPage />} />
           <Route path="/foundation/tovido-anthony" element={<TovidoAnthonyFoundationPage />} />
           <Route path="/cygro-enterprise" element={<CygroEnterprisePage />} />
-          <Route
-            path="/AI-Professionals-In-Kaduna-State"
-            element={<AIProfessionalsKadunaPage />}
-          />
           <Route
             path="/schools/kurahtechandartsacademy"
             element={<Navigate to="/kurahtechandartsacademy" replace />}
@@ -919,6 +857,14 @@ export default function App() {
             }
           />
           <Route
+            path="/admin/teacher-training"
+            element={
+              <AdminRoute user={user}>
+                <AdminTeacherTrainingPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
             path="/admin/creator-earnings"
             element={
               <AdminRoute user={user}>
@@ -1086,17 +1032,9 @@ export default function App() {
               </AdminRoute>
             }
           />
-          <Route
-            path="/admin/institutions/kadahive"
-            element={
-              <AdminRoute user={user} allowedRoles={["admin", "super_admin"]}>
-                <KadahiveSuperAdminPage user={user} />
-              </AdminRoute>
-            }
-          />
         </Routes>
       </Suspense>
-      {user && !isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isCygroEnterpriseRoute ? (
+      {user && !isFocusedGameRoute && !isCygroEnterpriseRoute ? (
         <TopUpPromoDiscovery
           user={user}
           onExploreTip={(tip) => {
@@ -1114,8 +1052,8 @@ export default function App() {
           }}
         />
       ) : null}
-      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isCygroEnterpriseRoute ? <InstallPrompt /> : null}
-      {!isFocusedGameRoute && !isKadahiveRoute && !isAIProfessionalsRoute && !isCygroEnterpriseRoute ? (
+      {!isFocusedGameRoute && !isCygroEnterpriseRoute ? <InstallPrompt /> : null}
+      {!isFocusedGameRoute && !isCygroEnterpriseRoute ? (
         <TengacionAssistantDock />
       ) : null}
     </>

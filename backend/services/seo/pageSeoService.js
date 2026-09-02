@@ -69,33 +69,6 @@ const HOME_DESCRIPTION =
   "Create, connect, sell, stream, and earn on Tengacion, Africa's social commerce and creator monetization platform.";
 
 const PUBLIC_INFO_PAGES = {
-  "/kadahive": {
-    title: "KADA Hive Innovation & Tech Hub | Kaduna",
-    description:
-      "Explore KADA Hive, Kaduna's innovation and technology hub for coworking, digital-skills training, startup incubation, events, and community.",
-    canonicalPath: "/kadahive",
-    previewTitle: "KADA Hive Innovation & Tech Hub",
-    previewDescription:
-      "Coworking, practical technology training, startup support, events, and Kaduna's builder community.",
-  },
-  "/kadahive/programmes/kids-code": {
-    title: "Kids Code Programme Archive | KADA Hive",
-    description:
-      "Explore KADA Hive's archived Kids Code curriculum covering Scratch, HTML, Python, AI basics, computational thinking, and creative projects.",
-    canonicalPath: "/kadahive/programmes/kids-code",
-    previewTitle: "KADA Hive Kids Code programme archive",
-    previewDescription:
-      "A four-part Scratch guide and the curriculum from KADA Hive's four-week coding programme for children.",
-  },
-  "/kadahive/programmes/cyber-smart": {
-    title: "Cyber Smart Bootcamp Archive | KADA Hive",
-    description:
-      "Explore the archived KADA Hive Cyber Smart Bootcamp agenda, practical security topics, facilitators, access levels, and career guidance.",
-    canonicalPath: "/kadahive/programmes/cyber-smart",
-    previewTitle: "KADA Hive Cyber Smart Bootcamp archive",
-    previewDescription:
-      "Digital safety, scam prevention, ethical hacking, and cybersecurity career guidance from KADA Hive.",
-  },
   "/creators": {
     title: "Find African Musicians, Authors, Podcasters & Digital Creators | Tengacion",
     description:

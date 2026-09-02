@@ -4,7 +4,6 @@ import "../pages/admin-analytics.css";
 
 const ADMIN_ITEMS = [
   { key: "overview", label: "Overview", path: "/admin/dashboard" },
-  { key: "kadahive", label: "Kadahive Institution", path: "/admin/institutions/kadahive" },
   { key: "creator-earnings", label: "Earnings From Creators", path: "/admin/creator-earnings" },
   { key: "assurance", label: "Assurance", path: "/admin/assurance" },
   { key: "users", label: "Users", path: "/admin/users" },
@@ -18,6 +17,7 @@ const ADMIN_ITEMS = [
   { key: "marketplace", label: "Marketplace", path: "/admin/marketplace" },
   { key: "transactions", label: "Transactions", path: "/admin/transactions" },
   { key: "tuition-payments", label: "Online Tuition Payments", path: "/admin/tuition-payments" },
+  { key: "teacher-training", label: "Staff Training Tracker", path: "/admin/teacher-training" },
   { key: "reports", label: "Moderation", path: "/admin/reports" },
   { key: "analytics", label: "Analytics", path: "/admin/analytics" },
   { key: "assistant", label: "Assistant Ops", path: "/admin/assistant" },

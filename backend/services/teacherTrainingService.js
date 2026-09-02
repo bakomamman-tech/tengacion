@@ -11,58 +11,7 @@ const {
 } = require("../data/teacherTrainingCatalog");
 
 const CAMPAIGN_ID = "kurah-teachers-training-2026";
-const CAMPAIGN_START_AT = new Date("2026-07-31T23:00:00.000Z");
-const CAMPAIGN_DEADLINE_AT = new Date("2026-08-31T22:59:00.000Z");
-const FINAL_RESULTS_RELEASE_AT = new Date("2026-08-31T22:59:00.000Z");
 const WAT_TIME_ZONE = "Africa/Lagos";
-
-const WEEKLY_SCHEDULE = [
-  {
-    id: "week-1",
-    label: "Week 1",
-    subtitle: "Foundations",
-    startAt: new Date("2026-07-31T23:00:00.000Z"),
-    endAt: new Date("2026-08-07T22:59:59.999Z"),
-    target: 4,
-    moduleCodes: ["PDE 701", "PDE 702", "PDE 703", "PDE 704"],
-  },
-  {
-    id: "week-2",
-    label: "Week 2",
-    subtitle: "Learning and inquiry",
-    startAt: new Date("2026-08-07T23:00:00.000Z"),
-    endAt: new Date("2026-08-14T22:59:59.999Z"),
-    target: 4,
-    moduleCodes: ["PDE 705", "PDE 706", "PDE 707", "PDE 708"],
-  },
-  {
-    id: "week-3",
-    label: "Week 3",
-    subtitle: "Evidence and support",
-    startAt: new Date("2026-08-14T23:00:00.000Z"),
-    endAt: new Date("2026-08-21T22:59:59.999Z"),
-    target: 4,
-    moduleCodes: ["PDE 709", "PDE 710", "PDE 711", "PDE 712"],
-  },
-  {
-    id: "week-4",
-    label: "Week 4",
-    subtitle: "Leadership and practice",
-    startAt: new Date("2026-08-21T23:00:00.000Z"),
-    endAt: new Date("2026-08-28T22:59:59.999Z"),
-    target: 4,
-    moduleCodes: ["PDE 713", "PDE 714", "PDE 715", "PDE 716"],
-  },
-  {
-    id: "final-sprint",
-    label: "Final sprint",
-    subtitle: "Complete all modules",
-    startAt: new Date("2026-08-28T23:00:00.000Z"),
-    endAt: CAMPAIGN_DEADLINE_AT,
-    target: 6,
-    moduleCodes: ["PDE 717", "PDE 718", "PDE 719", "PDE 720", "PDE 721", "PDE 722"],
-  },
-];
 
 class TeacherTrainingError extends Error {
   constructor(message, status = 400, code = "teacher_training_error", payload = {}) {
@@ -99,30 +48,22 @@ const getPerformanceBand = (score = 0) => {
   return { id: "support", label: "Intensive support", message: "A structured improvement plan is required." };
 };
 
-const getCampaignAccess = (now = new Date()) => {
-  const timestamp = new Date(now).getTime();
-  return {
-    opensAt: CAMPAIGN_START_AT,
-    deadlineAt: CAMPAIGN_DEADLINE_AT,
-    finalResultsReleaseAt: FINAL_RESULTS_RELEASE_AT,
-    timeZone: WAT_TIME_ZONE,
-    isPreview: timestamp < CAMPAIGN_START_AT.getTime(),
-    isOpen:
-      timestamp >= CAMPAIGN_START_AT.getTime() &&
-      timestamp <= CAMPAIGN_DEADLINE_AT.getTime(),
-    isClosed: timestamp > CAMPAIGN_DEADLINE_AT.getTime(),
-    finalResultsReleased: timestamp >= FINAL_RESULTS_RELEASE_AT.getTime(),
-  };
-};
+const getCampaignAccess = () => ({
+  opensAt: null,
+  deadlineAt: null,
+  finalResultsReleaseAt: null,
+  timeZone: WAT_TIME_ZONE,
+  isPreview: false,
+  isOpen: true,
+  isClosed: false,
+  finalResultsReleased: true,
+});
 
 const getQuestionDeadline = (entry) => {
   if (!entry?.presentedAt) return null;
-  const timedDeadline = new Date(
+  return new Date(
     new Date(entry.presentedAt).getTime() + QUESTION_TIME_LIMIT_SECONDS * 1000
   );
-  return timedDeadline.getTime() <= CAMPAIGN_DEADLINE_AT.getTime()
-    ? timedDeadline
-    : CAMPAIGN_DEADLINE_AT;
 };
 
 const completeAttempt = (attempt, completedAt) => {
@@ -243,49 +184,6 @@ const getUserForTraining = async (userId) => {
   return user;
 };
 
-const buildSchedule = (attempts, now = new Date()) => {
-  const completed = attempts.filter((attempt) => attempt.status === "completed");
-  const nowTime = new Date(now).getTime();
-  return WEEKLY_SCHEDULE.map((period) => {
-    const completedInWindow = completed.filter((attempt) => {
-      const completedTime = attempt.completedAt
-        ? new Date(attempt.completedAt).getTime()
-        : Number.NaN;
-      return (
-        Number.isFinite(completedTime) &&
-        completedTime >= period.startAt.getTime() &&
-        completedTime <= period.endAt.getTime()
-      );
-    }).length;
-    const scheduledComplete = period.moduleCodes.filter((code) =>
-      completed.some((attempt) => attempt.moduleCode === code)
-    ).length;
-    const status =
-      nowTime < period.startAt.getTime()
-        ? "upcoming"
-        : nowTime > period.endAt.getTime()
-          ? completedInWindow >= period.target
-            ? "met"
-            : "missed"
-          : completedInWindow >= period.target
-            ? "met"
-            : "current";
-
-    return {
-      id: period.id,
-      label: period.label,
-      subtitle: period.subtitle,
-      startAt: period.startAt,
-      endAt: period.endAt,
-      target: period.target,
-      completedInWindow,
-      scheduledComplete,
-      moduleCodes: period.moduleCodes,
-      status,
-    };
-  });
-};
-
 const buildFinalResult = (attempts) => {
   const completed = attempts.filter((attempt) => attempt.status === "completed");
   const correctAnswers = completed.reduce(
@@ -308,6 +206,169 @@ const buildFinalResult = (attempts) => {
     performance: getPerformanceBand(scorePercent),
     salaryIncrementEligible: passed,
     nextTermEligible: passed,
+  };
+};
+
+const getTeacherTrainingAdminTracker = async ({
+  search = "",
+  status = "all",
+} = {}) => {
+  const attempts = await TeacherTrainingAttempt.find({ campaignId: CAMPAIGN_ID })
+    .populate({
+      path: "userId",
+      select: "_id name username email role isActive isDeleted isBanned isSuspended",
+    })
+    .sort({ startedAt: 1 })
+    .lean();
+  const participantMap = new Map();
+
+  attempts.forEach((attempt) => {
+    const user = attempt.userId;
+    const userId = toId(user?._id);
+    if (!userId) return;
+    if (!participantMap.has(userId)) {
+      participantMap.set(userId, { user, attempts: [] });
+    }
+    participantMap.get(userId).attempts.push(attempt);
+  });
+
+  const participants = [...participantMap.values()].map(({ user, attempts: userAttempts }) => {
+    const result = buildFinalResult(userAttempts);
+    const completedAttempts = userAttempts.filter((attempt) => attempt.status === "completed");
+    const startedTimes = userAttempts
+      .map((attempt) => new Date(attempt.startedAt || attempt.createdAt || 0).getTime())
+      .filter(Number.isFinite);
+    const activityTimes = userAttempts
+      .flatMap((attempt) => [attempt.updatedAt, attempt.completedAt, attempt.startedAt])
+      .map((value) => new Date(value || 0).getTime())
+      .filter(Number.isFinite);
+    const trackerStatus = result.completedAllModules
+      ? result.salaryIncrementEligible
+        ? "eligible"
+        : "benchmark_not_met"
+      : "in_progress";
+    const attemptByCode = new Map(
+      userAttempts.map((attempt) => [attempt.moduleCode, attempt])
+    );
+
+    return {
+      id: toId(user._id),
+      name: user.name || user.username || "Staff member",
+      username: user.username || "",
+      email: user.email || "",
+      accountStatus:
+        user.isDeleted || user.isBanned || user.isSuspended || user.isActive === false
+          ? "restricted"
+          : "active",
+      attended: true,
+      startedAt: startedTimes.length ? new Date(Math.min(...startedTimes)) : null,
+      lastActivityAt: activityTimes.length ? new Date(Math.max(...activityTimes)) : null,
+      completedModules: result.completedModules,
+      inProgressModules: userAttempts.filter((attempt) => attempt.status === "in_progress").length,
+      totalModules: result.totalModules,
+      progressPercent: Math.round((result.completedModules / result.totalModules) * 100),
+      scorePercent: result.scorePercent,
+      averageCompletedScore: completedAttempts.length
+        ? Math.round(
+            completedAttempts.reduce(
+              (total, attempt) => total + Number(attempt.scorePercent || 0),
+              0
+            ) / completedAttempts.length
+          )
+        : 0,
+      correctAnswers: result.correctAnswers,
+      possibleAnswers: result.possibleAnswers,
+      completedAllModules: result.completedAllModules,
+      passedBenchmark: result.passed,
+      salaryIncrementEligible: result.salaryIncrementEligible,
+      trackerStatus,
+      performance: result.performance,
+      modules: MODULES.map((module) => {
+        const attempt = attemptByCode.get(module.code);
+        return {
+          code: module.code,
+          title: module.title,
+          status: attempt?.status || "not_started",
+          scorePercent:
+            attempt?.status === "completed" ? Number(attempt.scorePercent || 0) : null,
+          passed:
+            attempt?.status === "completed"
+              ? Number(attempt.scorePercent || 0) >= PASS_MARK_PERCENT
+              : null,
+          startedAt: attempt?.startedAt || null,
+          completedAt: attempt?.completedAt || null,
+        };
+      }),
+    };
+  });
+
+  const normalizedSearch = String(search || "").trim().toLowerCase();
+  const normalizedStatus = [
+    "all",
+    "in_progress",
+    "completed",
+    "eligible",
+    "benchmark_not_met",
+  ].includes(String(status || "").trim().toLowerCase())
+    ? String(status || "").trim().toLowerCase()
+    : "all";
+  const visibleParticipants = participants
+    .filter((participant) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        `${participant.name} ${participant.username} ${participant.email}`
+          .toLowerCase()
+          .includes(normalizedSearch);
+      const matchesStatus =
+        normalizedStatus === "all" ||
+        (normalizedStatus === "completed" && participant.completedAllModules) ||
+        participant.trackerStatus === normalizedStatus;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((left, right) => {
+      if (left.salaryIncrementEligible !== right.salaryIncrementEligible) {
+        return left.salaryIncrementEligible ? -1 : 1;
+      }
+      if (left.completedModules !== right.completedModules) {
+        return right.completedModules - left.completedModules;
+      }
+      return new Date(right.lastActivityAt || 0) - new Date(left.lastActivityAt || 0);
+    });
+
+  return {
+    generatedAt: new Date(),
+    campaign: {
+      id: CAMPAIGN_ID,
+      title: "Staff Teachers Online Training",
+      academy: "Kurah Tech and Arts Academy",
+      mode: "Self-paced and virtual",
+      moduleCount: MODULES.length,
+      deadlineAt: null,
+      isOpen: true,
+    },
+    benchmark: {
+      label: "Salary increment benchmark",
+      passMarkPercent: PASS_MARK_PERCENT,
+      requiresAllModules: true,
+    },
+    summary: {
+      totalParticipants: participants.length,
+      inProgress: participants.filter((participant) => !participant.completedAllModules).length,
+      completedAll: participants.filter((participant) => participant.completedAllModules).length,
+      benchmarkPassed: participants.filter(
+        (participant) => participant.salaryIncrementEligible
+      ).length,
+      benchmarkNotMet: participants.filter(
+        (participant) =>
+          participant.completedAllModules && !participant.salaryIncrementEligible
+      ).length,
+    },
+    filters: {
+      search: String(search || "").trim(),
+      status: normalizedStatus,
+      returned: visibleParticipants.length,
+    },
+    participants: visibleParticipants,
   };
 };
 
@@ -340,7 +401,8 @@ const buildTrainingPayload = async (userId, { now = new Date() } = {}) => {
       moduleCount: MODULES.length,
       questionsPerModule: QUESTIONS_PER_MODULE,
       questionTimeLimitSeconds: QUESTION_TIME_LIMIT_SECONDS,
-      requirement: "Complete at least four modules every week and all modules by the deadline.",
+      requirement:
+        "Complete all modules at your own pace and achieve at least 60% cumulatively.",
       access,
     },
     participant: {
@@ -356,20 +418,12 @@ const buildTrainingPayload = async (userId, { now = new Date() } = {}) => {
       percent: Math.round((completedModules / MODULES.length) * 100),
       activeModuleCode:
         attempts.find((attempt) => attempt.status === "in_progress")?.moduleCode || "",
-      weeklySchedule: buildSchedule(attempts, now),
     },
     modules: MODULES.map((module) => ({
       ...serializeModuleContent(module),
       attempt: serializeAttempt(attemptByCode.get(module.code), now),
     })),
-    finalResult: access.finalResultsReleased ? buildFinalResult(attempts) : null,
-    finalResultLock: access.finalResultsReleased
-      ? null
-      : {
-          releaseAt: FINAL_RESULTS_RELEASE_AT,
-          message:
-            "Your cumulative performance will be released at 11:59 PM WAT on 31 August 2026.",
-        },
+    finalResult: buildFinalResult(attempts),
   };
 };
 
@@ -381,18 +435,6 @@ const startTeacherTrainingAssessment = async (
   { now = new Date(), random = Math.random } = {}
 ) => {
   await getUserForTraining(userId);
-  const access = getCampaignAccess(now);
-  if (!access.isOpen) {
-    throw new TeacherTrainingError(
-      access.isPreview
-        ? "Assessments open at 12:00 AM WAT on 1 August 2026."
-        : "The 2026 teacher training assessment window has closed.",
-      403,
-      access.isPreview ? "training_not_open" : "training_closed",
-      { access }
-    );
-  }
-
   const module = getModuleByCode(moduleCode);
   if (!module) {
     throw new TeacherTrainingError("Training module not found.", 404, "module_not_found");
@@ -532,14 +574,12 @@ const answerTeacherTrainingQuestion = async (
 };
 
 module.exports = {
-  CAMPAIGN_DEADLINE_AT,
   CAMPAIGN_ID,
-  CAMPAIGN_START_AT,
-  FINAL_RESULTS_RELEASE_AT,
   TeacherTrainingError,
   answerTeacherTrainingQuestion,
   getCampaignAccess,
   getPerformanceBand,
+  getTeacherTrainingAdminTracker,
   getTeacherTrainingStatus,
   settleExpiredAttempt,
   startTeacherTrainingAssessment,

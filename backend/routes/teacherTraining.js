@@ -8,9 +8,11 @@ try {
 }
 
 const auth = require("../middleware/auth");
+const requireRole = require("../middleware/requireRole");
 const {
   TeacherTrainingError,
   answerTeacherTrainingQuestion,
+  getTeacherTrainingAdminTracker,
   getTeacherTrainingStatus,
   startTeacherTrainingAssessment,
 } = require("../services/teacherTrainingService");
@@ -40,6 +42,20 @@ const handleError = (res, error) => {
     error: "The teacher training service could not process this request.",
   });
 };
+
+router.get("/admin/tracker", auth, requireRole.requireAdmin(), async (req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    return res.json(
+      await getTeacherTrainingAdminTracker({
+        search: req.query?.search,
+        status: req.query?.status,
+      })
+    );
+  } catch (error) {
+    return handleError(res, error);
+  }
+});
 
 router.get("/status", auth, async (req, res) => {
   try {

@@ -256,8 +256,22 @@ app.use("/api/news", require("./routes/news.routes"));
 app.use("/api/marketplace", require("./routes/marketplaceRoutes"));
 app.use("/api/schools", require("./routes/schools"));
 app.use("/api/teacher-training", require("./routes/teacherTraining"));
-app.use("/api/kadahive", require("./routes/kadahive"));
 app.use("/api/tengaharvest", require("./routes/tengaharvest"));
+
+app.get(
+  [
+    "/AI-Professionals-In-Kaduna-State",
+    /^\/kadahive(?:\/.*)?$/i,
+    /^\/admin\/institutions\/kadahive(?:\/.*)?$/i,
+  ],
+  (_req, res) => {
+    res.set({
+      "Cache-Control": "no-store",
+      "X-Robots-Tag": "noindex,nofollow",
+    });
+    return res.status(410).type("text/plain").send("This page has been removed.");
+  }
+);
 
 app.use((req, res, next) => {
   if (req.path.startsWith("/api")) {

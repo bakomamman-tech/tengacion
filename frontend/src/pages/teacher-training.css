@@ -522,7 +522,7 @@
   gap: 11px;
 }
 
-.training-deadline-chip {
+.training-availability-chip {
   display: inline-flex;
   align-items: center;
   gap: 12px;
@@ -533,7 +533,7 @@
   color: #fff;
 }
 
-.training-deadline-chip span {
+.training-availability-chip span {
   color: var(--training-gold-soft);
   font-size: 0.67rem;
   font-weight: 900;
@@ -541,7 +541,7 @@
   text-transform: uppercase;
 }
 
-.training-deadline-chip strong {
+.training-availability-chip strong {
   font-size: 0.77rem;
 }
 

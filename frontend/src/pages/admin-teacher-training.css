@@ -1,0 +1,221 @@
+.training-admin-banner {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.training-admin-banner > div {
+  min-height: 145px;
+  padding: 24px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.18), transparent 46%),
+    linear-gradient(145deg, #f8fbff, #eef5ff);
+  color: #0f2748;
+}
+
+.training-admin-banner > div:last-child {
+  border-color: rgba(5, 150, 105, 0.2);
+  background:
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.2), transparent 46%),
+    linear-gradient(145deg, #f7fffb, #e9fbf2);
+}
+
+.training-admin-banner span,
+.training-admin-kpis span {
+  display: block;
+  color: #5c6f89;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.training-admin-banner strong {
+  display: block;
+  margin: 8px 0;
+  font-size: clamp(1.15rem, 2vw, 1.55rem);
+}
+
+.training-admin-banner p {
+  margin: 0;
+  color: #4b607b;
+  line-height: 1.6;
+}
+
+.training-admin-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.training-admin-kpis article {
+  padding: 18px;
+  border: 1px solid #dce5f2;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(20, 46, 82, 0.05);
+}
+
+.training-admin-kpis strong {
+  display: block;
+  margin-top: 8px;
+  color: #102a4d;
+  font-size: 1.75rem;
+}
+
+.training-admin-panel {
+  overflow: hidden;
+}
+
+.training-admin-filters {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(190px, 0.35fr) auto auto;
+  gap: 10px;
+  padding: 16px 18px;
+  border-top: 1px solid #edf1f7;
+  background: #f8fafc;
+}
+
+.training-admin-table td {
+  vertical-align: top;
+}
+
+.training-admin-table td strong,
+.training-admin-table td small {
+  display: block;
+}
+
+.training-admin-table td small {
+  margin-top: 4px;
+  color: #6b7d94;
+}
+
+.training-admin-progress {
+  display: block;
+  width: 120px;
+  height: 6px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5ebf3;
+}
+
+.training-admin-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #0ea5e9);
+}
+
+.training-admin-decision {
+  display: inline-flex;
+  max-width: 150px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #e8eef7;
+  color: #41536d;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.training-admin-decision.is-eligible {
+  background: #dff8eb;
+  color: #067647;
+}
+
+.training-admin-decision.is-benchmark_not_met {
+  background: #fff0e1;
+  color: #b54708;
+}
+
+.training-admin-decision.is-in_progress {
+  background: #e8f1ff;
+  color: #175cd3;
+}
+
+.training-admin-module-row > td {
+  padding: 0 !important;
+  background: #f7faff;
+}
+
+.training-admin-module-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 18px;
+}
+
+.training-admin-module-grid article {
+  min-height: 112px;
+  padding: 13px;
+  border: 1px solid #dfe7f2;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.training-admin-module-grid article.is-completed {
+  border-color: #a6e5c7;
+  background: #f3fcf7;
+}
+
+.training-admin-module-grid article.is-in_progress {
+  border-color: #a9c8ff;
+  background: #f3f7ff;
+}
+
+.training-admin-module-grid span,
+.training-admin-module-grid strong,
+.training-admin-module-grid small {
+  display: block;
+}
+
+.training-admin-module-grid span {
+  color: #2563eb;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.training-admin-module-grid strong {
+  margin: 6px 0;
+  color: #193253;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.training-admin-module-grid small {
+  color: #6a7d95;
+  font-size: 0.76rem;
+}
+
+@media (max-width: 1100px) {
+  .training-admin-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .training-admin-module-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .training-admin-banner,
+  .training-admin-kpis,
+  .training-admin-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .training-admin-module-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  .training-admin-module-grid {
+    grid-template-columns: 1fr;
+  }
+}

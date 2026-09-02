@@ -116,7 +116,6 @@ const buildAccountSection = (user = {}) => ({
     passwordChangedAt: user.passwordChangedAt || null,
   },
   membershipAndProgress: {
-    institutionMemberships: user.institutionMemberships || [],
     badges: user.badges || [],
     streaks: user.streaks || {},
     achievements: user.achievementsStats || {},
@@ -156,7 +155,7 @@ const buildAccountDataExport = async ({ userId, now = new Date() } = {}) => {
       "sessions.deviceName sessions.ip sessions.userAgent sessions.country sessions.city",
       "sessions.createdAt sessions.lastSeenAt sessions.revokedAt trustedDevices.deviceName",
       "trustedDevices.userAgent trustedDevices.firstSeenAt trustedDevices.lastSeenAt",
-      "trustedDevices.lastIp trustedDevices.lastCountry passwordChangedAt institutionMemberships",
+      "trustedDevices.lastIp trustedDevices.lastCountry passwordChangedAt",
       "badges streaks achievementsStats",
     ].join(" "))
     .lean();

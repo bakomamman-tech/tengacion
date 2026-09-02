@@ -18,29 +18,6 @@ const FLYER_PATH =
 
 const preventProtectedAction = (event) => event.preventDefault();
 
-const formatCampaignDate = (value, options = {}) => {
-  if (!value) {
-    return "";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  return new Intl.DateTimeFormat("en-NG", {
-    timeZone: "Africa/Lagos",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    ...options,
-  }).format(date);
-};
-
-const formatWeekRange = (startAt, endAt) =>
-  `${formatCampaignDate(startAt, { day: "numeric", month: "short" })} – ${formatCampaignDate(
-    endAt,
-    { day: "numeric", month: "short" }
-  )}`;
-
 const getModuleNumber = (code = "") => String(code).replace(/\D+/g, "");
 
 const getModuleStatus = (module) => {
@@ -53,15 +30,8 @@ const getModuleStatus = (module) => {
   return "not_started";
 };
 
-const getAccessMessage = (access = {}) => {
-  if (access.isPreview) {
-    return "Assessments open 1 August at 12:00 AM WAT.";
-  }
-  if (access.isClosed) {
-    return "The 2026 assessment window is closed.";
-  }
-  return "Assessment available now.";
-};
+const getAccessMessage = () =>
+  "Assessment available now. The programme has no completion deadline.";
 
 function TrainingIcon({ name }) {
   const paths = {
@@ -165,7 +135,7 @@ function GuestTrainingLanding() {
         <div className="training-guest-copy">
           <p className="training-eyebrow">
             <span />
-            1–31 August 2026 · Self-paced
+            Self-paced · No completion deadline
           </p>
           <h1>Teach with deeper knowledge and sharper practice.</h1>
           <p className="training-guest-lead">
@@ -604,95 +574,34 @@ function AssessmentStage({ training, module, onTrainingChange, onRecover }) {
   );
 }
 
-function WeeklySchedule({ periods = [] }) {
-  return (
-    <section className="training-dashboard-section">
-      <div className="training-section-heading">
-        <div>
-          <p className="training-section-label">Your August rhythm</p>
-          <h2>Four modules every full week.</h2>
-        </div>
-        <p>
-          Completed dates are counted in the week you submitted each module.
-          Finish the final six during the closing sprint.
-        </p>
-      </div>
-      <div className="training-week-grid">
-        {periods.map((period) => (
-          <article key={period.id} className={`is-${period.status}`}>
-            <div className="training-week-card__top">
-              <span>{period.label}</span>
-              <small>{formatWeekRange(period.startAt, period.endAt)}</small>
-            </div>
-            <strong>{period.completedInWindow}<em>/{period.target}</em></strong>
-            <p>{period.subtitle}</p>
-            <div className="training-week-meter">
-              <span
-                style={{
-                  width: `${Math.min(
-                    100,
-                    (period.completedInWindow / Math.max(1, period.target)) * 100
-                  )}%`,
-                }}
-              />
-            </div>
-            <small>
-              {period.status === "met"
-                ? "Weekly target achieved"
-                : period.status === "missed"
-                  ? "Weekly target missed"
-                  : period.status === "current"
-                    ? `${Math.max(0, period.target - period.completedInWindow)} to reach target`
-                    : "Upcoming"}
-            </small>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 function FinalResultCard({ training }) {
   const result = training?.finalResult;
-  if (result) {
-    return (
-      <section className={`training-final-result is-${result.performance?.id || "support"}`}>
-        <div className="training-final-result__seal">
-          <TrainingIcon name="award" />
-          <span>Final</span>
-        </div>
-        <div>
-          <p className="training-section-label">Cumulative assessment released</p>
-          <h2>{result.performance?.label}</h2>
-          <p>{result.performance?.message}</p>
-          <div className="training-final-result__facts">
-            <span><strong>{result.scorePercent}%</strong> overall</span>
-            <span><strong>{result.completedModules}/{result.totalModules}</strong> modules</span>
-            <span><strong>{result.correctAnswers}/{result.possibleAnswers}</strong> correct</span>
-          </div>
-        </div>
-        <div className="training-final-result__decision">
-          <span>{result.passed ? "Standard achieved" : "Standard not achieved"}</span>
-          <strong>{result.passed ? "Eligible" : "Not eligible"}</strong>
-          <small>Salary increment and next-term eligibility</small>
-        </div>
-      </section>
-    );
+  if (!result) {
+    return null;
   }
 
   return (
-    <section className="training-final-lock">
-      <div><TrainingIcon name="lock" /></div>
-      <div>
-        <p className="training-section-label">Final performance</p>
-        <h2>Your cumulative result stays sealed until the deadline.</h2>
-        <p>{training?.finalResultLock?.message}</p>
+    <section className={`training-final-result is-${result.performance?.id || "support"}`}>
+      <div className="training-final-result__seal">
+        <TrainingIcon name="award" />
+        <span>Live</span>
       </div>
-      <time dateTime={training?.finalResultLock?.releaseAt || ""}>
-        <strong>31</strong>
-        <span>August</span>
-        <small>11:59 PM WAT</small>
-      </time>
+      <div>
+        <p className="training-section-label">Current cumulative assessment</p>
+        <h2>{result.performance?.label}</h2>
+        <p>{result.performance?.message}</p>
+        <div className="training-final-result__facts">
+          <span><strong>{result.scorePercent}%</strong> overall</span>
+          <span><strong>{result.completedModules}/{result.totalModules}</strong> modules</span>
+          <span><strong>{result.correctAnswers}/{result.possibleAnswers}</strong> correct</span>
+        </div>
+      </div>
+      <div className="training-final-result__decision">
+        <span>{result.passed ? "Benchmark achieved" : "Benchmark not yet achieved"}</span>
+        <strong>{result.passed ? "Eligible" : "Not eligible"}</strong>
+        <small>Complete all modules and score at least 60% for salary-increment eligibility.</small>
+      </div>
     </section>
   );
 }
@@ -702,7 +611,6 @@ function TrainingDashboard({ training, onOpenModule }) {
   const [query, setQuery] = useState("");
   const [showFlyer, setShowFlyer] = useState(false);
   const modules = useMemo(() => training?.modules || [], [training?.modules]);
-  const access = training?.campaign?.access || {};
 
   const visibleModules = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("en");
@@ -720,10 +628,6 @@ function TrainingDashboard({ training, onOpenModule }) {
       return matchesFilter && matchesQuery;
     });
   }, [filter, modules, query]);
-
-  const activePeriod = training?.progress?.weeklySchedule?.find(
-    (period) => period.status === "current"
-  );
 
   return (
     <main className="teacher-training-page">
@@ -760,10 +664,10 @@ function TrainingDashboard({ training, onOpenModule }) {
 
       <section className="training-dashboard-hero">
         <div className="training-dashboard-hero__copy">
-          <p className="training-eyebrow"><span /> 2026 professional development</p>
+          <p className="training-eyebrow"><span /> Self-paced professional development</p>
           <h1>Learn. Apply. <em>Excel.</em></h1>
           <p>
-            Your August pathway to stronger teaching, sharper judgment, and
+            Your pathway to stronger teaching, sharper judgment, and
             better learner outcomes.
           </p>
           <div className="training-dashboard-hero__actions">
@@ -773,9 +677,9 @@ function TrainingDashboard({ training, onOpenModule }) {
             </a>
             <button type="button" onClick={() => setShowFlyer(true)}>View flyer</button>
           </div>
-          <div className="training-deadline-chip">
-            <span>Deadline</span>
-            <strong>31 August · 11:59 PM WAT</strong>
+          <div className="training-availability-chip">
+            <span>Schedule</span>
+            <strong>Self-paced · No deadline</strong>
           </div>
         </div>
         <div className="training-dashboard-hero__visual">
@@ -813,18 +717,10 @@ function TrainingDashboard({ training, onOpenModule }) {
         </div>
         <div>
           <TrainingIcon name="shield" />
-          <span>Current phase</span>
-          <strong>
-            {access.isPreview
-              ? "Preview"
-              : access.isClosed
-                ? "Results"
-                : activePeriod?.label || "Open"}
-          </strong>
+          <span>Availability</span>
+          <strong>Open · No deadline</strong>
         </div>
       </section>
-
-      <WeeklySchedule periods={training.progress.weeklySchedule} />
 
       <section id="training-modules" className="training-dashboard-section training-modules-section">
         <div className="training-section-heading">
@@ -834,7 +730,7 @@ function TrainingDashboard({ training, onOpenModule }) {
           </div>
           <p>
             Read each module at your own pace. Once its assessment begins, five
-            questions run continuously for 100 seconds.
+            questions run continuously for {training.campaign.questionTimeLimitSeconds} seconds each.
           </p>
         </div>
 

@@ -16,15 +16,17 @@ const {
 const TeacherTrainingAttempt = require("../models/TeacherTrainingAttempt");
 const User = require("../models/User");
 const {
+  CAMPAIGN_ID,
   TeacherTrainingError,
   answerTeacherTrainingQuestion,
+  getTeacherTrainingAdminTracker,
   getTeacherTrainingStatus,
   startTeacherTrainingAssessment,
 } = require("../services/teacherTrainingService");
 
 let mongod;
 
-const createTeacher = () =>
+const createTeacher = (overrides = {}) =>
   User.create({
     name: "Kurah Academy Teacher",
     username: "kurah_teacher",
@@ -33,6 +35,7 @@ const createTeacher = () =>
     role: "user",
     isVerified: true,
     emailVerified: true,
+    ...overrides,
   });
 
 describe("Kurah academy teacher training", () => {
@@ -113,26 +116,33 @@ describe("Kurah academy teacher training", () => {
     });
   });
 
-  test("shows preview content before 1 August but blocks assessment starts", async () => {
+  test("keeps training open without a programme deadline", async () => {
     const teacher = await createTeacher();
-    const now = new Date("2026-07-30T10:00:00.000Z");
+    const now = new Date("2035-07-30T10:00:00.000Z");
     const training = await getTeacherTrainingStatus(teacher._id, { now });
 
-    expect(training.campaign.access.isPreview).toBe(true);
+    expect(training.campaign.access).toMatchObject({
+      deadlineAt: null,
+      isPreview: false,
+      isOpen: true,
+      isClosed: false,
+      finalResultsReleased: true,
+    });
     expect(training.campaign.questionTimeLimitSeconds).toBe(45);
     expect(training.modules).toHaveLength(22);
     expect(training.modules[0]).not.toHaveProperty("assessment");
-    expect(training.finalResult).toBeNull();
-
-    await expect(
-      startTeacherTrainingAssessment(
-        { userId: teacher._id, moduleCode: "PDE 701" },
-        { now }
-      )
-    ).rejects.toMatchObject({
-      code: "training_not_open",
-      status: 403,
+    expect(training.finalResult).toMatchObject({
+      completedModules: 0,
+      salaryIncrementEligible: false,
     });
+
+    const started = await startTeacherTrainingAssessment(
+      { userId: teacher._id, moduleCode: "PDE 701" },
+      { now, random: () => 0.25 }
+    );
+    expect(
+      started.modules.find((module) => module.code === "PDE 701")?.attempt?.status
+    ).toBe("in_progress");
   });
 
   test("serves one randomised question at a time without exposing its answer key", async () => {
@@ -206,20 +216,11 @@ describe("Kurah academy teacher training", () => {
     });
   });
 
-  test("keeps cumulative performance locked until the stated release time", async () => {
+  test("shows cumulative performance immediately", async () => {
     const teacher = await createTeacher();
-    const before = await getTeacherTrainingStatus(teacher._id, {
-      now: new Date("2026-08-31T22:58:59.000Z"),
-    });
-    expect(before.finalResult).toBeNull();
-    expect(before.finalResultLock.releaseAt).toEqual(
-      new Date("2026-08-31T22:59:00.000Z")
-    );
-
-    const after = await getTeacherTrainingStatus(teacher._id, {
-      now: new Date("2026-08-31T22:59:00.000Z"),
-    });
-    expect(after.finalResult).toMatchObject({
+    const training = await getTeacherTrainingStatus(teacher._id);
+    expect(training).not.toHaveProperty("finalResultLock");
+    expect(training.finalResult).toMatchObject({
       scorePercent: 0,
       completedModules: 0,
       totalModules: 22,
@@ -228,6 +229,73 @@ describe("Kurah academy teacher training", () => {
       salaryIncrementEligible: false,
       nextTermEligible: false,
     });
+  });
+
+  test("builds an admin tracker with module progress and salary benchmark decisions", async () => {
+    const eligibleTeacher = await createTeacher();
+    const activeTeacher = await createTeacher({
+      name: "Active Staff Teacher",
+      username: "active_staff_teacher",
+      email: "active.staff@kurahacademy.test",
+    });
+    const completedAt = new Date("2026-09-01T10:00:00.000Z");
+
+    await TeacherTrainingAttempt.insertMany(
+      MODULES.map((module) => ({
+        userId: eligibleTeacher._id,
+        campaignId: CAMPAIGN_ID,
+        moduleCode: module.code,
+        status: "completed",
+        questions: module.assessment.map((question) => ({
+          questionId: question.id,
+          optionOrder: [0, 1, 2, 3],
+          presentedAt: new Date(completedAt.getTime() - 30_000),
+          answeredAt: completedAt,
+          selectedIndex: 0,
+          selectedOriginalIndex: 0,
+          correct: true,
+          timedOut: false,
+        })),
+        currentQuestionIndex: QUESTIONS_PER_MODULE,
+        correctAnswers: QUESTIONS_PER_MODULE,
+        timedOutAnswers: 0,
+        scorePercent: 100,
+        startedAt: new Date(completedAt.getTime() - 60_000),
+        completedAt,
+      }))
+    );
+    await startTeacherTrainingAssessment(
+      { userId: activeTeacher._id, moduleCode: "PDE 701" },
+      { now: new Date("2026-09-02T10:00:00.000Z"), random: () => 0.5 }
+    );
+
+    const tracker = await getTeacherTrainingAdminTracker();
+    expect(tracker.campaign.deadlineAt).toBeNull();
+    expect(tracker.benchmark).toMatchObject({
+      passMarkPercent: 60,
+      requiresAllModules: true,
+    });
+    expect(tracker.summary).toMatchObject({
+      totalParticipants: 2,
+      inProgress: 1,
+      completedAll: 1,
+      benchmarkPassed: 1,
+      benchmarkNotMet: 0,
+    });
+    expect(tracker.participants[0]).toMatchObject({
+      id: String(eligibleTeacher._id),
+      completedModules: 22,
+      totalModules: 22,
+      scorePercent: 100,
+      passedBenchmark: true,
+      salaryIncrementEligible: true,
+      trackerStatus: "eligible",
+    });
+    expect(tracker.participants[0].modules).toHaveLength(22);
+
+    const eligibleOnly = await getTeacherTrainingAdminTracker({ status: "eligible" });
+    expect(eligibleOnly.participants).toHaveLength(1);
+    expect(eligibleOnly.participants[0].id).toBe(String(eligibleTeacher._id));
   });
 
   test("uses typed training errors for invalid modules", async () => {

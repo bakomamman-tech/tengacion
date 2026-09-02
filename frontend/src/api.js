@@ -3014,6 +3014,17 @@ export const adminGetAutomationOrchestrationOperatingSystem = (params = {}) => {
   });
 };
 
+export const adminGetResilienceAssuranceAuditOperatingSystem = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/analytics/resilience-assurance-audit-operating-system?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
 export const adminReviewCreatorLaunchPlan = (planId, payload = {}) =>
   request(`${API_BASE}/admin/growth/creator-launch-plans/${encodeURIComponent(planId || "")}/review`, {
     method: "PATCH", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify(payload || {}),

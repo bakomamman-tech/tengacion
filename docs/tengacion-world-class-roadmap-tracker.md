@@ -1,6 +1,6 @@
 # Tengacion World-Class Roadmap Implementation Tracker
 
-Last updated: 1 September 2026
+Last updated: 2 September 2026
 
 This document is the authoritative implementation record for the Facebook benchmark roadmap. A work package is marked complete only after its definition of done is implemented and verified. Planning documents and code presence alone do not count as completion.
 
@@ -194,6 +194,46 @@ This document is the authoritative implementation record for the Facebook benchm
 | ORCHESTRATION-014 | Harden override, rollback, and incident orchestration | COMPLETE | Overrides require identity, reason, audit, decision time, and expiry; rollbacks and incidents preserve state, user, support, metric, and Akuso correction context. |
 | ORCHESTRATION-015 | Publish orchestration readiness report | COMPLETE | Readiness derives from configured recipes, observed runs, dependency health, guardrails, and reviewed default decisions while high-risk transitions stay human-reviewed. |
 | RESILIENCE-001 | Define critical flow SLOs and recovery objectives | COMPLETE | Fifteen critical flows have durable targets, error budgets, downtime/data-delay objectives, special delay limits, pause/rollback triggers, review, and recovery priority. |
+| RESILIENCE-002 | Map graceful degradation modes | COMPLETE | Eight modes cover ten critical workflows with audience-safe status copy and private internal-risk boundaries. |
+| RESILIENCE-003 | Create incident command and communication standards | COMPLETE | Durable incidents own severity, impact, workflow mode, mitigation, next update, rollback, support copy, command roles, recovery evidence and immutable history. |
+| RESILIENCE-004 | Define cross-functional incident classes | COMPLETE | Twenty-four finance, partner/API, data/trust and Akuso classes map failures into one governed incident contract. |
+| RESILIENCE-005 | Choose first resilience drills | COMPLETE | Twenty-five scenarios share owner, teams, degraded mode, rollback, communication, metric, schedule and follow-up contracts; planned drills remain unobserved. |
+| RESILIENCE-006 | Launch resilience dashboard | COMPLETE | Admin Analytics combines objectives, incidents, active degraded modes, planned/observed drills, gates, cost evidence and blockers without turning targets into outcomes. |
+| RESILIENCE-007 | Run money movement and access drills | COMPLETE | Five governed money/access drill types require detection, containment, replay/correction, reconciliation, communication, pause/rollback and reviewed outcome evidence. |
+| RESILIENCE-008 | Run partner, API and data resilience drills | COMPLETE | Seven governed scenarios cover export, dashboard, rate limit, abuse, revocation and metric correction with privacy/security escalation evidence. |
+| RESILIENCE-009 | Run trust, safety and market resilience drills | COMPLETE | Seven governed scenarios cover queue surges, rights, recommendation/notification complaints, referral abuse and market regression with pause and escalation evidence. |
+| RESILIENCE-010 | Run Akuso resilience drills | COMPLETE | Six governed Akuso scenarios capture conservative incident behavior, routing, eval fixtures, latency/cost and source-context follow-up; no result exists until reviewed execution. |
+| RESILIENCE-011 | Convert drills into resilience gates | COMPLETE | Eight expiring gates require current evidence, named human approval, blocker conditions and launch/partner pause implications. |
+| RESILIENCE-012 | Harden continuity and user-facing status | COMPLETE | Ten continuity contracts expose state, next update, safe user action, support path and fallback while restricting internal risk details. |
+| RESILIENCE-013 | Standardize recovery and correction workflows | COMPLETE | Ten replay, reconciliation, rollback and correction contracts require authority, audit, communication, completion evidence and post-incident review. |
+| RESILIENCE-014 | Review resilience economics and capacity | COMPLETE | Known-only drill cost proxies expose incident, support, provider, correction and rollback costs plus explicit instrumentation gaps and investment options. |
+| RESILIENCE-015 | Publish resilience readiness report | COMPLETE | One bounded report composes objectives, incidents, observed drills, gates, economics, unresolved risk and next-focus options; missing evidence holds readiness. |
+| ASSURANCE-001 | Create the assurance control registry | COMPLETE | Durable controls own workflow, owner/reviewer, objective, source, freshness, automation state, exception severity, readiness impact and reviews. |
+| ASSURANCE-002 | Define evidence pack standards | COMPLETE | Twelve standardized sections, six freshness states and audience-specific views prevent stale, disputed, blocked or withdrawn evidence from appearing current. |
+| ASSURANCE-003 | Map finance and revenue assurance controls | COMPLETE | Checkout, verification, webhook, entitlement, payout, wallet and refund/dispute controls connect money movement to close and balance-confidence evidence. |
+| ASSURANCE-004 | Map partner, API, data, trust and rights controls | COMPLETE | Partner/API, data/experiment/recommendation, privacy, moderation, rights, notification and automation controls share auditable owners and evidence states. |
+| ASSURANCE-005 | Define Akuso assurance controls | COMPLETE | Akuso control policy requires sources, timeframe, freshness, confidence, limitations, owner and review state while retaining no sensitive decision authority. |
+| ASSURANCE-006 | Launch the assurance dashboard | COMPLETE | Admin Analytics reports control coverage, freshness, exceptions, packs, monitoring alerts, due-diligence readiness and domain blockers. |
+| ASSURANCE-007 | Run the first finance and revenue assurance close | COMPLETE | Finance-close packs use the existing purchase-to-balance authority and cannot become ready without current reviewed evidence, resolved high-risk exceptions and expiry. |
+| ASSURANCE-008 | Produce partner, API and market assurance packs | COMPLETE | Durable packs preserve scope, sources, metrics, incidents, risk, review, sharing and revocation while external sharing requires sanitization and approval. |
+| ASSURANCE-009 | Operationalize data, experiment and recommendation assurance | COMPLETE | Governed control and pack types expose data trust, guardrail, complaint, diversity and rollback evidence without inferring readiness. |
+| ASSURANCE-010 | Run trust, safety, rights, privacy and Akuso reviews | COMPLETE | Reviewable pack types route aged exceptions and high-risk evidence to named owners; empty environments remain not reviewed. |
+| ASSURANCE-011 | Convert assurance reviews into readiness gates | COMPLETE | Twelve gate contracts define evidence, owner, reviewer, exception threshold, blocker, approval duration, re-review and revocation/pause rules. |
+| ASSURANCE-012 | Build a due diligence and external assurance room | COMPLETE | Thirteen approved-summary sections enforce sharing levels and permanent exclusions for private, payment, security, safety-case and Akuso-memory data. |
+| ASSURANCE-013 | Add continuous control monitoring | COMPLETE | Fifteen monitors surface freshness, ownership, review, variance, access drift, guardrail, SLA, eval, claim and cost failures before meetings. |
+| ASSURANCE-014 | Publish the assurance operating report | COMPLETE | One report combines control coverage, freshness, exceptions, owner scorecards, packs, blockers and evidence-backed maturity options. |
+| ASSURANCE-015 | Choose the next maturity focus | COMPLETE | Ten maturity options remain leadership inputs ranked from stored control gaps rather than an automatic roadmap decision. |
+| AUDIT-001 | Create the audit universe | COMPLETE | Sixteen durable risk-ranked domains own controls, obligations, policies, workflows, reviewers, impacts, evidence, cadence and readiness. |
+| AUDIT-002 | Define evidence room standards | COMPLETE | Evidence rooms standardize scope, maps, index, population, sampling, signoff, notes, findings, remediation, retest and seven sharing classifications. |
+| AUDIT-003 | Standardize control testing | COMPLETE | Nine methods and five results require population, sample, expected/actual evidence, reviewer, exception, root cause and closure evidence. |
+| AUDIT-004 | Define findings, remediation and retest workflow | COMPLETE | Durable findings enforce severity, owner, due date, remediation, independent retest and evidence-backed closure or expiring compensated risk acceptance. |
+| AUDIT-005 | Select first internal audit domains | COMPLETE | Seven risk-ranked first-audit candidates require visible scope, schedule, evidence and accountable teams before testing. |
+| AUDIT-006 | Run finance and money movement audit | COMPLETE | Thirteen sample contracts cover checkout through settlement; queued samples do not count as tested and finance readiness follows observed results only. |
+| AUDIT-007 | Run privacy, security, data and vendor audit | COMPLETE | Eleven sample contracts cover inventory, purpose, retention, requests, consent, access, logs, vendors, subprocessors and incident escalation. |
+| AUDIT-008 | Run content, rights, moderation and market audit | COMPLETE | Twelve sample contracts cover declarations, terms, takedowns, appeals, queues, enforcement, complaints, campaigns, markets and support. |
+| AUDIT-009 | Run partner, sponsor, API, export and reporting audit | COMPLETE | Twelve sample contracts cover purpose, claims, minimization, access, API abuse, revocation, offboarding, reports, metrics and correction/withdrawal. |
+| AUDIT-010 | Run Akuso and AI governance audit | COMPLETE | Twelve sample contracts connect capabilities, routes, policy history, grounding, evals, refusals, privacy/memory, incidents, reviews and model cost/routing. |
+| AUDIT-011 | Publish first audit findings report | COMPLETE | Executive, owner and aggregate external views report tested counts, findings, remediation and readiness while restricted sample/finding details stay internal. |
 
 ### Phase 1 work packages
 
@@ -209,6 +249,16 @@ This document is the authoritative implementation record for the Facebook benchm
 |---|---|---|---|
 | SAFETY-001 | Make account blocking authoritative and user-manageable | COMPLETE | Privacy Settings now provides searchable, server-confirmed limited-account lists; canonical blocks remove relationship links and are enforced mutually across people discovery, profiles, feeds, creator follows, contacts, friend requests and every direct-message write transport, while unblocking never fabricates restored relationships. |
 ## Change log
+
+### 2 September 2026
+
+- Implemented the next forty roadmap packages: RESILIENCE-002 through RESILIENCE-015, ASSURANCE-001 through ASSURANCE-015, and AUDIT-001 through AUDIT-011.
+- Added durable incident, drill, expiring resilience-gate, assurance-control, evidence-pack, audit-domain, control-test, and finding authorities with model-level truth, approval, freshness, sharing, retest, and risk-acceptance invariants.
+- Added protected rate-limited admin mutations with bounded audit events and one Admin Analytics/JSON operating report across objectives, incidents, drills, gates, evidence freshness, exceptions, audit samples, findings, remediation, and external readiness.
+- Added ten degradation workflows, twenty-four incident classes, twenty-five drill scenarios, eight resilience gates, eighteen assurance surfaces, twelve assurance gates, fifteen monitors, sixteen audit domains, seven initial scopes, nine testing methods, and sixty sample-control contracts.
+- Preserved evidence truth: configured objectives are not reliability, scheduled drills are not observed, registered controls are not current evidence, queued samples are not tested, and owner assertions cannot close findings.
+- Added three Akuso writing modes and seven release-eval suites while preserving no authority to declare recovery, approve gates, accept risk, close findings, disclose restricted evidence, or publish external opinions.
+- Documented authority, state, privacy, external-sharing, Akuso, rollback, correction, and verification contracts in docs/tengacion-next-forty-resilience-assurance-audit-controls.md.
 
 ### 1 September 2026
 

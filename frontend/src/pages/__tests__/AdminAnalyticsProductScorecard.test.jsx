@@ -79,6 +79,7 @@ vi.mock("../../api", () => ({
   adminGetEcosystemNetworkOperatingSystem: vi.fn().mockResolvedValue({}),
   adminGetNetworkIntelligenceOperatingSystem: vi.fn().mockResolvedValue({}),
   adminGetAutomationOrchestrationOperatingSystem: vi.fn().mockResolvedValue({}),
+  adminGetResilienceAssuranceAuditOperatingSystem: vi.fn().mockResolvedValue({}),
 }));
 
 const emptyAnalyticsPayload = { summary: {}, series: [], items: [], alerts: [] };

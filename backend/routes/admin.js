@@ -163,6 +163,24 @@ const {
   updateWorkflowRun,
   upsertResilienceObjective,
 } = require("../services/automationOrchestrationOperatingService");
+const {
+  buildResilienceAssuranceAuditOperatingSystem,
+  createAssuranceControl,
+  createAssuranceEvidencePack,
+  createAuditControlTest,
+  createAuditDomain,
+  createAuditFinding,
+  createResilienceDrill,
+  createResilienceIncident,
+  updateAssuranceControl,
+  updateAssuranceEvidencePack,
+  updateAuditControlTest,
+  updateAuditDomain,
+  updateAuditFinding,
+  updateResilienceDrill,
+  updateResilienceIncident,
+  upsertResilienceGate,
+} = require("../services/resilienceAssuranceAuditOperatingService");
 const { buildReadinessPayload } = require("../services/healthService");
 const {
   getStorageActionCatalog,
@@ -3364,6 +3382,20 @@ router.get("/analytics/automation-orchestration-operating-system", async (req, r
   }
 });
 
+router.get("/analytics/resilience-assurance-audit-operating-system", async (req, res) => {
+  try {
+    return res.json(await buildResilienceAssuranceAuditOperatingSystem(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = Number(err?.status || 0) || (/invalid/i.test(String(err?.message || "")) ? 400 : 500);
+    console.error("Admin resilience assurance audit operating system error:", req.requestId, err);
+    return res.status(code).json({
+      error: err.message || "Failed to load the resilience, assurance, and audit operating system",
+      details: err?.details || undefined,
+      requestId: req.requestId,
+    });
+  }
+});
+
 const handleNetworkIntelligenceMutation = async ({ req, res, operation, successKey, action, targetType, created = false, metadata = {} }) => {
   try {
     const result = await operation();
@@ -3507,6 +3539,96 @@ router.put("/reliability/resilience-objectives/:flowKey", adminMutationLimiter, 
   req, res, successKey: "objective", action: "admin.resilience_objective.upsert", targetType: "ResilienceObjective",
   operation: () => upsertResilienceObjective({ flowKey: req.params.flowKey, payload: req.body || {}, adminUserId: req.user.id }),
   metadata: (row) => ({ flowKey: row.flowKey, status: row.status, recoveryPriority: row.recoveryPriority, humanReviewRecorded: row.humanReviewRecorded }),
+}));
+
+router.post("/resilience/incidents", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "incident", action: "admin.resilience_incident.create", targetType: "ResilienceIncident",
+  operation: () => createResilienceIncident({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ incidentKey: row.incidentKey, incidentClass: row.incidentClass, severity: row.severity, degradedMode: row.degradedMode, status: row.status }),
+}));
+
+router.patch("/resilience/incidents/:incidentId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "incident", action: "admin.resilience_incident.update", targetType: "ResilienceIncident",
+  operation: () => updateResilienceIncident({ incidentId: req.params.incidentId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ incidentKey: row.incidentKey, severity: row.severity, degradedMode: row.degradedMode, status: row.status }),
+}));
+
+router.post("/resilience/drills", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "drill", action: "admin.resilience_drill.create", targetType: "ResilienceDrill",
+  operation: () => createResilienceDrill({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ drillKey: row.drillKey, scenarioKey: row.scenarioKey, domain: row.domain, status: row.status, observed: row.observed }),
+}));
+
+router.patch("/resilience/drills/:drillId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "drill", action: "admin.resilience_drill.update", targetType: "ResilienceDrill",
+  operation: () => updateResilienceDrill({ drillId: req.params.drillId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ drillKey: row.drillKey, status: row.status, observed: row.observed, humanReviewRecorded: row.humanReviewRecorded }),
+}));
+
+router.put("/resilience/gates/:gateKey", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "gate", action: "admin.resilience_gate.upsert", targetType: "ResilienceGate",
+  operation: () => upsertResilienceGate({ gateKey: req.params.gateKey, payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ gateKey: row.gateKey, status: row.status, humanApprovalRecorded: row.humanApprovalRecorded }),
+}));
+
+router.post("/assurance/controls", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "control", action: "admin.assurance_control.create", targetType: "AssuranceControl",
+  operation: () => createAssuranceControl({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ controlKey: row.controlKey, status: row.status, evidenceFreshness: row.evidenceFreshness, exceptionSeverity: row.exceptionSeverity }),
+}));
+
+router.patch("/assurance/controls/:controlId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "control", action: "admin.assurance_control.update", targetType: "AssuranceControl",
+  operation: () => updateAssuranceControl({ controlId: req.params.controlId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ controlKey: row.controlKey, status: row.status, evidenceFreshness: row.evidenceFreshness, humanReviewRecorded: row.humanReviewRecorded }),
+}));
+
+router.post("/assurance/evidence-packs", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "pack", action: "admin.assurance_evidence_pack.create", targetType: "AssuranceEvidencePack",
+  operation: () => createAssuranceEvidencePack({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ packKey: row.packKey, packType: row.packType, readinessState: row.readinessState, sharingLevel: row.sharingLevel }),
+}));
+
+router.patch("/assurance/evidence-packs/:packId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "pack", action: "admin.assurance_evidence_pack.update", targetType: "AssuranceEvidencePack",
+  operation: () => updateAssuranceEvidencePack({ packId: req.params.packId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ packKey: row.packKey, readinessState: row.readinessState, evidenceFreshness: row.evidenceFreshness, externalShareApproved: row.externalShareApproved }),
+}));
+
+router.post("/audit/domains", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "domain", action: "admin.audit_domain.create", targetType: "AuditDomain",
+  operation: () => createAuditDomain({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ domainKey: row.domainKey, riskScore: row.riskScore, readinessState: row.readinessState, selectedForFirstAudit: row.selectedForFirstAudit }),
+}));
+
+router.patch("/audit/domains/:domainId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "domain", action: "admin.audit_domain.update", targetType: "AuditDomain",
+  operation: () => updateAuditDomain({ domainId: req.params.domainId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ domainKey: row.domainKey, readinessState: row.readinessState, evidenceState: row.evidenceState, ownerSignoffRecorded: row.ownerSignoffRecorded }),
+}));
+
+router.post("/audit/control-tests", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "test", action: "admin.audit_control_test.create", targetType: "AuditControlTest",
+  operation: () => createAuditControlTest({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ testKey: row.testKey, domainKey: row.domainKey, controlKey: row.controlKey, result: row.result, sampleSize: row.sampleSize }),
+}));
+
+router.patch("/audit/control-tests/:testId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "test", action: "admin.audit_control_test.update", targetType: "AuditControlTest",
+  operation: () => updateAuditControlTest({ testId: req.params.testId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ testKey: row.testKey, result: row.result, retestRequired: row.retestRequired, evidenceState: row.evidenceState }),
+}));
+
+router.post("/audit/findings", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, created: true, successKey: "finding", action: "admin.audit_finding.create", targetType: "AuditFinding",
+  operation: () => createAuditFinding({ payload: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ findingKey: row.findingKey, domainKey: row.domainKey, severity: row.severity, status: row.status, retestState: row.retestState }),
+}));
+
+router.patch("/audit/findings/:findingId", adminMutationLimiter, (req, res) => handleNetworkIntelligenceMutation({
+  req, res, successKey: "finding", action: "admin.audit_finding.update", targetType: "AuditFinding",
+  operation: () => updateAuditFinding({ findingId: req.params.findingId, updates: req.body || {}, adminUserId: req.user.id }),
+  metadata: (row) => ({ findingKey: row.findingKey, severity: row.severity, status: row.status, retestState: row.retestState, riskAccepted: row.acceptedRisk?.accepted }),
 }));
 
 router.post("/growth/creator-services", adminMutationLimiter, async (req, res) => {

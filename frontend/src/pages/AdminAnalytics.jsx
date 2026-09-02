@@ -21,6 +21,7 @@ import ExpansionPlatformOperatingPanels from "../components/admin/ExpansionPlatf
 import EcosystemNetworkOperatingPanels from "../components/admin/EcosystemNetworkOperatingPanels";
 import NetworkIntelligenceOperatingPanels from "../components/admin/NetworkIntelligenceOperatingPanels";
 import AutomationOrchestrationOperatingPanels from "../components/admin/AutomationOrchestrationOperatingPanels";
+import ResilienceAssuranceAuditOperatingPanels from "../components/admin/ResilienceAssuranceAuditOperatingPanels";
 import {
   adminGetAnalyticsOverview,
   adminGetAnalyticsUserGrowth,
@@ -37,6 +38,7 @@ import {
   adminGetEcosystemNetworkOperatingSystem,
   adminGetNetworkIntelligenceOperatingSystem,
   adminGetAutomationOrchestrationOperatingSystem,
+  adminGetResilienceAssuranceAuditOperatingSystem,
   adminUpdateRecommendationPolicy,
   adminGetAnalyticsEngagement,
   adminGetAnalyticsTopCreators,
@@ -236,6 +238,9 @@ export default function AdminAnalyticsPage({ user }) {
   const [automationOrchestrationOperatingSystem, setAutomationOrchestrationOperatingSystem] = useState({
     summary: {}, roadmapPackages: [], automation: {}, orchestration: {}, resilience: {}, readiness: {},
   });
+  const [resilienceAssuranceAuditOperatingSystem, setResilienceAssuranceAuditOperatingSystem] = useState({
+    summary: {}, roadmapPackages: [], resilience: {}, assurance: {}, audit: {}, akuso: {},
+  });
   const [recommendationPolicyDraft, setRecommendationPolicyDraft] = useState({});
   const [recommendationPolicyReason, setRecommendationPolicyReason] = useState("");
   const [recommendationPolicyNotice, setRecommendationPolicyNotice] = useState("");
@@ -294,6 +299,7 @@ export default function AdminAnalyticsPage({ user }) {
         ecosystemNetworkPayload,
         networkIntelligencePayload,
         automationOrchestrationPayload,
+        resilienceAssuranceAuditPayload,
         engagementPayload,
         topCreatorsPayload,
         topContentPayload,
@@ -317,6 +323,7 @@ export default function AdminAnalyticsPage({ user }) {
         adminGetEcosystemNetworkOperatingSystem(filterParams),
         adminGetNetworkIntelligenceOperatingSystem(filterParams),
         adminGetAutomationOrchestrationOperatingSystem(filterParams),
+        adminGetResilienceAssuranceAuditOperatingSystem(filterParams),
         adminGetAnalyticsEngagement(filterParams),
         adminGetAnalyticsTopCreators({ ...filterParams, mode: creatorMode }),
         adminGetAnalyticsTopContent(filterParams),
@@ -354,6 +361,7 @@ export default function AdminAnalyticsPage({ user }) {
       setEcosystemNetworkOperatingSystem(ecosystemNetworkPayload || { summary: {}, roadmapPackages: [], platform: {}, ecosystem: {}, network: {}, readiness: {} });
       setNetworkIntelligenceOperatingSystem(networkIntelligencePayload || { summary: {}, roadmapPackages: [], network: {}, intelligence: {}, automation: {}, readiness: {} });
       setAutomationOrchestrationOperatingSystem(automationOrchestrationPayload || { summary: {}, roadmapPackages: [], automation: {}, orchestration: {}, resilience: {}, readiness: {} });
+      setResilienceAssuranceAuditOperatingSystem(resilienceAssuranceAuditPayload || { summary: {}, roadmapPackages: [], resilience: {}, assurance: {}, audit: {}, akuso: {} });
       setEngagement(engagementPayload || { series: [] });
       setTopCreators(topCreatorsPayload || { items: [] });
       setTopContent(topContentPayload || { items: [] });
@@ -389,7 +397,7 @@ export default function AdminAnalyticsPage({ user }) {
   const exportJson = () => {
     downloadBlob({
       filename: `tengacion-admin-analytics-${filters.range}.json`,
-      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, productScorecard, fanRetention, recommendationDiagnostics, executiveDashboard, launchGrowthOperatingSystem, scaleEvidenceOperatingSystem, expansionPlatformOperatingSystem, ecosystemNetworkOperatingSystem, networkIntelligenceOperatingSystem, automationOrchestrationOperatingSystem, engagement, topCreators, topContent, recentActivity, systemAlerts, reliabilityHealth, reportsSummary }, null, 2),
+      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, productScorecard, fanRetention, recommendationDiagnostics, executiveDashboard, launchGrowthOperatingSystem, scaleEvidenceOperatingSystem, expansionPlatformOperatingSystem, ecosystemNetworkOperatingSystem, networkIntelligenceOperatingSystem, automationOrchestrationOperatingSystem, resilienceAssuranceAuditOperatingSystem, engagement, topCreators, topContent, recentActivity, systemAlerts, reliabilityHealth, reportsSummary }, null, 2),
       type: "application/json",
     });
   };
@@ -539,6 +547,8 @@ export default function AdminAnalyticsPage({ user }) {
           <NetworkIntelligenceOperatingPanels payload={networkIntelligenceOperatingSystem} />
 
           <AutomationOrchestrationOperatingPanels payload={automationOrchestrationOperatingSystem} />
+
+          <ResilienceAssuranceAuditOperatingPanels payload={resilienceAssuranceAuditOperatingSystem} />
 
           <section className="adminx-panel adminx-panel--span-12">
             <div className="adminx-panel-head">

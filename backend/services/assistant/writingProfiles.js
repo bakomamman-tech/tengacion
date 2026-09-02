@@ -59,6 +59,9 @@ const WRITING_CONTENT_TYPES = [
   "approval_packet_draft",
   "orchestration_incident_handoff",
   "resilience_objective_explanation",
+  "resilience_status_summary",
+  "assurance_evidence_summary",
+  "audit_findings_summary",
 ];
 
 const normalizeWritingPreferences = (value = {}) => ({
@@ -422,6 +425,30 @@ const buildWritingFallbackDraft = ({
       `Resilience objective for ${cleanTopic}: state the critical flow, owner, measurement source, availability or latency target, error budget, maximum downtime, maximum data delay, special entitlement, payout, or partner delay where relevant, recovery priority, pause trigger, rollback trigger, and review date.`,
       `Measurement boundary: a configured SLO or recovery objective is a target, not proof of current reliability; cite observed telemetry separately.`,
       `Akuso may explain recovery order and draft incident communication but cannot change an SLO, spend an error budget, declare recovery, or override the incident commander.`,
+    ]);
+  }
+
+  if (contentType === "resilience_status_summary") {
+    return buildVariants([
+      `Resilience status for ${cleanTopic}: cite the incident source, severity, affected surface, user impact, degraded mode, current mitigation, accountable owner, rollback option, support path, and next verified update.`,
+      `Recovery boundary: a planned drill, configured objective, or mitigation in progress is not proof of recovery; use stored completion evidence and human review before changing status.`,
+      `Privacy and authority boundary: keep internal risk and restricted evidence private; Akuso cannot command the incident, pause or restore a workflow, execute rollback, or publish an external update.`,
+    ]);
+  }
+
+  if (contentType === "assurance_evidence_summary") {
+    return buildVariants([
+      `Assurance evidence summary for ${cleanTopic}: state the control owner and reviewer, source systems, evidence freshness, current exceptions, reconciliation state, incidents, impact, readiness, approval shelf life, and next review.`,
+      `Sharing boundary: stale, delayed, disputed, blocked, withdrawn, restricted, or unreviewed evidence cannot support an external assurance claim.`,
+      `Decision boundary: Akuso may draft the packet and highlight missing evidence but cannot approve a gate, accept an exception, grant access, move money, or make a legal, rights, privacy, or moderation decision.`,
+    ]);
+  }
+
+  if (contentType === "audit_findings_summary") {
+    return buildVariants([
+      `Audit summary for ${cleanTopic}: report domains tested, sample method and size, pass, observation, fail, and not-testable counts, high-risk findings, evidence quality, owners, due dates, retest state, and external-readiness limits.`,
+      `Closure boundary: an owner statement is not closure; a failed control requires remediation evidence and an independent retest, while accepted risk requires approval, expiry, a compensating control, and a review trigger.`,
+      `Disclosure boundary: keep restricted findings and sample evidence internal; Akuso cannot change a result, close a finding, accept risk, certify a control, or publish an external audit opinion.`,
     ]);
   }
 

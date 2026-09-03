@@ -1182,3 +1182,363 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* === VoiceBridge readability & contrast pass v2 === */
+/* Global readability upgrade scoped only to /codeswitch */
+
+.voicebridge-page {
+  --vb-ink: #0a2419;
+  --vb-muted: #304c3e;
+  --vb-muted-soft: #496357;
+  color: var(--vb-ink);
+  font-size: 16px;
+}
+
+/* HERO */
+.voicebridge-phase-pill {
+  color: rgba(248,255,250,.95);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.voicebridge-kicker {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.voicebridge-hero__subtitle {
+  color: #f5fcf7;
+  font-size: clamp(1.3rem, 2.1vw, 1.6rem);
+  line-height: 1.5;
+}
+
+.voicebridge-hero__summary {
+  color: rgba(241,251,244,.91);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.voicebridge-hero__link {
+  font-size: 16px;
+}
+
+.voicebridge-signal__topline {
+  color: rgba(247,255,249,.92);
+  font-size: 13px;
+}
+
+.voicebridge-signal__route span {
+  font-size: 13px;
+}
+
+.voicebridge-signal__route strong {
+  color: #f5fff8;
+  font-size: 14px;
+}
+
+.voicebridge-signal__footer {
+  color: rgba(241,251,244,.86);
+  font-size: 12px;
+  line-height: 1.5;
+  flex-wrap: wrap;
+}
+
+/* SECTION HEADINGS */
+.voicebridge-section-heading__number {
+  color: #486257;
+  font-size: 13px;
+}
+
+.voicebridge-section-heading p {
+  color: #185d3a;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.voicebridge-section-heading h2 {
+  color: var(--vb-ink);
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+}
+
+.voicebridge-section-heading div > span {
+  color: var(--vb-muted);
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+/* FORM LABELS + INPUTS */
+.voicebridge-field > label,
+.voicebridge-reference-field > label {
+  color: #264638;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.voicebridge-reference-field > label {
+  flex-wrap: wrap;
+}
+
+.voicebridge-reference-field > label span {
+  color: #486257;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.voicebridge-reference-field textarea {
+  color: var(--vb-ink);
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.voicebridge-reference-field textarea::placeholder {
+  color: #5b7065;
+  opacity: 1;
+}
+
+.voicebridge-select-wrap select {
+  color: var(--vb-ink);
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.voicebridge-select-wrap > span {
+  color: #304c3e;
+}
+
+.voicebridge-upload-control,
+.voicebridge-page .tg-btn {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.voicebridge-transcribe-row .tg-btn {
+  color: #f7fff9;
+}
+
+.voicebridge-page .tg-btn:disabled {
+  opacity: .72;
+}
+
+/* UPLOADED FILE / PRIVACY / BENCHMARK MODE */
+.voicebridge-file-state strong {
+  color: var(--vb-ink);
+  font-size: 16px;
+}
+
+.voicebridge-file-state p {
+  color: var(--vb-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.voicebridge-file-state__pair {
+  color: #29493a;
+  font-size: 13px;
+}
+
+.voicebridge-privacy-note p {
+  color: #304c3e;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.voicebridge-transcribe-row strong {
+  color: var(--vb-ink);
+  font-size: 15px;
+}
+
+.voicebridge-transcribe-row span {
+  color: var(--vb-muted);
+  font-size: 14px;
+}
+
+.voicebridge-error {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* MODEL CARDS */
+.voicebridge-model-card__mark {
+  font-size: 13px;
+}
+
+.voicebridge-model-card h3 {
+  color: var(--vb-ink);
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.voicebridge-model-card header p {
+  color: var(--vb-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.voicebridge-status {
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.voicebridge-model-card dt {
+  color: #304c3e;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.voicebridge-model-card dd {
+  color: #123426;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.voicebridge-model-card__text-row dd {
+  color: #123426;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.65;
+}
+
+.voicebridge-model-card dl div {
+  min-height: 52px;
+}
+
+/* DOWNSTREAM TASK */
+.voicebridge-task-card__flow span {
+  color: #f6fff9;
+  font-size: 13px;
+}
+
+.voicebridge-task-card dt {
+  color: var(--vb-ink);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.voicebridge-task-card dd {
+  color: var(--vb-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* BENCHMARK SCORECARD */
+.voicebridge-summary-grid span {
+  color: #185d3a;
+  font-size: 13px;
+}
+
+.voicebridge-summary-grid strong {
+  color: #123426;
+  font-size: clamp(2rem, 4vw, 2.7rem);
+  font-weight: 850;
+}
+
+.voicebridge-summary-grid p {
+  color: var(--vb-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* METHODOLOGY */
+.voicebridge-methodology__intro > p:first-of-type {
+  font-size: 13px;
+}
+
+.voicebridge-methodology h2 {
+  color: #f6fff9;
+  font-size: clamp(2rem, 3vw, 2.6rem);
+}
+
+.voicebridge-methodology__intro > p:last-child {
+  color: rgba(244,255,248,.91);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.voicebridge-methodology li span {
+  color: #9fe4ba;
+  font-size: 13px;
+}
+
+.voicebridge-methodology li p {
+  color: rgba(247,255,250,.94);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+/* FOOTER */
+.voicebridge-footer div > div {
+  color: var(--vb-ink);
+  font-size: 15px;
+}
+
+.voicebridge-footer p {
+  color: var(--vb-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* ACCESSIBLE FOCUS */
+.voicebridge-page button:focus-visible,
+.voicebridge-page a:focus-visible,
+.voicebridge-page select:focus-visible,
+.voicebridge-page textarea:focus-visible,
+.voicebridge-upload-control:focus-within {
+  outline: 3px solid #2c7653;
+  outline-offset: 3px;
+}
+
+/* MOBILE READABILITY */
+@media (max-width: 760px) {
+  .voicebridge-hero__summary {
+    font-size: 16px;
+  }
+
+  .voicebridge-section-heading div > span {
+    font-size: 16px;
+  }
+
+  .voicebridge-model-card dd {
+    font-size: 18px;
+  }
+
+  .voicebridge-model-card__text-row dd {
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 520px) {
+  .voicebridge-phase-pill {
+    font-size: 12px;
+  }
+
+  .voicebridge-hero__subtitle {
+    font-size: 1.3rem;
+  }
+
+  .voicebridge-signal__route strong {
+    font-size: 13px;
+  }
+
+  .voicebridge-signal__footer {
+    font-size: 11px;
+  }
+
+  .voicebridge-section-heading p {
+    font-size: 13px;
+  }
+
+  .voicebridge-reference-field textarea,
+  .voicebridge-select-wrap select {
+    font-size: 16px;
+  }
+
+  .voicebridge-privacy-note p {
+    font-size: 14px;
+  }
+
+  .voicebridge-methodology li p {
+    font-size: 15px;
+  }
+}

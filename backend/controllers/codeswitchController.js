@@ -14,9 +14,9 @@ const {
 } = require("../services/openAiCodeswitchService");
 
 const SERVICE_NAME = "Tengacion VoiceBridge";
-const PHASE = 2;
-const PHASE_TWO_MESSAGE =
-  "Multi-model benchmarking and downstream agent integrations are not enabled in Phase 2.";
+const PHASE = 3;
+const PHASE_THREE_MESSAGE =
+  "Downstream agent integration is not enabled in Phase 3.";
 const LANGUAGE_PAIR_TO_SAHARA_LANGUAGE = Object.freeze({
   "ha-en": "ha",
   "pcm-en": "pcm",
@@ -296,6 +296,8 @@ const benchmark = async (req, res) => {
 
     if (entry.status === "fulfilled") {
       const result = entry.value;
+      const safeResult = { ...result };
+      delete safeResult.providerFileId;
 
       let evaluation = null;
 
@@ -308,7 +310,7 @@ const benchmark = async (req, res) => {
 
       return {
         ok: true,
-        ...result,
+        ...safeResult,
         languagePair,
         evaluation,
       };
@@ -346,7 +348,7 @@ const benchmark = async (req, res) => {
   return res.status(successfulModels > 0 ? 200 : 502).json({
     ok: successfulModels > 0,
     service: SERVICE_NAME,
-    phase: 3,
+    phase: PHASE,
     languagePair,
     normalizationVersion: NORMALIZATION_VERSION,
     benchmarkMode: true,
@@ -357,20 +359,20 @@ const benchmark = async (req, res) => {
     models,
   });
 };
-const phaseTwoPlaceholder = (endpoint) => (_req, res) =>
+const phaseThreePlaceholder = (endpoint) => (_req, res) =>
   res.status(501).json({
     ok: false,
     service: SERVICE_NAME,
     phase: PHASE,
     endpoint,
     integrationEnabled: false,
-    message: PHASE_TWO_MESSAGE,
+    message: PHASE_THREE_MESSAGE,
   });
 
 module.exports = {
   benchmark,
   health,
-  intent: phaseTwoPlaceholder("intent"),
+  intent: phaseThreePlaceholder("intent"),
   normalize,
   transcribe,
   transcribeOpenAI,

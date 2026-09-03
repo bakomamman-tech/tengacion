@@ -6,12 +6,21 @@ jest.mock("../services/saharaService", () => {
   return { ...actual, transcribeWithSahara: jest.fn() };
 });
 
+jest.mock("../services/openAiCodeswitchService", () => {
+  const actual = jest.requireActual("../services/openAiCodeswitchService");
+  return { ...actual, transcribeWithOpenAI: jest.fn() };
+});
+
 const errorHandler = require("../middleware/errorHandler");
 const codeswitchRoutes = require("../routes/codeswitch");
 const {
   SaharaServiceError,
   transcribeWithSahara,
 } = require("../services/saharaService");
+
+const {
+  transcribeWithOpenAI,
+} = require("../services/openAiCodeswitchService");
 
 const app = express();
 app.use(express.json());
@@ -40,9 +49,22 @@ const completedTranscription = (overrides = {}) => ({
   ...overrides,
 });
 
+const completedOpenAiTranscription = (overrides = {}) => ({
+  provider: "openai",
+  model: "gpt-transcribe",
+  transcript: "Don Allah, check my order!",
+  normalizedTranscript: "don allah check my order",
+  normalizationVersion: "voicebridge-nwer-v1",
+  latencyMs: 420,
+  processingStatus: "FILE_TRANSCRIBED",
+  benchmarkMode: true,
+  ...overrides,
+});
+
 describe("VoiceBridge CodeSwitch routes", () => {
   beforeEach(() => {
     transcribeWithSahara.mockReset();
+    transcribeWithOpenAI.mockReset();
     jest.spyOn(console, "warn").mockImplementation(() => {});
   });
 
@@ -50,13 +72,13 @@ describe("VoiceBridge CodeSwitch routes", () => {
     jest.restoreAllMocks();
   });
 
-  test("reports Phase 2 health", async () => {
+  test("reports Phase 3 health", async () => {
     const response = await request(app).get("/api/codeswitch/health").expect(200);
 
     expect(response.body).toEqual({
       ok: true,
       service: "Tengacion VoiceBridge",
-      phase: 2,
+      phase: 3,
     });
     expect(response.headers["cache-control"]).toBe("no-store");
   });
@@ -214,8 +236,65 @@ describe("VoiceBridge CodeSwitch routes", () => {
     });
   });
 
-  test.each(["benchmark", "intent"])(
-    "keeps /%s as a clear Phase 2 placeholder",
+  test("benchmarks Sahara and OpenAI from the same uploaded audio", async () => {
+    transcribeWithSahara.mockResolvedValueOnce(completedTranscription());
+    transcribeWithOpenAI.mockResolvedValueOnce(completedOpenAiTranscription());
+
+    const response = await request(app)
+      .post("/api/codeswitch/benchmark")
+      .field("languagePair", "ha-en")
+      .field("referenceTranscript", "Don Allah, check my order!")
+      .attach("audio", validWav, {
+        filename: "support.wav",
+        contentType: "audio/wav",
+      })
+      .expect(200);
+
+    expect(transcribeWithSahara).toHaveBeenCalledTimes(1);
+    expect(transcribeWithOpenAI).toHaveBeenCalledTimes(1);
+
+    const saharaArgs = transcribeWithSahara.mock.calls[0][0];
+    const openAiArgs = transcribeWithOpenAI.mock.calls[0][0];
+
+    expect(saharaArgs.buffer).toBe(openAiArgs.buffer);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        service: "Tengacion VoiceBridge",
+        phase: 3,
+        languagePair: "ha-en",
+        normalizationVersion: "voicebridge-nwer-v1",
+        benchmarkMode: true,
+        sameSourceAudio: true,
+        successfulModels: 2,
+        requestedModels: 2,
+      })
+    );
+
+    expect(response.body.models).toHaveLength(2);
+
+    expect(response.body.models[0]).toEqual(
+      expect.objectContaining({
+        ok: true,
+        provider: "sahara",
+        evaluation: expect.objectContaining({ wer: 0 }),
+      })
+    );
+
+    expect(response.body.models[1]).toEqual(
+      expect.objectContaining({
+        ok: true,
+        provider: "openai",
+        evaluation: expect.objectContaining({ wer: 0 }),
+      })
+    );
+
+    expect(response.body.models[0].providerFileId).toBeUndefined();
+  });
+
+  test.each(["intent"])(
+    "keeps /%s as a clear Phase 3 placeholder",
     async (endpoint) => {
       const response = await request(app)
         .post(`/api/codeswitch/${endpoint}`)
@@ -225,11 +304,11 @@ describe("VoiceBridge CodeSwitch routes", () => {
       expect(response.body).toEqual({
         ok: false,
         service: "Tengacion VoiceBridge",
-        phase: 2,
+        phase: 3,
         endpoint,
         integrationEnabled: false,
         message:
-          "Multi-model benchmarking and downstream agent integrations are not enabled in Phase 2.",
+          "Downstream agent integration is not enabled in Phase 3.",
       });
     }
   );

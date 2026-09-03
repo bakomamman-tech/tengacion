@@ -47,3 +47,38 @@ export async function calculateCodeswitchWer({ reference, hypothesis, signal } =
   }
   return payload;
 }
+
+export async function runCodeswitchBenchmark({
+  audio,
+  languagePair,
+  referenceTranscript = "",
+  signal,
+} = {}) {
+  const form = new FormData();
+
+  form.append("audio", audio);
+  form.append("languagePair", languagePair);
+
+  if (referenceTranscript.trim()) {
+    form.append("referenceTranscript", referenceTranscript);
+  }
+
+  const response = await fetch(`${API_BASE}/codeswitch/benchmark`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+    signal,
+  });
+
+  const payload = await readPayload(response);
+
+  if (!response.ok) {
+    throwApiError(
+      response,
+      payload,
+      "VoiceBridge multi-model benchmark failed."
+    );
+  }
+
+  return payload;
+}

@@ -5,35 +5,15 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import CodeSwitchPage from "../CodeSwitchPage";
-import {
-  calculateCodeswitchWer,
-  transcribeWithSahara,
-} from "../../services/codeswitchApi";
+import { runCodeswitchBenchmark } from "../../services/codeswitchApi";
 
 vi.mock("../../components/seo/SeoHead", () => ({
   default: () => null,
 }));
 
 vi.mock("../../services/codeswitchApi", () => ({
-  calculateCodeswitchWer: vi.fn(),
-  transcribeWithSahara: vi.fn(),
+  runCodeswitchBenchmark: vi.fn(),
 }));
-
-const SAHARA_RESULT = {
-  ok: true,
-  provider: "sahara",
-  model: "sahara-v2.5",
-  languagePair: "ha-en",
-  languageCode: "ha",
-  transcript: "Please check my order!",
-  normalizedTranscript: "please check my order",
-  normalizationVersion: "voicebridge-nwer-v1",
-  latencyMs: 1234,
-  processedAudioDurationSeconds: 8.2,
-  providerFileId: "file-123",
-  processingStatus: "FILE_TRANSCRIBED",
-  benchmarkMode: true,
-};
 
 const WER_RESULT = {
   wer: 0,
@@ -46,118 +26,332 @@ const WER_RESULT = {
   normalizationVersion: "voicebridge-nwer-v1",
 };
 
-const renderPage = () => render(
-  <MemoryRouter>
-    <CodeSwitchPage />
-  </MemoryRouter>
-);
+const SAHARA_MODEL = {
+  ok: true,
+  provider: "sahara",
+  model: "sahara-v2.5",
+  languagePair: "ha-en",
+  languageCode: "ha",
+  transcript: "Please check my order!",
+  normalizedTranscript: "please check my order",
+  normalizationVersion: "voicebridge-nwer-v1",
+  latencyMs: 1234,
+  processedAudioDurationSeconds: 8.2,
+  processingStatus: "FILE_TRANSCRIBED",
+  benchmarkMode: true,
+  evaluation: null,
+};
 
-const uploadAudio = async (user, name = "support-sample.wav") => {
-  const file = new File(["voice"], name, { type: "audio/wav" });
-  await user.upload(screen.getByLabelText("Upload audio"), file);
+const OPENAI_MODEL = {
+  ok: true,
+  provider: "openai",
+  model: "gpt-transcribe",
+  languagePair: "ha-en",
+  transcript: "Please check my order!",
+  normalizedTranscript: "please check my order",
+  normalizationVersion: "voicebridge-nwer-v1",
+  latencyMs: 640,
+  processingStatus: "FILE_TRANSCRIBED",
+  benchmarkMode: true,
+  evaluation: null,
+};
+
+const BENCHMARK_RESULT = {
+  ok: true,
+  service: "Tengacion VoiceBridge",
+  phase: 3,
+  languagePair: "ha-en",
+  normalizationVersion: "voicebridge-nwer-v1",
+  benchmarkMode: true,
+  sameSourceAudio: true,
+  successfulModels: 2,
+  requestedModels: 2,
+  models: [SAHARA_MODEL, OPENAI_MODEL],
+};
+
+const renderPage = () =>
+  render(
+    <MemoryRouter>
+      <CodeSwitchPage />
+    </MemoryRouter>
+  );
+
+const uploadAudio = async (
+  user,
+  name = "support-sample.wav"
+) => {
+  const file = new File(["voice"], name, {
+    type: "audio/wav",
+  });
+
+  await user.upload(
+    screen.getByLabelText("Upload audio"),
+    file
+  );
+
   return file;
 };
 
-describe("CodeSwitchPage", () => {
+describe("CodeSwitchPage Phase 3 benchmark", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    transcribeWithSahara.mockResolvedValue(SAHARA_RESULT);
-    calculateCodeswitchWer.mockResolvedValue(WER_RESULT);
+    runCodeswitchBenchmark.mockResolvedValue(
+      BENCHMARK_RESULT
+    );
   });
 
-  it("supports explicit language selection and local upload state", async () => {
+  it("uploads one file and launches the shared benchmark", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(screen.getByLabelText("Language pair")).toHaveValue("ha-en");
-    await user.selectOptions(screen.getByLabelText("Language pair"), "pcm-en");
-    expect(screen.getByLabelText("Language pair")).toHaveValue("pcm-en");
+    await user.selectOptions(
+      screen.getByLabelText("Language pair"),
+      "pcm-en"
+    );
 
     const file = await uploadAudio(user);
-    expect(screen.getByText("support-sample.wav")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /transcribe with sahara/i })).toBeEnabled();
 
-    await user.click(screen.getByRole("button", { name: /transcribe with sahara/i }));
-    expect(transcribeWithSahara).toHaveBeenCalledWith(
-      expect.objectContaining({ audio: file, languagePair: "pcm-en" })
+    const button = screen.getByRole("button", {
+      name: /run voicebridge benchmark/i,
+    });
+
+    expect(button).toBeEnabled();
+
+    await user.click(button);
+
+    expect(runCodeswitchBenchmark).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audio: file,
+        languagePair: "pcm-en",
+        referenceTranscript: "",
+      })
     );
   });
 
-  it("shows a loading state while Sahara is processing", async () => {
+  it("shows both live provider cards while processing", async () => {
     const user = userEvent.setup();
-    let resolveTranscription;
-    transcribeWithSahara.mockReturnValue(
+
+    let resolveBenchmark;
+
+    runCodeswitchBenchmark.mockReturnValue(
       new Promise((resolve) => {
-        resolveTranscription = resolve;
+        resolveBenchmark = resolve;
       })
     );
+
     renderPage();
     await uploadAudio(user);
 
-    await user.click(screen.getByRole("button", { name: /transcribe with sahara/i }));
-    expect(screen.getByRole("button", { name: /transcribing with sahara/i })).toHaveAttribute(
-      "aria-busy",
-      "true"
+    await user.click(
+      screen.getByRole("button", {
+        name: /run voicebridge benchmark/i,
+      })
     );
-    expect(screen.getByText("Transcribing", { selector: ".voicebridge-status" })).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", {
+        name: /benchmarking models/i,
+      })
+    ).toHaveAttribute("aria-busy", "true");
+
+    expect(
+      screen.getAllByText("Benchmarking", {
+        selector: ".voicebridge-status",
+      })
+    ).toHaveLength(2);
 
     await act(async () => {
-      resolveTranscription(SAHARA_RESULT);
+      resolveBenchmark(BENCHMARK_RESULT);
     });
-    expect(await screen.findByText("FILE_TRANSCRIBED")).toBeInTheDocument();
+
+    expect(
+      await screen.findAllByText("FILE_TRANSCRIBED")
+    ).toHaveLength(2);
   });
 
-  it("displays a real Sahara result without inventing WER", async () => {
+  it("shows Sahara and OpenAI results without inventing WER", async () => {
     const user = userEvent.setup();
+
     renderPage();
     await uploadAudio(user);
-    await user.click(screen.getByRole("button", { name: /transcribe with sahara/i }));
 
-    const card = await screen.findByTestId("sahara-model-card");
-    expect(within(card).getByText("Please check my order!")).toBeInTheDocument();
-    expect(within(card).getByText("please check my order")).toBeInTheDocument();
-    expect(within(card).getByText("voicebridge-nwer-v1")).toBeInTheDocument();
-    expect(within(card).getByText("1,234 ms")).toBeInTheDocument();
-    expect(within(card).getByText("8.2 s")).toBeInTheDocument();
-    expect(within(card).getByText("FILE_TRANSCRIBED")).toBeInTheDocument();
-    expect(within(card).getByText("Reference transcript required for WER.")).toBeInTheDocument();
-    expect(calculateCodeswitchWer).not.toHaveBeenCalled();
-    expect(screen.getAllByText("Not integrated")).toHaveLength(2);
-    expect(screen.getByRole("heading", { name: "Gemini" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "OpenAI" })).toBeInTheDocument();
-  });
-
-  it("calculates and displays normalized WER only when a reference is supplied", async () => {
-    const user = userEvent.setup();
-    renderPage();
-    await user.type(screen.getByLabelText(/reference transcript/i), "Please check my order!");
-    await uploadAudio(user);
-    await user.click(screen.getByRole("button", { name: /transcribe with sahara/i }));
-
-    expect(calculateCodeswitchWer).toHaveBeenCalledWith(
-      expect.objectContaining({
-        reference: "Please check my order!",
-        hypothesis: "Please check my order!",
+    await user.click(
+      screen.getByRole("button", {
+        name: /run voicebridge benchmark/i,
       })
     );
-    const card = await screen.findByTestId("sahara-model-card");
-    expect(within(card).getByText("0.000")).toBeInTheDocument();
-    expect(within(card).getAllByText("0")).toHaveLength(3);
+
+    const sahara =
+      await screen.findByTestId("sahara-model-card");
+
+    const openai =
+      screen.getByTestId("openai-model-card");
+
+    expect(
+      within(sahara).getByText("Please check my order!")
+    ).toBeInTheDocument();
+
+    expect(
+      within(openai).getByText("Please check my order!")
+    ).toBeInTheDocument();
+
+    expect(
+      within(sahara).getByText("1,234 ms")
+    ).toBeInTheDocument();
+
+    expect(
+      within(openai).getByText("640 ms")
+    ).toBeInTheDocument();
+
+    expect(
+      within(sahara).getByText(
+        "Reference transcript required for WER."
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      within(openai).getByText(
+        "Reference transcript required for WER."
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getAllByText("Not integrated")
+    ).toHaveLength(1);
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Gemini",
+      })
+    ).toBeInTheDocument();
   });
 
-  it("shows a safe provider error without fabricating model results", async () => {
+  it("shows server-computed normalized WER for both providers", async () => {
     const user = userEvent.setup();
-    const error = new Error("Sahara is rate limited. Try the transcription again later.");
-    error.retryAfterSeconds = 9;
-    transcribeWithSahara.mockRejectedValue(error);
+
+    runCodeswitchBenchmark.mockResolvedValue({
+      ...BENCHMARK_RESULT,
+      models: [
+        {
+          ...SAHARA_MODEL,
+          evaluation: WER_RESULT,
+        },
+        {
+          ...OPENAI_MODEL,
+          evaluation: WER_RESULT,
+        },
+      ],
+    });
+
+    renderPage();
+
+    await user.type(
+      screen.getByLabelText(/reference transcript/i),
+      "Please check my order!"
+    );
+
+    await uploadAudio(user);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /run voicebridge benchmark/i,
+      })
+    );
+
+    expect(runCodeswitchBenchmark).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceTranscript:
+          "Please check my order!",
+      })
+    );
+
+    const sahara =
+      await screen.findByTestId("sahara-model-card");
+
+    const openai =
+      screen.getByTestId("openai-model-card");
+
+    expect(
+      within(sahara).getByText("0.00% (0.000)")
+    ).toBeInTheDocument();
+
+    expect(
+      within(openai).getByText("0.00% (0.000)")
+    ).toBeInTheDocument();
+  });
+
+  it("preserves a successful provider when another provider fails", async () => {
+    const user = userEvent.setup();
+
+    runCodeswitchBenchmark.mockResolvedValue({
+      ...BENCHMARK_RESULT,
+      successfulModels: 1,
+      models: [
+        SAHARA_MODEL,
+        {
+          ok: false,
+          provider: "openai",
+          error: {
+            code: "OPENAI_UPSTREAM_ERROR",
+            message:
+              "OpenAI transcription is temporarily unavailable.",
+          },
+        },
+      ],
+    });
+
     renderPage();
     await uploadAudio(user);
-    await user.click(screen.getByRole("button", { name: /transcribe with sahara/i }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Sahara is rate limited. Try the transcription again later. Try again in 9 seconds."
+    await user.click(
+      screen.getByRole("button", {
+        name: /run voicebridge benchmark/i,
+      })
     );
-    const card = screen.getByTestId("sahara-model-card");
-    expect(within(card).queryByText("Please check my order!")).not.toBeInTheDocument();
+
+    const sahara =
+      await screen.findByTestId("sahara-model-card");
+
+    const openai =
+      screen.getByTestId("openai-model-card");
+
+    expect(
+      within(sahara).getByText("Please check my order!")
+    ).toBeInTheDocument();
+
+    expect(
+      within(openai).getByText(
+        "OpenAI transcription is temporarily unavailable."
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      within(openai).getByText("Provider error")
+    ).toBeInTheDocument();
+  });
+
+  it("shows a safe top-level benchmark error", async () => {
+    const user = userEvent.setup();
+
+    runCodeswitchBenchmark.mockRejectedValue(
+      new Error(
+        "VoiceBridge benchmark is temporarily unavailable."
+      )
+    );
+
+    renderPage();
+    await uploadAudio(user);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /run voicebridge benchmark/i,
+      })
+    );
+
+    expect(
+      await screen.findByRole("alert")
+    ).toHaveTextContent(
+      "VoiceBridge benchmark is temporarily unavailable."
+    );
   });
 });

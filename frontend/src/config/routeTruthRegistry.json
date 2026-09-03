@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "lastReviewed": "2026-08-18",
+  "lastReviewed": "2026-09-03",
   "routeAnalyticsContract": {
     "eventType": "route_viewed",
     "version": 1,
@@ -18,6 +18,20 @@
     "alias": "Redirect or compatibility path for another canonical route."
   },
   "features": [
+    {
+      "id": "codeswitch_voicebridge",
+      "title": "Tengacion VoiceBridge",
+      "status": "experimental",
+      "surface": "public",
+      "access": "public",
+      "canonicalPath": "/codeswitch",
+      "appPaths": ["/codeswitch"],
+      "dataAuthority": "Provider-neutral Phase 1 normalization and word-error-rate APIs; no external ASR calls or persisted benchmark records.",
+      "ownerRole": "AI Products Owner",
+      "kpi": "Reproducible normalized WER evaluation readiness",
+      "featureFlag": null,
+      "testEvidence": ["backend/tests/codeswitchService.test.js", "backend/tests/codeswitchRoutes.test.js", "frontend/src/pages/__tests__/CodeSwitchPage.test.jsx"]
+    },
     {
       "id": "public_marketing",
       "title": "Public marketing and company information",

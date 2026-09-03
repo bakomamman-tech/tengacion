@@ -227,6 +227,7 @@ app.use("/api/millionaire", require("./routes/millionaireGame"));
 app.use("/api/bright-future-academy", require("./routes/brightFutureAcademy"));
 app.use("/api/top-up-promo", require("./routes/topUpPromo"));
 app.use("/api/search", require("./routes/search"));
+app.use("/api/codeswitch", require("./routes/codeswitch"));
 app.use("/api/assistant", require("./routes/assistant"));
 app.use("/api/akuso", require("./routes/akuso"));
 app.use("/api/videos", require("./routes/videos"));

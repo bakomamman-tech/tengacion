@@ -30,6 +30,7 @@ const InvestorPitchPage = lazy(() => import("./pages/InvestorPitchPage"));
 const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
 const TovidoAnthonyFoundationPage = lazy(() => import("./pages/TovidoAnthonyFoundationPage"));
 const CygroEnterprisePage = lazy(() => import("./pages/CygroEnterprisePage"));
+const CodeSwitchPage = lazy(() => import("./pages/CodeSwitchPage"));
 const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
 const TeacherTrainingPage = lazy(() => import("./pages/TeacherTrainingPage"));
 const Register = lazy(() => import("./pages/Register"));
@@ -179,12 +180,15 @@ export default function App() {
   const navigate = useNavigate();
   usePageTracking();
   const isBrightFutureRoute = pathname.toLowerCase().startsWith("/bright-future-academy");
-  const isFocusedGameRoute = pathname === "/millionaire" || isBrightFutureRoute;
+  const isCodeSwitchRoute = pathname === "/codeswitch";
+  const isFocusedExperienceRoute =
+    pathname === "/millionaire" || isBrightFutureRoute || isCodeSwitchRoute;
   const isCygroEnterpriseRoute = pathname === "/cygro-enterprise";
   const isAuthOptionalRoute =
     pathname === "/" ||
     isCygroEnterpriseRoute ||
-    isBrightFutureRoute;
+    isBrightFutureRoute ||
+    isCodeSwitchRoute;
 
   // The public landing page must remain useful while a slow mobile connection
   // checks for an existing session. Authenticated visitors are redirected as
@@ -197,7 +201,7 @@ export default function App() {
     <>
       <LowBandwidthController />
       <WelcomeVoiceController
-        user={isCygroEnterpriseRoute || isBrightFutureRoute ? null : user}
+        user={isCygroEnterpriseRoute || isBrightFutureRoute || isCodeSwitchRoute ? null : user}
       />
       <RouteSeoController />
       <Suspense fallback={<AppShellFallback />}>
@@ -219,6 +223,7 @@ export default function App() {
           <Route path="/tovido_anthony_foundation" element={<TovidoAnthonyFoundationPage />} />
           <Route path="/foundation/tovido-anthony" element={<TovidoAnthonyFoundationPage />} />
           <Route path="/cygro-enterprise" element={<CygroEnterprisePage />} />
+          <Route path="/codeswitch" element={<CodeSwitchPage />} />
           <Route
             path="/schools/kurahtechandartsacademy"
             element={<Navigate to="/kurahtechandartsacademy" replace />}
@@ -1034,7 +1039,7 @@ export default function App() {
           />
         </Routes>
       </Suspense>
-      {user && !isFocusedGameRoute && !isCygroEnterpriseRoute ? (
+      {user && !isFocusedExperienceRoute && !isCygroEnterpriseRoute ? (
         <TopUpPromoDiscovery
           user={user}
           onExploreTip={(tip) => {
@@ -1052,8 +1057,8 @@ export default function App() {
           }}
         />
       ) : null}
-      {!isFocusedGameRoute && !isCygroEnterpriseRoute ? <InstallPrompt /> : null}
-      {!isFocusedGameRoute && !isCygroEnterpriseRoute ? (
+      {!isFocusedExperienceRoute && !isCygroEnterpriseRoute ? <InstallPrompt /> : null}
+      {!isFocusedExperienceRoute && !isCygroEnterpriseRoute ? (
         <TengacionAssistantDock />
       ) : null}
     </>

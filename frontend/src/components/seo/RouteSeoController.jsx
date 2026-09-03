@@ -54,6 +54,13 @@ const PUBLIC_STATIC_PATHS = new Set([
 
 const NOINDEX_RULES = [
   {
+    patterns: ["/codeswitch"],
+    title: "Tengacion VoiceBridge | African Code-Switching Voice Intelligence",
+    description:
+      "Phase 1 of Tengacion VoiceBridge: deterministic transcript normalization and normalized WER foundations for African digital-commerce support.",
+    canonicalPath: "/codeswitch",
+  },
+  {
     patterns: ["/login"],
     title: "Log In | Tengacion",
     description: "Log in to Tengacion to access your feed, creators, purchases, and messages.",

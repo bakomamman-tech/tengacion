@@ -179,7 +179,7 @@ function BenchmarkModelCard({
       ? "Reference transcript required for WER."
       : isFailure
         ? "Provider failed"
-        : "?";
+        : "\u2014";
 
   const statusText = isLoading
     ? "Benchmarking"
@@ -212,7 +212,7 @@ function BenchmarkModelCard({
       <dl>
         <div>
           <dt>Language pair</dt>
-          <dd>{isSuccess ? languagePairLabel : "?"}</dd>
+          <dd>{isSuccess ? languagePairLabel : "\u2014"}</dd>
         </div>
 
         <div className="voicebridge-model-card__text-row">
@@ -222,7 +222,7 @@ function BenchmarkModelCard({
               ? result.transcript || "No speech recognized"
               : isFailure
                 ? result.error?.message || "Provider transcription failed."
-                : "?"}
+                : "\u2014"}
           </dd>
         </div>
 
@@ -231,7 +231,7 @@ function BenchmarkModelCard({
           <dd>
             {isSuccess
               ? result.normalizedTranscript || "No speech recognized"
-              : "?"}
+              : "\u2014"}
           </dd>
         </div>
 
@@ -271,7 +271,7 @@ function BenchmarkModelCard({
               ? `${result.latencyMs.toLocaleString()} ms`
               : isSuccess
                 ? "Not reported"
-                : "?"}
+                : "\u2014"}
           </dd>
         </div>
 
@@ -282,7 +282,7 @@ function BenchmarkModelCard({
               ? `${result.processedAudioDurationSeconds} s`
               : isSuccess
                 ? "Not reported"
-                : "?"}
+                : "\u2014"}
           </dd>
         </div>
 
@@ -291,7 +291,7 @@ function BenchmarkModelCard({
           <dd>
             {isSuccess
               ? result.processingStatus || "Completed"
-              : "?"}
+              : "\u2014"}
           </dd>
         </div>
       </dl>
@@ -436,9 +436,9 @@ export default function CodeSwitchPage() {
             </a>
           </div>
 
-          <div className="voicebridge-signal" aria-label="VoiceBridge Sahara signal preview">
+          <div className="voicebridge-signal" aria-label="VoiceBridge multi-model benchmark signal preview">
             <div className="voicebridge-signal__topline">
-              <span>Sahara v2.5</span>
+              <span>Sahara + OpenAI</span>
               <span><i aria-hidden="true" /> Ready for audio</span>
             </div>
             <div className="voicebridge-wave" aria-hidden="true">
@@ -560,7 +560,7 @@ export default function CodeSwitchPage() {
             <div className="voicebridge-transcribe-row">
               <div>
                 <strong>Benchmark-safe mode</strong>
-                <span>One source audio ? shared normalization ? comparable provider outputs.</span>
+                <span>One source audio | shared normalization | comparable provider outputs.</span>
               </div>
               <Button
                 variant="primary"
@@ -571,7 +571,7 @@ export default function CodeSwitchPage() {
               >
                 <VoiceBridgeIcon name="arrow" size={19} />
                 {isSubmitting
-                  ? "Benchmarking models?"
+                  ? "Benchmarking models..."
                   : "Run VoiceBridge Benchmark"}
               </Button>
             </div>
@@ -680,7 +680,7 @@ export default function CodeSwitchPage() {
       <footer className="voicebridge-footer">
         <div className="voicebridge-shell">
           <div><img src="/tengacion_logo_64.png" alt="" /><span>Tengacion VoiceBridge</span></div>
-          <p>Phase 3 · Sahara v2.5 + voicebridge-nwer-v1</p>
+          <p>Phase 3 | Sahara v2.5 + GPT-Transcribe + voicebridge-nwer-v1</p>
         </div>
       </footer>
     </main>

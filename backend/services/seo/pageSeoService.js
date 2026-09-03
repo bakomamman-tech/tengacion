@@ -365,7 +365,7 @@ const NOINDEX_PAGE_CONFIG = [
     patterns: ["/codeswitch"],
     title: "Tengacion VoiceBridge | African Code-Switching Voice Intelligence",
     description:
-      "Phase 1 of Tengacion VoiceBridge: deterministic transcript normalization and normalized WER foundations for African digital-commerce support.",
+      "Phase 2 of Tengacion VoiceBridge: Sahara transcription with deterministic normalization and normalized WER for African digital-commerce support.",
     canonicalPath: "/codeswitch",
   },
   {

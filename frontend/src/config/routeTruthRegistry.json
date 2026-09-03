@@ -26,11 +26,11 @@
       "access": "public",
       "canonicalPath": "/codeswitch",
       "appPaths": ["/codeswitch"],
-      "dataAuthority": "Provider-neutral Phase 1 normalization and word-error-rate APIs; no external ASR calls or persisted benchmark records.",
+      "dataAuthority": "Sahara/Intron synchronous STT plus versioned local normalization and word-error-rate APIs; uploaded audio and benchmark results are not persisted.",
       "ownerRole": "AI Products Owner",
-      "kpi": "Reproducible normalized WER evaluation readiness",
+      "kpi": "Reproducible Sahara normalized-WER evaluation readiness",
       "featureFlag": null,
-      "testEvidence": ["backend/tests/codeswitchService.test.js", "backend/tests/codeswitchRoutes.test.js", "frontend/src/pages/__tests__/CodeSwitchPage.test.jsx"]
+      "testEvidence": ["backend/tests/codeswitchService.test.js", "backend/tests/codeswitchRoutes.test.js", "backend/tests/saharaService.test.js", "backend/tests/codeswitchAudioUpload.test.js", "frontend/src/pages/__tests__/CodeSwitchPage.test.jsx"]
     },
     {
       "id": "public_marketing",

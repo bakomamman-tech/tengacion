@@ -1,13 +1,22 @@
 const {
   MAX_TRANSCRIPT_CHARS,
+  NORMALIZATION_VERSION,
   calculateWordErrorRate,
   normalizeTranscript,
 } = require("../services/codeswitchService");
+const {
+  SaharaServiceError,
+  transcribeWithSahara,
+} = require("../services/saharaService");
 
 const SERVICE_NAME = "Tengacion VoiceBridge";
-const PHASE = 1;
-const PHASE_ONE_MESSAGE =
-  "External ASR and agent integrations are not enabled in Phase 1.";
+const PHASE = 2;
+const PHASE_TWO_MESSAGE =
+  "Multi-model benchmarking and downstream agent integrations are not enabled in Phase 2.";
+const LANGUAGE_PAIR_TO_SAHARA_LANGUAGE = Object.freeze({
+  "ha-en": "ha",
+  "pcm-en": "pcm",
+});
 
 const validateStringField = (body, field) => {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -41,6 +50,7 @@ const normalize = (req, res) => {
   return res.json({
     original: req.body.text,
     normalized: normalizeTranscript(req.body.text),
+    normalizationVersion: NORMALIZATION_VERSION,
   });
 };
 
@@ -67,21 +77,95 @@ const wer = (req, res) => {
   }
 };
 
-const phaseOnePlaceholder = (endpoint) => (_req, res) =>
+const transcribe = async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  const languagePair =
+    typeof req.body?.languagePair === "string" ? req.body.languagePair.trim() : "";
+  const languageCode = LANGUAGE_PAIR_TO_SAHARA_LANGUAGE[languagePair];
+
+  if (!languageCode) {
+    return res.status(400).json({
+      error: {
+        code: "UNSUPPORTED_LANGUAGE_PAIR",
+        message: "languagePair must be one of: ha-en, pcm-en.",
+      },
+    });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({
+      error: {
+        code: "AUDIO_REQUIRED",
+        message: "An audio file is required in the audio field.",
+      },
+    });
+  }
+
+  try {
+    const result = await transcribeWithSahara({
+      buffer: req.file.buffer,
+      filename: req.file.originalname,
+      mimeType: req.file.mimetype,
+      languageCode,
+    });
+
+    return res.json({
+      ok: true,
+      ...result,
+      languagePair,
+    });
+  } catch (error) {
+    const safeError = error instanceof SaharaServiceError
+      ? error
+      : new SaharaServiceError(
+          "SAHARA_REQUEST_FAILED",
+          "Sahara transcription failed unexpectedly. Try again later."
+        );
+
+    console.warn("[voicebridge:sahara] transcription failed", {
+      requestId: req.requestId || "",
+      code: safeError.code,
+      statusCode: safeError.statusCode,
+      upstreamStatus: safeError.upstreamStatus,
+      providerFileId: safeError.providerFileId,
+      languagePair,
+      extension: req.codeswitchAudioFormat?.extension || "",
+      fileSize: Number(req.file.size || 0),
+    });
+
+    if (safeError.retryAfterSeconds !== null) {
+      res.set("Retry-After", String(safeError.retryAfterSeconds));
+    }
+
+    return res.status(safeError.statusCode || 502).json({
+      ok: false,
+      error: {
+        code: safeError.code,
+        message: safeError.message,
+      },
+      ...(safeError.retryAfterSeconds !== null
+        ? { retryAfterSeconds: safeError.retryAfterSeconds }
+        : {}),
+    });
+  }
+};
+
+const phaseTwoPlaceholder = (endpoint) => (_req, res) =>
   res.status(501).json({
     ok: false,
     service: SERVICE_NAME,
     phase: PHASE,
     endpoint,
     integrationEnabled: false,
-    message: PHASE_ONE_MESSAGE,
+    message: PHASE_TWO_MESSAGE,
   });
 
 module.exports = {
-  benchmark: phaseOnePlaceholder("benchmark"),
+  benchmark: phaseTwoPlaceholder("benchmark"),
   health,
-  intent: phaseOnePlaceholder("intent"),
+  intent: phaseTwoPlaceholder("intent"),
   normalize,
-  transcribe: phaseOnePlaceholder("transcribe"),
+  transcribe,
   wer,
+  LANGUAGE_PAIR_TO_SAHARA_LANGUAGE,
 };

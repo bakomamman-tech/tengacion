@@ -1,5 +1,8 @@
 # Tengacion VoiceBridge — Phase 1
 
+> Historical baseline: the Sahara-only Phase 2 integration is documented in
+> [`voicebridge-phase-2.md`](./voicebridge-phase-2.md).
+
 VoiceBridge Phase 1 provides a provider-neutral transcript normalization engine,
 normalized word error rate (WER), API scaffolding, and a responsive evaluation
 workspace. Sahara, Gemini, and OpenAI are deliberately not connected in this phase.

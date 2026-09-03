@@ -1,5 +1,6 @@
 const MAX_TRANSCRIPT_CHARS = 20000;
 const MAX_TRANSCRIPT_WORDS = 1000;
+const NORMALIZATION_VERSION = "voicebridge-nwer-v1";
 const UNDEFINED_WER_REASON =
   "Normalized reference contains no words; WER requires at least one reference word.";
 
@@ -122,6 +123,7 @@ const calculateWordErrorRate = ({ reference, hypothesis }) => {
     referenceWordCount,
     normalizedReference,
     normalizedHypothesis,
+    normalizationVersion: NORMALIZATION_VERSION,
     ...(referenceWordCount === 0
       ? { undefinedReason: UNDEFINED_WER_REASON }
       : {}),
@@ -131,6 +133,7 @@ const calculateWordErrorRate = ({ reference, hypothesis }) => {
 module.exports = {
   MAX_TRANSCRIPT_CHARS,
   MAX_TRANSCRIPT_WORDS,
+  NORMALIZATION_VERSION,
   UNDEFINED_WER_REASON,
   calculateWordErrorRate,
   normalizeTranscript,

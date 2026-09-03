@@ -74,4 +74,46 @@ describe("environment config loading", () => {
       path.resolve(backendDir, ".env"),
     ]);
   });
+
+  test("loads Sahara server settings and redacts the API key from log data", () => {
+    const originalEnv = { ...process.env };
+    const secret = "sahara-test-secret-never-log";
+    jest.resetModules();
+
+    process.env = {
+      ...originalEnv,
+      NODE_ENV: "test",
+      SAHARA_API_KEY: secret,
+      SAHARA_REQUEST_TIMEOUT_MS: "120000",
+      SAHARA_POLL_TIMEOUT_MS: "24000",
+      SAHARA_POLL_DELAY_MS: "250",
+      SAHARA_POLL_MAX_ATTEMPTS: "7",
+    };
+
+    try {
+      const { config, redactSecretsForLog } = require("../config/env");
+
+      expect(config.sahara).toEqual({
+        apiKey: secret,
+        apiKeyConfigured: true,
+        requestTimeoutMs: 120000,
+        pollTimeoutMs: 24000,
+        pollDelayMs: 250,
+        pollMaxAttempts: 7,
+      });
+      const safeLog = redactSecretsForLog({
+        SAHARA_API_KEY: secret,
+        nested: { saharaApiKey: secret },
+      });
+      expect(safeLog).toEqual({
+        saharaApiKeyConfigured: true,
+        nested: { saharaApiKeyConfigured: true },
+      });
+      expect(JSON.stringify(safeLog)).not.toContain(secret);
+    } finally {
+      process.env = originalEnv;
+      jest.resetModules();
+      require("../../apps/api/config/env");
+    }
+  });
 });

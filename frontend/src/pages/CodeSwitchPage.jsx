@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import SeoHead from "../components/seo/SeoHead";
 import Button from "../components/ui/Button";
+import {
+  calculateCodeswitchWer,
+  transcribeWithSahara,
+} from "../services/codeswitchApi";
 
 import "./codeswitch.css";
 
 const LANGUAGE_PAIRS = [
-  "Hausa ↔ English",
-  "Nigerian Pidgin ↔ English",
+  { value: "ha-en", label: "Hausa ↔ English", code: "ha" },
+  { value: "pcm-en", label: "Nigerian Pidgin ↔ English", code: "pcm" },
 ];
 
-const MODEL_FIELDS = [
+const PENDING_MODEL_FIELDS = [
   "Original transcript",
   "Normalized transcript",
   "Normalized WER",
@@ -21,8 +25,7 @@ const MODEL_FIELDS = [
   "Latency",
 ];
 
-const MODELS = [
-  { name: "Sahara v2.5", label: "SA", tone: "sand" },
+const PENDING_MODELS = [
   { name: "Gemini", label: "GE", tone: "blue" },
   { name: "OpenAI", label: "OA", tone: "green" },
 ];
@@ -45,7 +48,7 @@ const SUMMARY_FIELDS = [
 
 const METHODOLOGY = [
   "The exact same source audio will be evaluated across every ASR model.",
-  "Every transcript will use the same deterministic normalization function.",
+  "Every transcript uses the voicebridge-nwer-v1 deterministic normalization policy.",
   "Normalized word error rate is the primary transcription benchmark.",
   "Downstream intent and task performance will be evaluated separately.",
 ];
@@ -76,15 +79,17 @@ function VoiceBridgeIcon({ name, size = 24 }) {
         <path d="m8 9 2 2 4-4M8 16h8" />
       </>
     ),
-    chart: (
-      <>
-        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
-      </>
-    ),
+    chart: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
     methodology: (
       <>
         <circle cx="12" cy="12" r="9" />
         <path d="M12 11v5M12 8h.01" />
+      </>
+    ),
+    shield: (
+      <>
+        <path d="M12 3 5 6v5c0 4.7 2.9 8.1 7 10 4.1-1.9 7-5.3 7-10V6l-7-3Z" />
+        <path d="m9 12 2 2 4-4" />
       </>
     ),
     arrow: <path d="m5 12 14 0m-5-5 5 5-5 5" />,
@@ -124,7 +129,7 @@ function SectionHeading({ number, icon, eyebrow, title, detail }) {
   );
 }
 
-function ModelCard({ model }) {
+function PendingModelCard({ model }) {
   return (
     <article className={`voicebridge-model-card voicebridge-model-card--${model.tone}`}>
       <header>
@@ -135,13 +140,13 @@ function ModelCard({ model }) {
           <h3>{model.name}</h3>
           <p>ASR evaluation model</p>
         </div>
-        <span className="voicebridge-status">Awaiting Phase 2/3</span>
+        <span className="voicebridge-status">Not integrated</span>
       </header>
       <dl>
-        {MODEL_FIELDS.map((field) => (
+        {PENDING_MODEL_FIELDS.map((field) => (
           <div key={field}>
             <dt>{field}</dt>
-            <dd aria-label={`${model.name} ${field}: awaiting integration`}>—</dd>
+            <dd aria-label={`${model.name} ${field}: not integrated`}>—</dd>
           </div>
         ))}
       </dl>
@@ -149,19 +154,180 @@ function ModelCard({ model }) {
   );
 }
 
+const displayMetric = (value) =>
+  Number.isFinite(value) ? String(value) : "—";
+
+function SaharaModelCard({ result, evaluation, languagePairLabel, isLoading }) {
+  const werDisplay = evaluation
+    ? evaluation.wer === null
+      ? "Undefined"
+      : Number.isFinite(evaluation.wer)
+        ? evaluation.wer.toFixed(3)
+        : "Unavailable"
+    : result
+      ? "Reference transcript required for WER."
+      : "—";
+
+  return (
+    <article
+      className="voicebridge-model-card voicebridge-model-card--sand voicebridge-model-card--active"
+      data-testid="sahara-model-card"
+    >
+      <header>
+        <span className="voicebridge-model-card__mark" aria-hidden="true">SA</span>
+        <div>
+          <h3>Sahara v2.5</h3>
+          <p>Intron synchronous transcription</p>
+        </div>
+        <span className={`voicebridge-status${result ? " is-ready" : ""}`}>
+          {isLoading ? "Transcribing" : result ? "Live result" : "Ready for Phase 2"}
+        </span>
+      </header>
+      <dl>
+        <div><dt>Language pair</dt><dd>{result ? languagePairLabel : "—"}</dd></div>
+        <div className="voicebridge-model-card__text-row">
+          <dt>Original transcript</dt>
+          <dd>{result ? result.transcript || "No speech recognized" : "—"}</dd>
+        </div>
+        <div className="voicebridge-model-card__text-row">
+          <dt>Normalized transcript</dt>
+          <dd>{result ? result.normalizedTranscript || "No speech recognized" : "—"}</dd>
+        </div>
+        <div><dt>Normalization version</dt><dd>{result?.normalizationVersion || "voicebridge-nwer-v1"}</dd></div>
+        <div><dt>Normalized WER</dt><dd>{werDisplay}</dd></div>
+        <div><dt>Substitutions</dt><dd>{displayMetric(evaluation?.substitutions)}</dd></div>
+        <div><dt>Deletions</dt><dd>{displayMetric(evaluation?.deletions)}</dd></div>
+        <div><dt>Insertions</dt><dd>{displayMetric(evaluation?.insertions)}</dd></div>
+        <div>
+          <dt>Latency</dt>
+          <dd>
+            {result
+              ? Number.isFinite(result.latencyMs)
+                ? `${result.latencyMs.toLocaleString()} ms`
+                : "Not reported"
+              : "—"}
+          </dd>
+        </div>
+        <div>
+          <dt>Processed duration</dt>
+          <dd>
+            {result
+              ? Number.isFinite(result.processedAudioDurationSeconds)
+                ? `${result.processedAudioDurationSeconds} s`
+                : "Not reported"
+              : "—"}
+          </dd>
+        </div>
+        <div><dt>Transcription status</dt><dd>{result?.processingStatus || "—"}</dd></div>
+      </dl>
+    </article>
+  );
+}
+
 export default function CodeSwitchPage() {
-  const [languagePair, setLanguagePair] = useState(LANGUAGE_PAIRS[0]);
+  const [languagePair, setLanguagePair] = useState(LANGUAGE_PAIRS[0].value);
   const [audioFile, setAudioFile] = useState(null);
+  const [referenceTranscript, setReferenceTranscript] = useState("");
+  const [saharaResult, setSaharaResult] = useState(null);
+  const [werResult, setWerResult] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const activeRequestRef = useRef(null);
+
+  const selectedLanguage = useMemo(
+    () => LANGUAGE_PAIRS.find((pair) => pair.value === languagePair) || LANGUAGE_PAIRS[0],
+    [languagePair]
+  );
+
+  useEffect(() => {
+    const requestRef = activeRequestRef;
+    return () => requestRef.current?.abort();
+  }, []);
+
+  const cancelActiveRequest = () => {
+    activeRequestRef.current?.abort();
+    activeRequestRef.current = null;
+    setIsSubmitting(false);
+  };
+
+  const resetResults = () => {
+    setSaharaResult(null);
+    setWerResult(null);
+    setErrorMessage("");
+  };
 
   const handleAudioSelection = (event) => {
+    cancelActiveRequest();
     setAudioFile(event.target.files?.[0] || null);
+    resetResults();
+  };
+
+  const handleLanguageChange = (event) => {
+    cancelActiveRequest();
+    setLanguagePair(event.target.value);
+    resetResults();
+  };
+
+  const handleTranscribe = async () => {
+    if (!audioFile || isSubmitting) {
+      return;
+    }
+
+    activeRequestRef.current?.abort();
+    const controller = new AbortController();
+    activeRequestRef.current = controller;
+    setIsSubmitting(true);
+    resetResults();
+
+    try {
+      const transcription = await transcribeWithSahara({
+        audio: audioFile,
+        languagePair,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) {
+        return;
+      }
+      setSaharaResult(transcription);
+
+      if (referenceTranscript.trim()) {
+        try {
+          const evaluation = await calculateCodeswitchWer({
+            reference: referenceTranscript,
+            hypothesis: transcription.transcript,
+            signal: controller.signal,
+          });
+          if (!controller.signal.aborted) {
+            setWerResult(evaluation);
+          }
+        } catch (evaluationError) {
+          if (evaluationError?.name !== "AbortError") {
+            setErrorMessage(
+              `Transcription completed, but WER evaluation failed: ${evaluationError.message}`
+            );
+          }
+        }
+      }
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        const retryHint = Number.isFinite(error?.retryAfterSeconds)
+          ? ` Try again in ${error.retryAfterSeconds} seconds.`
+          : "";
+        setErrorMessage(`${error?.message || "Sahara transcription failed."}${retryHint}`);
+      }
+    } finally {
+      if (activeRequestRef.current === controller) {
+        activeRequestRef.current = null;
+        setIsSubmitting(false);
+      }
+    }
   };
 
   return (
     <main className="voicebridge-page">
       <SeoHead
         title="Tengacion VoiceBridge | African Code-Switching Voice Intelligence"
-        description="Phase 1 of Tengacion VoiceBridge: deterministic transcript normalization and normalized WER foundations for African digital-commerce support."
+        description="Phase 2 of Tengacion VoiceBridge adds benchmark-safe Sahara v2.5 transcription for Hausa and Nigerian Pidgin code-switching evaluation."
         canonical="/codeswitch"
         robots="noindex,follow"
       />
@@ -174,7 +340,7 @@ export default function CodeSwitchPage() {
           </Link>
           <span className="voicebridge-phase-pill">
             <i aria-hidden="true" />
-            Phase 1 · Evaluation foundation
+            Phase 2 · Sahara transcription
           </span>
         </div>
       </header>
@@ -188,18 +354,18 @@ export default function CodeSwitchPage() {
               Code-Switching Voice Intelligence for African Digital Commerce
             </p>
             <p className="voicebridge-hero__summary">
-              A fair, shared evaluation layer for Hausa, Nigerian Pidgin, and
-              English customer-support speech—before any provider is connected.
+              Transcribe authorized Hausa–English and Nigerian Pidgin–English
+              recordings with Sahara v2.5, then evaluate them with one shared metric.
             </p>
             <a className="voicebridge-hero__link" href="#voice-assistant">
-              Explore the evaluation workspace
+              Open the Sahara workspace
               <VoiceBridgeIcon name="arrow" size={19} />
             </a>
           </div>
 
-          <div className="voicebridge-signal" aria-label="VoiceBridge Phase 1 signal preview">
+          <div className="voicebridge-signal" aria-label="VoiceBridge Sahara signal preview">
             <div className="voicebridge-signal__topline">
-              <span>Voice input</span>
+              <span>Sahara v2.5</span>
               <span><i aria-hidden="true" /> Ready for audio</span>
             </div>
             <div className="voicebridge-wave" aria-hidden="true">
@@ -210,16 +376,16 @@ export default function CodeSwitchPage() {
               )}
             </div>
             <div className="voicebridge-signal__route">
-              <span>HA</span>
+              <span>{selectedLanguage.code.toUpperCase()}</span>
               <i />
-              <strong>Shared normalization</strong>
+              <strong>voicebridge-nwer-v1</strong>
               <i />
               <span>EN</span>
             </div>
             <div className="voicebridge-signal__footer">
               <span>One source</span>
-              <span>Three models</span>
-              <span>One fair metric</span>
+              <span>Raw ASR mode</span>
+              <span>Shared normalization</span>
             </div>
           </div>
         </div>
@@ -231,8 +397,8 @@ export default function CodeSwitchPage() {
             number="01"
             icon="microphone"
             eyebrow="Voice assistant"
-            title="Start with one source of truth"
-            detail="Stage an audio sample and select the language pair. Audio remains local in Phase 1."
+            title="Transcribe with Sahara"
+            detail="Upload one authorized recording up to 25MB and 120 seconds, then optionally score it against a human reference."
           />
 
           <div className="voicebridge-input-panel">
@@ -243,10 +409,11 @@ export default function CodeSwitchPage() {
                   <select
                     id="voicebridge-language"
                     value={languagePair}
-                    onChange={(event) => setLanguagePair(event.target.value)}
+                    disabled={isSubmitting}
+                    onChange={handleLanguageChange}
                   >
                     {LANGUAGE_PAIRS.map((pair) => (
-                      <option key={pair} value={pair}>{pair}</option>
+                      <option key={pair.value} value={pair.value}>{pair.label}</option>
                     ))}
                   </select>
                   <span aria-hidden="true">⌄</span>
@@ -254,7 +421,7 @@ export default function CodeSwitchPage() {
               </div>
 
               <div className="voicebridge-audio-actions">
-                <Button variant="primary" size="lg" disabled title="Recording arrives in a later phase">
+                <Button variant="primary" size="lg" disabled title="Browser recording is not enabled yet">
                   <VoiceBridgeIcon name="microphone" size={20} />
                   Record audio
                 </Button>
@@ -263,12 +430,31 @@ export default function CodeSwitchPage() {
                   <span>Upload audio</span>
                   <input
                     type="file"
-                    accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm"
+                    accept="audio/*,video/mp4,video/webm,.wav,.mp3,.mp4,.m4a,.ogg,.webm,.flac"
                     aria-label="Upload audio"
+                    disabled={isSubmitting}
                     onChange={handleAudioSelection}
                   />
                 </label>
               </div>
+            </div>
+
+            <div className="voicebridge-reference-field">
+              <label htmlFor="voicebridge-reference">
+                Reference transcript <span>Optional · enables normalized WER</span>
+              </label>
+              <textarea
+                id="voicebridge-reference"
+                value={referenceTranscript}
+                disabled={isSubmitting}
+                maxLength={20000}
+                rows={3}
+                placeholder="Paste the human-verified transcript here before transcribing…"
+                onChange={(event) => {
+                  setReferenceTranscript(event.target.value);
+                  setWerResult(null);
+                }}
+              />
             </div>
 
             <div className="voicebridge-file-state" aria-live="polite">
@@ -276,15 +462,45 @@ export default function CodeSwitchPage() {
                 <VoiceBridgeIcon name={audioFile ? "check" : "upload"} size={21} />
               </span>
               <div>
-                <strong>{audioFile ? audioFile.name : "No audio staged yet"}</strong>
+                <strong>{audioFile ? audioFile.name : "No audio selected"}</strong>
                 <p>
                   {audioFile
-                    ? "Staged locally—no upload or transcription occurs in Phase 1."
-                    : "WAV, MP3, M4A, OGG, or WebM · External transcription is not enabled."}
+                    ? `${(audioFile.size / (1024 * 1024)).toFixed(2)} MB · Ready for secure in-memory transfer.`
+                    : "WAV, MP3, MP4, M4A, OGG, WebM, or FLAC · Maximum 25MB."}
                 </p>
               </div>
-              <span className="voicebridge-file-state__pair">{languagePair}</span>
+              <span className="voicebridge-file-state__pair">{selectedLanguage.label}</span>
             </div>
+
+            <div className="voicebridge-privacy-note">
+              <span><VoiceBridgeIcon name="shield" size={20} /></span>
+              <p>
+                Audio is sent to Sahara/Intron for transcription. VoiceBridge does not
+                intentionally persist uploaded audio in this prototype. Avoid sensitive
+                or private recordings unless you have authorization.
+              </p>
+            </div>
+
+            <div className="voicebridge-transcribe-row">
+              <div>
+                <strong>Benchmark-safe mode</strong>
+                <span>LLM transcript corrections are disabled.</span>
+              </div>
+              <Button
+                variant="primary"
+                size="lg"
+                loading={isSubmitting}
+                disabled={!audioFile}
+                onClick={handleTranscribe}
+              >
+                <VoiceBridgeIcon name="arrow" size={19} />
+                {isSubmitting ? "Transcribing with Sahara…" : "Transcribe with Sahara"}
+              </Button>
+            </div>
+
+            {errorMessage ? (
+              <div className="voicebridge-error" role="alert">{errorMessage}</div>
+            ) : null}
           </div>
         </section>
 
@@ -294,10 +510,18 @@ export default function CodeSwitchPage() {
             icon="compare"
             eyebrow="Model comparison"
             title="One benchmark, side by side"
-            detail="Provider connections and live transcript results begin in Phase 2/3."
+            detail="Sahara is live in Phase 2. Gemini and OpenAI remain deliberately unconnected."
           />
           <div className="voicebridge-model-grid">
-            {MODELS.map((model) => <ModelCard key={model.name} model={model} />)}
+            <SaharaModelCard
+              result={saharaResult}
+              evaluation={werResult}
+              languagePairLabel={selectedLanguage.label}
+              isLoading={isSubmitting}
+            />
+            {PENDING_MODELS.map((model) => (
+              <PendingModelCard key={model.name} model={model} />
+            ))}
           </div>
         </section>
 
@@ -308,20 +532,15 @@ export default function CodeSwitchPage() {
               icon="task"
               eyebrow="Downstream task"
               title="From speech to resolution"
-              detail="Intent and task-success evaluation stays separate from transcription accuracy."
+              detail="Intent and task-success evaluation remains outside Phase 2."
             />
             <article className="voicebridge-task-card">
               <div className="voicebridge-task-card__flow" aria-hidden="true">
-                <span>Speech</span><i />
-                <span>Intent</span><i />
-                <span>Action</span>
+                <span>Speech</span><i /><span>Intent</span><i /><span>Action</span>
               </div>
               <dl>
                 {DOWNSTREAM_FIELDS.map((field) => (
-                  <div key={field}>
-                    <dt>{field}</dt>
-                    <dd>Awaiting future evaluation</dd>
-                  </div>
+                  <div key={field}><dt>{field}</dt><dd>Awaiting future evaluation</dd></div>
                 ))}
               </dl>
             </article>
@@ -333,14 +552,12 @@ export default function CodeSwitchPage() {
               icon="chart"
               eyebrow="Benchmark summary"
               title="The scorecard"
-              detail="Aggregate results will populate after equivalent model runs are available."
+              detail="Aggregate reporting remains pending until equivalent multi-model runs exist."
             />
             <div className="voicebridge-summary-grid">
               {SUMMARY_FIELDS.map((metric) => (
                 <article key={metric.label}>
-                  <span>{metric.shortLabel}</span>
-                  <strong>—</strong>
-                  <p>{metric.label}</p>
+                  <span>{metric.shortLabel}</span><strong>—</strong><p>{metric.label}</p>
                 </article>
               ))}
             </div>
@@ -353,16 +570,13 @@ export default function CodeSwitchPage() {
             <p>05 · Methodology</p>
             <h2>Designed for a fair comparison</h2>
             <p>
-              Provider-independent evaluation keeps the benchmark focused on
-              what customers actually said—not on vendor-specific cleanup.
+              Sahara receives raw benchmark-mode audio without LLM transcript
+              correction, and every result passes through the shared evaluation layer.
             </p>
           </div>
           <ol>
             {METHODOLOGY.map((item, index) => (
-              <li key={item}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <p>{item}</p>
-              </li>
+              <li key={item}><span>{String(index + 1).padStart(2, "0")}</span><p>{item}</p></li>
             ))}
           </ol>
         </section>
@@ -370,11 +584,8 @@ export default function CodeSwitchPage() {
 
       <footer className="voicebridge-footer">
         <div className="voicebridge-shell">
-          <div>
-            <img src="/tengacion_logo_64.png" alt="" />
-            <span>Tengacion VoiceBridge</span>
-          </div>
-          <p>Phase 1 · Deterministic normalization and normalized WER foundation</p>
+          <div><img src="/tengacion_logo_64.png" alt="" /><span>Tengacion VoiceBridge</span></div>
+          <p>Phase 2 · Sahara v2.5 + voicebridge-nwer-v1</p>
         </div>
       </footer>
     </main>

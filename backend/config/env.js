@@ -63,6 +63,8 @@ const parseInteger = (value, fallback = NaN, { min = Number.MIN_SAFE_INTEGER } =
 const secretLogKeyLabels = new Map([
   ["OPENAI_API_KEY", "apiKeyConfigured"],
   ["openAiApiKey", "apiKeyConfigured"],
+  ["SAHARA_API_KEY", "saharaApiKeyConfigured"],
+  ["saharaApiKey", "saharaApiKeyConfigured"],
   ["apiKey", "apiKeyConfigured"],
   ["PAYSTACK_SECRET_KEY", "paystackSecretConfigured"],
   ["paystackSecretKey", "paystackSecretConfigured"],
@@ -409,6 +411,27 @@ const emailConfigured = Boolean(smtpHost && smtpPort && smtpUser && smtpPass);
 const requireEmailOtp = toText(process.env.REQUIRE_EMAIL_OTP) || "false";
 const assistantEnabledInput = toText(process.env.ASSISTANT_ENABLED);
 const openAiApiKey = toText(process.env.OPENAI_API_KEY);
+const saharaApiKey = toText(process.env.SAHARA_API_KEY);
+const saharaRequestTimeoutMs = parseInteger(
+  process.env.SAHARA_REQUEST_TIMEOUT_MS,
+  135000,
+  { min: 1000 }
+);
+const saharaPollTimeoutMs = parseInteger(
+  process.env.SAHARA_POLL_TIMEOUT_MS,
+  30000,
+  { min: 1000 }
+);
+const saharaPollDelayMs = parseInteger(
+  process.env.SAHARA_POLL_DELAY_MS,
+  1500,
+  { min: 100 }
+);
+const saharaPollMaxAttempts = parseInteger(
+  process.env.SAHARA_POLL_MAX_ATTEMPTS,
+  12,
+  { min: 1 }
+);
 const configuredOpenAiModel = toText(process.env.OPENAI_MODEL);
 const openAiModel = configuredOpenAiModel || "gpt-5.6-terra";
 const openAiModelPrimary = toText(process.env.OPENAI_MODEL_PRIMARY) || openAiModel;
@@ -518,6 +541,15 @@ const akuso = {
   apiKeyConfigured: hasOpenAI,
 };
 
+const sahara = {
+  apiKey: saharaApiKey,
+  apiKeyConfigured: Boolean(saharaApiKey),
+  requestTimeoutMs: saharaRequestTimeoutMs,
+  pollTimeoutMs: saharaPollTimeoutMs,
+  pollDelayMs: saharaPollDelayMs,
+  pollMaxAttempts: saharaPollMaxAttempts,
+};
+
 const artistMusicTax = {
   enabled: artistMusicTaxEnabled,
   rateBps: artistMusicTaxRateBps,
@@ -603,6 +635,8 @@ const config = {
   openAiModelReasoning,
   openAiModelTranscription,
   hasOpenAI,
+  saharaApiKey,
+  sahara,
   assistantEnabled,
   assistantAbuseWindowMs,
   assistantThrottleDurationMs,
@@ -680,6 +714,11 @@ const config = {
   SMTP_USER: smtpUser,
   SMTP_PASS: smtpPass,
   OPENAI_API_KEY: openAiApiKey,
+  SAHARA_API_KEY: saharaApiKey,
+  SAHARA_REQUEST_TIMEOUT_MS: saharaRequestTimeoutMs,
+  SAHARA_POLL_TIMEOUT_MS: saharaPollTimeoutMs,
+  SAHARA_POLL_DELAY_MS: saharaPollDelayMs,
+  SAHARA_POLL_MAX_ATTEMPTS: saharaPollMaxAttempts,
   OPENAI_MODEL: openAiModel,
   OPENAI_MODEL_PRIMARY: openAiModelPrimary,
   OPENAI_MODEL_FAST: openAiModelFast,

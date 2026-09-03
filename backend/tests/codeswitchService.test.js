@@ -1,4 +1,5 @@
 const {
+  NORMALIZATION_VERSION,
   UNDEFINED_WER_REASON,
   calculateWordErrorRate,
   normalizeTranscript,
@@ -51,6 +52,7 @@ describe("VoiceBridge normalized word error rate", () => {
       referenceWordCount: 4,
       normalizedReference: "please check my order",
       normalizedHypothesis: "please check my order",
+      normalizationVersion: NORMALIZATION_VERSION,
     });
   });
 

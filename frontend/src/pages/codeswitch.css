@@ -387,6 +387,50 @@
   padding: 29px;
 }
 
+.voicebridge-reference-field {
+  padding: 0 29px 25px;
+}
+
+.voicebridge-reference-field > label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 9px;
+  color: var(--vb-muted);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.voicebridge-reference-field > label span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.voicebridge-reference-field textarea {
+  width: 100%;
+  min-height: 86px;
+  resize: vertical;
+  padding: 13px 14px;
+  border: 1px solid var(--vb-border);
+  border-radius: 14px;
+  outline: none;
+  background: var(--vb-soft);
+  color: var(--vb-ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.voicebridge-reference-field textarea:focus-visible {
+  border-color: var(--brand, #2a6f4f);
+  outline: 3px solid color-mix(in srgb, var(--brand, #2a6f4f) 18%, transparent);
+}
+
 .voicebridge-field > label {
   display: block;
   margin-bottom: 9px;
@@ -520,6 +564,67 @@
   white-space: nowrap;
 }
 
+.voicebridge-privacy-note {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 18px 29px;
+  border-top: 1px solid var(--vb-border);
+  background: color-mix(in srgb, #b77a32 7%, var(--vb-surface));
+}
+
+.voicebridge-privacy-note > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: color-mix(in srgb, #b77a32 14%, transparent);
+  color: color-mix(in srgb, #b77a32 82%, var(--vb-ink));
+}
+
+.voicebridge-privacy-note p {
+  margin: 0;
+  color: var(--vb-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.voicebridge-transcribe-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 19px 29px;
+  border-top: 1px solid var(--vb-border);
+}
+
+.voicebridge-transcribe-row > div {
+  display: grid;
+  gap: 3px;
+}
+
+.voicebridge-transcribe-row strong {
+  font-size: 12px;
+}
+
+.voicebridge-transcribe-row span {
+  color: var(--vb-muted);
+  font-size: 10px;
+}
+
+.voicebridge-error {
+  margin: 0 29px 24px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, #bd3f3f 35%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, #bd3f3f 9%, var(--vb-surface));
+  color: color-mix(in srgb, #bd3f3f 78%, var(--vb-ink));
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .voicebridge-model-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -545,6 +650,10 @@
 
 .voicebridge-model-card--blue { --model-accent: #5b83d8; }
 .voicebridge-model-card--green { --model-accent: #3c9670; }
+
+.voicebridge-model-card--active {
+  box-shadow: 0 22px 56px color-mix(in srgb, var(--model-accent) 16%, transparent);
+}
 
 .voicebridge-model-card header {
   display: grid;
@@ -592,6 +701,11 @@
   text-transform: uppercase;
 }
 
+.voicebridge-status.is-ready {
+  background: color-mix(in srgb, #2a8a59 15%, transparent);
+  color: color-mix(in srgb, #2a8a59 82%, var(--vb-ink));
+}
+
 .voicebridge-model-card dl {
   margin-bottom: 0;
   padding: 8px 21px 14px;
@@ -608,6 +722,22 @@
 
 .voicebridge-model-card dl div:last-child {
   border-bottom: 0;
+}
+
+.voicebridge-model-card dl .voicebridge-model-card__text-row {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 7px;
+  padding-block: 12px;
+}
+
+.voicebridge-model-card__text-row dd {
+  max-width: 100%;
+  color: var(--vb-ink);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .voicebridge-model-card dt {
@@ -980,8 +1110,21 @@
   }
 
   .voicebridge-input-panel__controls,
-  .voicebridge-file-state {
+  .voicebridge-reference-field,
+  .voicebridge-file-state,
+  .voicebridge-privacy-note,
+  .voicebridge-transcribe-row {
     padding-inline: 18px;
+  }
+
+  .voicebridge-reference-field > label,
+  .voicebridge-transcribe-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .voicebridge-error {
+    margin-inline: 18px;
   }
 
   .voicebridge-audio-actions {

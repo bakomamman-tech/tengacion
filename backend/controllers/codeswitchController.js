@@ -8,6 +8,10 @@ const {
   SaharaServiceError,
   transcribeWithSahara,
 } = require("../services/saharaService");
+const {
+  OpenAiCodeswitchError,
+  transcribeWithOpenAI,
+} = require("../services/openAiCodeswitchService");
 
 const SERVICE_NAME = "Tengacion VoiceBridge";
 const PHASE = 2;
@@ -150,6 +154,209 @@ const transcribe = async (req, res) => {
   }
 };
 
+const transcribeOpenAI = async (req, res) => {
+  res.set("Cache-Control", "no-store");
+
+  const languagePair =
+    typeof req.body?.languagePair === "string"
+      ? req.body.languagePair.trim()
+      : "";
+
+  if (!LANGUAGE_PAIR_TO_SAHARA_LANGUAGE[languagePair]) {
+    return res.status(400).json({
+      error: {
+        code: "UNSUPPORTED_LANGUAGE_PAIR",
+        message: "languagePair must be one of: ha-en, pcm-en.",
+      },
+    });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({
+      error: {
+        code: "AUDIO_REQUIRED",
+        message: "An audio file is required in the audio field.",
+      },
+    });
+  }
+
+  try {
+    const result = await transcribeWithOpenAI({
+      buffer: req.file.buffer,
+      filename: req.file.originalname,
+      mimeType: req.file.mimetype,
+    });
+
+    return res.json({
+      ok: true,
+      ...result,
+      languagePair,
+    });
+  } catch (error) {
+    const safeError =
+      error instanceof OpenAiCodeswitchError
+        ? error
+        : new OpenAiCodeswitchError(
+            "OPENAI_REQUEST_FAILED",
+            "OpenAI transcription failed unexpectedly.",
+            502
+          );
+
+    console.warn("[voicebridge:openai] transcription failed", {
+      requestId: req.requestId || "",
+      code: safeError.code,
+      statusCode: safeError.statusCode,
+      upstreamStatus: safeError.upstreamStatus,
+      languagePair,
+      extension: req.codeswitchAudioFormat?.extension || "",
+      fileSize: Number(req.file?.size || 0),
+    });
+
+    return res.status(safeError.statusCode || 502).json({
+      ok: false,
+      error: {
+        code: safeError.code,
+        message: safeError.message,
+      },
+    });
+  }
+};
+const benchmark = async (req, res) => {
+  res.set("Cache-Control", "no-store");
+
+  const languagePair =
+    typeof req.body?.languagePair === "string"
+      ? req.body.languagePair.trim()
+      : "";
+
+  const languageCode = LANGUAGE_PAIR_TO_SAHARA_LANGUAGE[languagePair];
+
+  if (!languageCode) {
+    return res.status(400).json({
+      ok: false,
+      error: {
+        code: "UNSUPPORTED_LANGUAGE_PAIR",
+        message: "languagePair must be one of: ha-en, pcm-en.",
+      },
+    });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({
+      ok: false,
+      error: {
+        code: "AUDIO_REQUIRED",
+        message: "An audio file is required in the audio field.",
+      },
+    });
+  }
+
+  const referenceTranscript =
+    typeof req.body?.referenceTranscript === "string"
+      ? req.body.referenceTranscript
+      : "";
+
+  if (referenceTranscript.length > MAX_TRANSCRIPT_CHARS) {
+    return res.status(400).json({
+      ok: false,
+      error: {
+        code: "REFERENCE_TOO_LONG",
+        message: `referenceTranscript must not exceed ${MAX_TRANSCRIPT_CHARS} characters.`,
+      },
+    });
+  }
+
+  const audio = {
+    buffer: req.file.buffer,
+    filename: req.file.originalname,
+    mimeType: req.file.mimetype,
+  };
+
+  const providers = [
+    {
+      provider: "sahara",
+      execute: () =>
+        transcribeWithSahara({
+          ...audio,
+          languageCode,
+        }),
+    },
+    {
+      provider: "openai",
+      execute: () => transcribeWithOpenAI(audio),
+    },
+  ];
+
+  const settled = await Promise.allSettled(
+    providers.map((provider) => provider.execute())
+  );
+
+  const models = settled.map((entry, index) => {
+    const provider = providers[index].provider;
+
+    if (entry.status === "fulfilled") {
+      const result = entry.value;
+
+      let evaluation = null;
+
+      if (referenceTranscript.trim()) {
+        evaluation = calculateWordErrorRate({
+          reference: referenceTranscript,
+          hypothesis: result.transcript,
+        });
+      }
+
+      return {
+        ok: true,
+        ...result,
+        languagePair,
+        evaluation,
+      };
+    }
+
+    const error = entry.reason;
+
+    const isKnownError =
+      error instanceof SaharaServiceError ||
+      error instanceof OpenAiCodeswitchError;
+
+    console.warn("[voicebridge:benchmark] provider failed", {
+      requestId: req.requestId || "",
+      provider,
+      code: isKnownError ? error.code : "PROVIDER_FAILED",
+      statusCode: isKnownError ? error.statusCode : 502,
+      languagePair,
+      fileSize: Number(req.file?.size || 0),
+    });
+
+    return {
+      ok: false,
+      provider,
+      error: {
+        code: isKnownError ? error.code : "PROVIDER_FAILED",
+        message: isKnownError
+          ? error.message
+          : `${provider} transcription failed unexpectedly.`,
+      },
+    };
+  });
+
+  const successfulModels = models.filter((model) => model.ok).length;
+
+  return res.status(successfulModels > 0 ? 200 : 502).json({
+    ok: successfulModels > 0,
+    service: SERVICE_NAME,
+    phase: 3,
+    languagePair,
+    normalizationVersion: NORMALIZATION_VERSION,
+    benchmarkMode: true,
+    sameSourceAudio: true,
+    sourceAudioBytes: req.file.buffer.length,
+    successfulModels,
+    requestedModels: providers.length,
+    models,
+  });
+};
 const phaseTwoPlaceholder = (endpoint) => (_req, res) =>
   res.status(501).json({
     ok: false,
@@ -161,11 +368,12 @@ const phaseTwoPlaceholder = (endpoint) => (_req, res) =>
   });
 
 module.exports = {
-  benchmark: phaseTwoPlaceholder("benchmark"),
+  benchmark,
   health,
   intent: phaseTwoPlaceholder("intent"),
   normalize,
   transcribe,
+  transcribeOpenAI,
   wer,
   LANGUAGE_PAIR_TO_SAHARA_LANGUAGE,
 };

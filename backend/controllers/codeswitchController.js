@@ -8,6 +8,10 @@ const {
   analyzeCodeswitchIntent,
 } = require("../services/codeswitchIntentService");
 const {
+  CodeswitchActionError,
+  executeCodeswitchAction,
+} = require("../services/codeswitchActionService");
+const {
   SaharaServiceError,
   transcribeWithSahara,
 } = require("../services/saharaService");
@@ -165,6 +169,105 @@ const intent = (req, res) => {
           message: error.message,
         },
       });
+    }
+
+    throw error;
+  }
+};
+
+const action = async (req, res) => {
+  res.set("Cache-Control", "no-store");
+
+  const transcriptError =
+    validateStringField(
+      req.body,
+      "transcript"
+    );
+
+  if (transcriptError) {
+    return res.status(400).json({
+      ok: false,
+      error: {
+        code: "INVALID_TRANSCRIPT",
+        message: transcriptError,
+      },
+      moneyMovementPerformed: false,
+    });
+  }
+
+  const languagePair =
+    typeof req.body?.languagePair ===
+    "string"
+      ? req.body.languagePair.trim()
+      : "";
+
+  if (
+    !LANGUAGE_PAIR_TO_SAHARA_LANGUAGE[
+      languagePair
+    ]
+  ) {
+    return res.status(400).json({
+      ok: false,
+      error: {
+        code:
+          "UNSUPPORTED_LANGUAGE_PAIR",
+        message:
+          "languagePair must be one of: ha-en, pcm-en.",
+      },
+      moneyMovementPerformed: false,
+    });
+  }
+
+  try {
+    const result =
+      await executeCodeswitchAction({
+        transcript:
+          req.body.transcript,
+        languagePair,
+        requestId:
+          req.body?.requestId,
+      });
+
+    return res
+      .status(
+        result.idempotentReplay
+          ? 200
+          : 201
+      )
+      .json({
+        ok: true,
+        service: SERVICE_NAME,
+        phase: PHASE,
+        integrationEnabled: true,
+        ...result,
+      });
+  } catch (error) {
+    if (
+      error instanceof
+      CodeswitchActionError
+    ) {
+      return res
+        .status(error.statusCode)
+        .json({
+          ok: false,
+          service: SERVICE_NAME,
+          phase: PHASE,
+          integrationEnabled: true,
+          error: {
+            code: error.code,
+            message: error.message,
+          },
+          requestedAction:
+            error.analysis
+              ?.requestedAction ||
+            null,
+          actionPolicy:
+            error.analysis
+              ?.actionPolicy ||
+            null,
+          moneyMovementPerformed:
+            false,
+        });
     }
 
     throw error;
@@ -682,6 +785,7 @@ const benchmark = async (req, res) => {
   });
 };
 module.exports = {
+  action,
   benchmark,
   health,
   intent,

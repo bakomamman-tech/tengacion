@@ -21,6 +21,14 @@ jest.mock("../services/chirpCodeswitchService", () => {
   return { ...actual, transcribeWithChirp: jest.fn() };
 });
 
+jest.mock("../services/codeswitchActionService", () => {
+  const actual = jest.requireActual("../services/codeswitchActionService");
+  return {
+    ...actual,
+    executeCodeswitchAction: jest.fn(),
+  };
+});
+
 const errorHandler = require("../middleware/errorHandler");
 const codeswitchRoutes = require("../routes/codeswitch");
 const {
@@ -39,6 +47,11 @@ const {
 const {
   transcribeWithChirp,
 } = require("../services/chirpCodeswitchService");
+
+const {
+  CodeswitchActionError,
+  executeCodeswitchAction,
+} = require("../services/codeswitchActionService");
 
 const app = express();
 app.use(express.json());
@@ -112,6 +125,7 @@ describe("VoiceBridge CodeSwitch routes", () => {
     transcribeWithOpenAI.mockReset();
     transcribeWithWhisper.mockReset();
     transcribeWithChirp.mockReset();
+    executeCodeswitchAction.mockReset();
     jest.spyOn(console, "warn").mockImplementation(() => {});
   });
 
@@ -479,4 +493,267 @@ describe("VoiceBridge CodeSwitch routes", () => {
         "transcript must be a string.",
     });
   });
+
+  test("creates a safe payment verification case through the action API", async () => {
+    executeCodeswitchAction
+      .mockResolvedValueOnce({
+        actionVersion:
+          "voicebridge-action-v1",
+        taskSuccess: true,
+        safetySuccess: true,
+        intent:
+          "payment_confirmation_check",
+        requestedAction:
+          "check_payment_status",
+        executedAction:
+          "create_payment_verification_case",
+        case: {
+          caseId:
+            "VB-20260904-ABCDEF12",
+          recordId:
+            "66d8f0000000000000001234",
+          type:
+            "payment_verification",
+          status:
+            "queued_for_verification",
+          supportRecordStatus:
+            "open",
+          amount: 5000,
+          currency: "NGN",
+          timeReference:
+            "yesterday",
+          transactionReference:
+            null,
+        },
+        moneyMovementPerformed:
+          false,
+        idempotentReplay: false,
+        message:
+          "Payment verification case VB-20260904-ABCDEF12 created successfully.",
+      });
+
+    const response =
+      await request(app)
+        .post(
+          "/api/codeswitch/action"
+        )
+        .send({
+          languagePair: "ha-en",
+          transcript:
+            "Don Allah, check my payment, na biya naira dubu biyar jiya amma ban samu confirmation ba.",
+          requestId:
+            "voicebridge-http-demo-001",
+        })
+        .expect(201);
+
+    expect(
+      executeCodeswitchAction
+    ).toHaveBeenCalledWith({
+      languagePair: "ha-en",
+      transcript:
+        "Don Allah, check my payment, na biya naira dubu biyar jiya amma ban samu confirmation ba.",
+      requestId:
+        "voicebridge-http-demo-001",
+    });
+
+    expect(
+      response.headers["cache-control"]
+    ).toBe("no-store");
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        service:
+          "Tengacion VoiceBridge",
+        phase: 3,
+        integrationEnabled: true,
+        taskSuccess: true,
+        safetySuccess: true,
+        executedAction:
+          "create_payment_verification_case",
+        moneyMovementPerformed:
+          false,
+        idempotentReplay: false,
+      })
+    );
+
+    expect(
+      response.body.case.caseId
+    ).toBe(
+      "VB-20260904-ABCDEF12"
+    );
+  });
+
+  test("returns 200 for an idempotent action replay", async () => {
+    executeCodeswitchAction
+      .mockResolvedValueOnce({
+        actionVersion:
+          "voicebridge-action-v1",
+        taskSuccess: true,
+        safetySuccess: true,
+        intent:
+          "payment_confirmation_check",
+        requestedAction:
+          "check_payment_status",
+        executedAction:
+          "create_payment_verification_case",
+        case: {
+          caseId:
+            "VB-20260904-ABCDEF12",
+          recordId:
+            "66d8f0000000000000001234",
+          type:
+            "payment_verification",
+          status:
+            "queued_for_verification",
+          supportRecordStatus:
+            "open",
+          amount: 5000,
+          currency: "NGN",
+          timeReference:
+            "yesterday",
+          transactionReference:
+            null,
+        },
+        moneyMovementPerformed:
+          false,
+        idempotentReplay: true,
+        message:
+          "Payment verification case VB-20260904-ABCDEF12 already exists for this request.",
+      });
+
+    const response =
+      await request(app)
+        .post(
+          "/api/codeswitch/action"
+        )
+        .send({
+          languagePair: "ha-en",
+          transcript:
+            "Please check my payment.",
+          requestId:
+            "voicebridge-http-demo-002",
+        })
+        .expect(200);
+
+    expect(
+      response.body.idempotentReplay
+    ).toBe(true);
+
+    expect(
+      response.body
+        .moneyMovementPerformed
+    ).toBe(false);
+  });
+
+  test("returns a safe confirmation-required response for refund requests", async () => {
+    executeCodeswitchAction
+      .mockRejectedValueOnce(
+        new CodeswitchActionError(
+          "CONFIRMATION_REQUIRED",
+          "This request requires explicit confirmation and manual review before any support action is created.",
+          {
+            statusCode: 409,
+            analysis: {
+              requestedAction:
+                "prepare_refund_support_case",
+              actionPolicy: {
+                mode:
+                  "support_case_only",
+                moneyMovementAllowed:
+                  false,
+                requiresConfirmation:
+                  true,
+                manualReviewRequired:
+                  true,
+              },
+            },
+          }
+        )
+      );
+
+    const response =
+      await request(app)
+        .post(
+          "/api/codeswitch/action"
+        )
+        .send({
+          languagePair: "pcm-en",
+          transcript:
+            "Please refund my payment.",
+          requestId:
+            "voicebridge-refund-http-001",
+        })
+        .expect(409);
+
+    expect(response.body.ok)
+      .toBe(false);
+
+    expect(
+      response.body.error.code
+    ).toBe(
+      "CONFIRMATION_REQUIRED"
+    );
+
+    expect(
+      response.body
+        .moneyMovementPerformed
+    ).toBe(false);
+
+    expect(
+      response.body.actionPolicy
+        .manualReviewRequired
+    ).toBe(true);
+  });
+
+  test("rejects unsupported language pairs before executing an action", async () => {
+    const response =
+      await request(app)
+        .post(
+          "/api/codeswitch/action"
+        )
+        .send({
+          languagePair: "yo-en",
+          transcript:
+            "Please check my payment.",
+          requestId:
+            "voicebridge-http-invalid-001",
+        })
+        .expect(400);
+
+    expect(
+      response.body.error.code
+    ).toBe(
+      "UNSUPPORTED_LANGUAGE_PAIR"
+    );
+
+    expect(
+      executeCodeswitchAction
+    ).not.toHaveBeenCalled();
+  });
+
+  test("requires a transcript before executing an action", async () => {
+    const response =
+      await request(app)
+        .post(
+          "/api/codeswitch/action"
+        )
+        .send({
+          languagePair: "ha-en",
+          requestId:
+            "voicebridge-http-invalid-002",
+        })
+        .expect(400);
+
+    expect(
+      response.body.error.code
+    ).toBe(
+      "INVALID_TRANSCRIPT"
+    );
+
+    expect(
+      executeCodeswitchAction
+    ).not.toHaveBeenCalled();
+  });
+
 });

@@ -15,5 +15,6 @@ router.post("/transcribe/gemini", codeswitchAudioUpload, codeswitchController.tr
 router.post("/transcribe/chirp", codeswitchAudioUpload, codeswitchController.transcribeChirp);
 router.post("/benchmark", codeswitchAudioUpload, codeswitchController.benchmark);
 router.post("/intent", codeswitchController.intent);
+router.post("/action", codeswitchController.action);
 
 module.exports = router;

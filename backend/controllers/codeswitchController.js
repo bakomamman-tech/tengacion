@@ -5,6 +5,9 @@ const {
   normalizeTranscript,
 } = require("../services/codeswitchService");
 const {
+  analyzeCodeswitchIntent,
+} = require("../services/codeswitchIntentService");
+const {
   SaharaServiceError,
   transcribeWithSahara,
 } = require("../services/saharaService");
@@ -27,8 +30,6 @@ const {
 
 const SERVICE_NAME = "Tengacion VoiceBridge";
 const PHASE = 3;
-const PHASE_THREE_MESSAGE =
-  "Downstream agent integration is not enabled in Phase 3.";
 const LANGUAGE_PAIR_TO_SAHARA_LANGUAGE = Object.freeze({
   "ha-en": "ha",
   "pcm-en": "pcm",
@@ -90,6 +91,83 @@ const wer = (req, res) => {
       return res.status(413).json({ error: calculationError.message });
     }
     throw calculationError;
+  }
+};
+
+const intent = (req, res) => {
+  res.set("Cache-Control", "no-store");
+
+  const transcriptError =
+    validateStringField(
+      req.body,
+      "transcript"
+    );
+
+  if (transcriptError) {
+    return res.status(400).json({
+      ok: false,
+      error: {
+        code: "INVALID_TRANSCRIPT",
+        message: transcriptError,
+      },
+    });
+  }
+
+  const languagePair =
+    typeof req.body?.languagePair === "string"
+      ? req.body.languagePair.trim()
+      : "";
+
+  if (
+    !LANGUAGE_PAIR_TO_SAHARA_LANGUAGE[
+      languagePair
+    ]
+  ) {
+    return res.status(400).json({
+      ok: false,
+      error: {
+        code: "UNSUPPORTED_LANGUAGE_PAIR",
+        message:
+          "languagePair must be one of: ha-en, pcm-en.",
+      },
+    });
+  }
+
+  try {
+    const analysis =
+      analyzeCodeswitchIntent({
+        transcript: req.body.transcript,
+        languagePair,
+      });
+
+    return res.json({
+      ok: true,
+      service: SERVICE_NAME,
+      phase: PHASE,
+      integrationEnabled: true,
+      ...analysis,
+      execution: {
+        attempted: false,
+        moneyMovementPerformed: false,
+        message:
+          "Intent and entities extracted. No downstream action was executed.",
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof TypeError ||
+      error instanceof RangeError
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: {
+          code: "INVALID_INTENT_INPUT",
+          message: error.message,
+        },
+      });
+    }
+
+    throw error;
   }
 };
 
@@ -603,20 +681,10 @@ const benchmark = async (req, res) => {
     models,
   });
 };
-const phaseThreePlaceholder = (endpoint) => (_req, res) =>
-  res.status(501).json({
-    ok: false,
-    service: SERVICE_NAME,
-    phase: PHASE,
-    endpoint,
-    integrationEnabled: false,
-    message: PHASE_THREE_MESSAGE,
-  });
-
 module.exports = {
   benchmark,
   health,
-  intent: phaseThreePlaceholder("intent"),
+  intent,
   normalize,
   transcribe,
   transcribeOpenAI,

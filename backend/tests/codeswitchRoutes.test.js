@@ -364,23 +364,119 @@ describe("VoiceBridge CodeSwitch routes", () => {
     expect(response.body.models[0].providerFileId).toBeUndefined();
   });
 
-  test.each(["intent"])(
-    "keeps /%s as a clear Phase 3 placeholder",
-    async (endpoint) => {
-      const response = await request(app)
-        .post(`/api/codeswitch/${endpoint}`)
-        .send({})
-        .expect(501);
+  test("extracts Hausa-English payment intent and entities through the API", async () => {
+    const response = await request(app)
+      .post("/api/codeswitch/intent")
+      .send({
+        languagePair: "ha-en",
+        transcript:
+          "Don Allah, check my payment, na biya naira dubu biyar jiya amma ban samu confirmation ba.",
+      })
+      .expect(200);
 
-      expect(response.body).toEqual({
-        ok: false,
+    expect(response.headers["cache-control"])
+      .toBe("no-store");
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
         service: "Tengacion VoiceBridge",
         phase: 3,
-        endpoint,
-        integrationEnabled: false,
-        message:
-          "Downstream agent integration is not enabled in Phase 3.",
-      });
-    }
-  );
+        integrationEnabled: true,
+        intentVersion:
+          "voicebridge-intent-v1",
+        languagePair: "ha-en",
+        intent:
+          "payment_confirmation_check",
+        requestedAction:
+          "check_payment_status",
+        entities: {
+          amount: 5000,
+          currency: "NGN",
+          timeReference: "yesterday",
+          transactionReference: null,
+        },
+      })
+    );
+
+    expect(
+      response.body.actionPolicy
+        .moneyMovementAllowed
+    ).toBe(false);
+
+    expect(response.body.execution).toEqual({
+      attempted: false,
+      moneyMovementPerformed: false,
+      message:
+        "Intent and entities extracted. No downstream action was executed.",
+    });
+  });
+
+  test("keeps refund requests in support-only mode", async () => {
+    const response = await request(app)
+      .post("/api/codeswitch/intent")
+      .send({
+        languagePair: "pcm-en",
+        transcript:
+          "I did not get confirmation for my payment, please refund my money.",
+      })
+      .expect(200);
+
+    expect(response.body.intent).toBe(
+      "refund_request"
+    );
+
+    expect(
+      response.body.requestedAction
+    ).toBe(
+      "prepare_refund_support_case"
+    );
+
+    expect(
+      response.body.actionPolicy
+        .moneyMovementAllowed
+    ).toBe(false);
+
+    expect(
+      response.body.actionPolicy
+        .manualReviewRequired
+    ).toBe(true);
+
+    expect(
+      response.body.execution
+        .moneyMovementPerformed
+    ).toBe(false);
+  });
+
+  test("rejects unsupported language pairs on the intent endpoint", async () => {
+    const response = await request(app)
+      .post("/api/codeswitch/intent")
+      .send({
+        languagePair: "yo-en",
+        transcript:
+          "Please check my payment.",
+      })
+      .expect(400);
+
+    expect(response.body.error).toEqual({
+      code: "UNSUPPORTED_LANGUAGE_PAIR",
+      message:
+        "languagePair must be one of: ha-en, pcm-en.",
+    });
+  });
+
+  test("requires a transcript on the intent endpoint", async () => {
+    const response = await request(app)
+      .post("/api/codeswitch/intent")
+      .send({
+        languagePair: "ha-en",
+      })
+      .expect(400);
+
+    expect(response.body.error).toEqual({
+      code: "INVALID_TRANSCRIPT",
+      message:
+        "transcript must be a string.",
+    });
+  });
 });

@@ -117,3 +117,41 @@ export async function analyzeCodeswitchIntent({
 
   return payload;
 }
+
+
+export async function executeCodeswitchAction({
+  transcript,
+  languagePair,
+  requestId,
+  signal,
+} = {}) {
+  const response = await fetch(
+    `${API_BASE}/codeswitch/action`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        transcript,
+        languagePair,
+        requestId,
+      }),
+      signal,
+    }
+  );
+
+  const payload =
+    await readPayload(response);
+
+  if (!response.ok) {
+    throwApiError(
+      response,
+      payload,
+      "VoiceBridge downstream action failed safely."
+    );
+  }
+
+  return payload;
+}

@@ -1543,3 +1543,42 @@
     font-size: 15px;
   }
 }
+
+
+.voicebridge-task-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 22px 22px;
+  border-top: 1px solid
+    color-mix(
+      in srgb,
+      var(--vb-border) 65%,
+      transparent
+    );
+  background:
+    color-mix(
+      in srgb,
+      var(--vb-soft) 58%,
+      transparent
+    );
+}
+
+.voicebridge-task-card__actions > span {
+  max-width: 520px;
+  color: var(--vb-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 720px) {
+  .voicebridge-task-card__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .voicebridge-task-card__actions .tg-btn {
+    width: 100%;
+  }
+}

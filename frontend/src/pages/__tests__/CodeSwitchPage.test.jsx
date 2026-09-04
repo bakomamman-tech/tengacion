@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import CodeSwitchPage from "../CodeSwitchPage";
 import {
   analyzeCodeswitchIntent,
+  executeCodeswitchAction,
   runCodeswitchBenchmark,
 } from "../../services/codeswitchApi";
 
@@ -16,6 +17,7 @@ vi.mock("../../components/seo/SeoHead", () => ({
 
 vi.mock("../../services/codeswitchApi", () => ({
   analyzeCodeswitchIntent: vi.fn(),
+  executeCodeswitchAction: vi.fn(),
   runCodeswitchBenchmark: vi.fn(),
 }));
 
@@ -143,6 +145,42 @@ const INTENT_RESULT = {
   },
 };
 
+const ACTION_RESULT = {
+  ok: true,
+  service: "Tengacion VoiceBridge",
+  phase: 3,
+  integrationEnabled: true,
+  actionVersion:
+    "voicebridge-action-v1",
+  taskSuccess: true,
+  safetySuccess: true,
+  intent:
+    "payment_confirmation_check",
+  requestedAction:
+    "check_payment_status",
+  executedAction:
+    "create_payment_verification_case",
+  case: {
+    caseId:
+      "VB-20260904-ABCDEF12",
+    recordId:
+      "66d8f0000000000000001234",
+    type:
+      "payment_verification",
+    status:
+      "queued_for_verification",
+    supportRecordStatus: "open",
+    amount: 5000,
+    currency: "NGN",
+    timeReference: "yesterday",
+    transactionReference: null,
+  },
+  moneyMovementPerformed: false,
+  idempotentReplay: false,
+  message:
+    "Payment verification case VB-20260904-ABCDEF12 created successfully.",
+};
+
 const renderPage = () =>
   render(
     <MemoryRouter>
@@ -175,6 +213,10 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
 
     analyzeCodeswitchIntent.mockResolvedValue(
       INTENT_RESULT
+    );
+
+    executeCodeswitchAction.mockResolvedValue(
+      ACTION_RESULT
     );
   });
 
@@ -265,7 +307,7 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
 
     expect(
       screen.getByText(
-        "Safe read-only analysis | No money moved"
+        "Ready for safe support task | No money moved"
       )
     ).toBeInTheDocument();
 
@@ -274,6 +316,108 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
         "Intent and entities extracted. No downstream action was executed."
       )
     ).toBeInTheDocument();
+
+    expect(
+      executeCodeswitchAction
+    ).not.toHaveBeenCalled();
+
+    expect(
+      screen.getByRole("button", {
+        name:
+          /create verification case/i,
+      })
+    ).toBeEnabled();
+  });
+
+  it("executes the explicit safe support action from the Sahara transcript", async () => {
+    const user = userEvent.setup();
+
+    const paymentTranscript =
+      "Don Allah, check my payment, na biya naira dubu biyar jiya amma ban samu confirmation ba.";
+
+    runCodeswitchBenchmark.mockResolvedValue({
+      ...BENCHMARK_RESULT,
+      models: [
+        {
+          ...SAHARA_MODEL,
+          transcript:
+            paymentTranscript,
+          normalizedTranscript:
+            "don allah check my payment na biya naira dubu biyar jiya amma ban samu confirmation ba",
+        },
+        OPENAI_MODEL,
+        WHISPER_MODEL,
+        CHIRP_MODEL,
+      ],
+    });
+
+    renderPage();
+    await uploadAudio(user);
+
+    await user.click(
+      screen.getByRole("button", {
+        name:
+          /run voicebridge benchmark/i,
+      })
+    );
+
+    const actionButton =
+      await screen.findByRole(
+        "button",
+        {
+          name:
+            /create verification case/i,
+        }
+      );
+
+    expect(
+      executeCodeswitchAction
+    ).not.toHaveBeenCalled();
+
+    await user.click(actionButton);
+
+    expect(
+      executeCodeswitchAction
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transcript:
+          paymentTranscript,
+        languagePair: "ha-en",
+        requestId:
+          expect.stringMatching(
+            /^voicebridge-web-/
+          ),
+      })
+    );
+
+    expect(
+      await screen.findByText(
+        "Payment verification case VB-20260904-ABCDEF12 created successfully."
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "create_payment_verification_case"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "SUCCESS | Safe support task completed | No money moved"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("1 / 1")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", {
+        name:
+          /verification case created/i,
+      })
+    ).toBeDisabled();
   });
 
   it("shows all four live provider cards while processing", async () => {

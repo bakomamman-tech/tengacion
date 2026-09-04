@@ -5,6 +5,7 @@ import SeoHead from "../components/seo/SeoHead";
 import Button from "../components/ui/Button";
 import {
   analyzeCodeswitchIntent,
+  executeCodeswitchAction,
   runCodeswitchBenchmark,
 } from "../services/codeswitchApi";
 
@@ -28,7 +29,7 @@ const SUMMARY_FIELDS = [
   { label: "Hausa–English normalized WER", shortLabel: "HA ↔ EN" },
   { label: "Pidgin–English normalized WER", shortLabel: "PCM ↔ EN" },
   { label: "Average latency", shortLabel: "Latency" },
-  { label: "Downstream task-success rate", shortLabel: "Task success" },
+  { label: "Current-run downstream task success", shortLabel: "Task success" },
 ];
 
 const METHODOLOGY = [
@@ -73,6 +74,16 @@ const formatDownstreamEntities = (
   return parts.length > 0
     ? parts.join(" | ")
     : "No supported entities detected";
+};
+
+const createActionRequestId = () => {
+  const randomPart =
+    globalThis.crypto?.randomUUID?.() ||
+    `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 10)}`;
+
+  return `voicebridge-web-${randomPart}`;
 };
 
 function VoiceBridgeIcon({ name, size = 24 }) {
@@ -305,9 +316,13 @@ export default function CodeSwitchPage() {
   const [benchmarkResult, setBenchmarkResult] = useState(null);
   const [intentResult, setIntentResult] = useState(null);
   const [intentError, setIntentError] = useState("");
+  const [actionResult, setActionResult] = useState(null);
+  const [actionError, setActionError] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExecutingAction, setIsExecutingAction] = useState(false);
   const activeRequestRef = useRef(null);
+  const actionRequestIdRef = useRef("");
 
   const selectedLanguage = useMemo(
     () =>
@@ -345,13 +360,17 @@ export default function CodeSwitchPage() {
     activeRequestRef.current?.abort();
     activeRequestRef.current = null;
     setIsSubmitting(false);
+    setIsExecutingAction(false);
   };
 
   const resetResults = () => {
     setBenchmarkResult(null);
     setIntentResult(null);
     setIntentError("");
+    setActionResult(null);
+    setActionError("");
     setErrorMessage("");
+    actionRequestIdRef.current = "";
   };
 
   const handleAudioSelection = (event) => {
@@ -367,7 +386,11 @@ export default function CodeSwitchPage() {
   };
 
   const handleBenchmark = async () => {
-    if (!audioFile || isSubmitting) {
+    if (
+      !audioFile ||
+      isSubmitting ||
+      isExecutingAction
+    ) {
       return;
     }
 
@@ -454,6 +477,91 @@ export default function CodeSwitchPage() {
     }
   };
 
+  const canExecuteAction = Boolean(
+    intentResult &&
+      intentResult.requestedAction ===
+        "check_payment_status" &&
+      intentResult.actionPolicy
+        ?.moneyMovementAllowed === false &&
+      !intentResult.actionPolicy
+        ?.requiresConfirmation &&
+      !intentResult.actionPolicy
+        ?.manualReviewRequired &&
+      saharaResult?.ok === true &&
+      typeof saharaResult.transcript ===
+        "string" &&
+      saharaResult.transcript.trim()
+  );
+
+  const handleExecuteAction = async () => {
+    if (
+      !canExecuteAction ||
+      isExecutingAction ||
+      actionResult?.taskSuccess
+    ) {
+      return;
+    }
+
+    activeRequestRef.current?.abort();
+
+    const controller =
+      new AbortController();
+
+    activeRequestRef.current =
+      controller;
+
+    setIsExecutingAction(true);
+    setActionError("");
+    setActionResult(null);
+
+    if (!actionRequestIdRef.current) {
+      actionRequestIdRef.current =
+        createActionRequestId();
+    }
+
+    try {
+      const action =
+        await executeCodeswitchAction({
+          transcript:
+            saharaResult.transcript,
+          languagePair,
+          requestId:
+            actionRequestIdRef.current,
+          signal: controller.signal,
+        });
+
+      if (!controller.signal.aborted) {
+        setActionResult(action);
+      }
+    } catch (error) {
+      if (
+        error?.name !== "AbortError"
+      ) {
+        setActionError(
+          error?.message ||
+            "VoiceBridge downstream action failed safely."
+        );
+      }
+    } finally {
+      if (
+        activeRequestRef.current ===
+        controller
+      ) {
+        activeRequestRef.current =
+          null;
+
+        setIsExecutingAction(false);
+      }
+    }
+  };
+
+  const taskSuccessDisplay =
+    actionResult?.taskSuccess === true
+      ? "1 / 1"
+      : actionResult?.taskSuccess === false
+        ? "0 / 1"
+        : "Pending";
+
   const downstreamValues = {
     "Detected intent":
       intentResult?.intent ||
@@ -471,26 +579,40 @@ export default function CodeSwitchPage() {
           : "Awaiting benchmark",
 
     "Requested action":
+      actionResult?.executedAction ||
       intentResult?.requestedAction ||
       (intentError
         ? "No action selected"
         : "Awaiting benchmark"),
 
     "Task result":
+      actionResult?.message ||
+      actionError ||
       intentResult?.execution?.message ||
       (intentError
         ? intentError
         : "Awaiting benchmark"),
 
     "Success / failure":
-      intentResult
-        ? intentResult.actionPolicy
-            ?.manualReviewRequired
-          ? "Manual review required | No money moved"
-          : "Safe read-only analysis | No money moved"
-        : intentError
-          ? "Downstream analysis unavailable"
-          : "Awaiting benchmark",
+      actionResult
+        ? actionResult.taskSuccess &&
+          actionResult
+            .moneyMovementPerformed ===
+            false
+          ? "SUCCESS | Safe support task completed | No money moved"
+          : "Task requires review | No money moved"
+        : actionError
+          ? "FAILED SAFELY | No money moved"
+          : intentResult
+            ? intentResult.actionPolicy
+                ?.manualReviewRequired
+              ? "Manual review required | No money moved"
+              : canExecuteAction
+                ? "Ready for safe support task | No money moved"
+                : "Safe read-only analysis | No money moved"
+            : intentError
+              ? "Downstream analysis unavailable"
+              : "Awaiting benchmark",
   };
 
   return (
@@ -624,9 +746,7 @@ export default function CodeSwitchPage() {
                 placeholder="Paste the human-verified transcript here before transcribing…"
                 onChange={(event) => {
                   setReferenceTranscript(event.target.value);
-                  setBenchmarkResult(null);
-                  setIntentResult(null);
-                  setIntentError("");
+                  resetResults();
                 }}
               />
             </div>
@@ -667,7 +787,10 @@ export default function CodeSwitchPage() {
                 variant="primary"
                 size="lg"
                 loading={isSubmitting}
-                disabled={!audioFile}
+                disabled={
+                  !audioFile ||
+                  isExecutingAction
+                }
                 onClick={handleBenchmark}
               >
                 <VoiceBridgeIcon name="arrow" size={19} />
@@ -759,6 +882,39 @@ export default function CodeSwitchPage() {
                   </div>
                 ))}
               </dl>
+
+              <div className="voicebridge-task-card__actions">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  loading={isExecutingAction}
+                  disabled={
+                    !canExecuteAction ||
+                    Boolean(
+                      actionResult?.taskSuccess
+                    )
+                  }
+                  onClick={
+                    handleExecuteAction
+                  }
+                >
+                  <VoiceBridgeIcon
+                    name="task"
+                    size={18}
+                  />
+
+                  {actionResult?.taskSuccess
+                    ? "Verification case created"
+                    : "Create verification case"}
+                </Button>
+
+                <span>
+                  Creates a support case only.
+                  No payment, refund, transfer,
+                  wallet, or payout action is
+                  permitted.
+                </span>
+              </div>
             </article>
           </div>
 
@@ -768,12 +924,23 @@ export default function CodeSwitchPage() {
               icon="chart"
               eyebrow="Benchmark summary"
               title="The scorecard"
-              detail="Aggregate reporting remains pending until equivalent multi-model runs exist."
+              detail="Aggregate WER reporting remains pending until equivalent multi-model runs exist. Current-run task success appears after explicit safe action execution."
             />
             <div className="voicebridge-summary-grid">
               {SUMMARY_FIELDS.map((metric) => (
                 <article key={metric.label}>
-                  <span>{metric.shortLabel}</span><strong>—</strong><p>{metric.label}</p>
+                  <span>
+                    {metric.shortLabel}
+                  </span>
+
+                  <strong>
+                    {metric.shortLabel ===
+                    "Task success"
+                      ? taskSuccessDisplay
+                      : "Pending"}
+                  </strong>
+
+                  <p>{metric.label}</p>
                 </article>
               ))}
             </div>

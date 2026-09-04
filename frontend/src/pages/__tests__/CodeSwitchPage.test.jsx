@@ -56,6 +56,37 @@ const OPENAI_MODEL = {
   evaluation: null,
 };
 
+const WHISPER_MODEL = {
+  ok: true,
+  provider: "whisper",
+  model: "whisper-1",
+  languagePair: "ha-en",
+  transcript: "Please check my order!",
+  normalizedTranscript: "please check my order",
+  normalizationVersion: "voicebridge-nwer-v1",
+  latencyMs: 780,
+  processingStatus: "FILE_TRANSCRIBED",
+  benchmarkMode: true,
+  evaluation: null,
+};
+
+const CHIRP_MODEL = {
+  ok: true,
+  provider: "chirp",
+  vendor: "google-cloud",
+  model: "chirp_3",
+  languagePair: "ha-en",
+  transcript: "Please check my order!",
+  normalizedTranscript: "please check my order",
+  normalizationVersion: "voicebridge-nwer-v1",
+  latencyMs: 910,
+  detectedLanguageCodes: ["ha"],
+  processingStatus: "FILE_TRANSCRIBED",
+  benchmarkMode: true,
+  automaticLanguageDetection: true,
+  evaluation: null,
+};
+
 const BENCHMARK_RESULT = {
   ok: true,
   service: "Tengacion VoiceBridge",
@@ -64,9 +95,14 @@ const BENCHMARK_RESULT = {
   normalizationVersion: "voicebridge-nwer-v1",
   benchmarkMode: true,
   sameSourceAudio: true,
-  successfulModels: 2,
-  requestedModels: 2,
-  models: [SAHARA_MODEL, OPENAI_MODEL],
+  successfulModels: 4,
+  requestedModels: 4,
+  models: [
+    SAHARA_MODEL,
+    OPENAI_MODEL,
+    WHISPER_MODEL,
+    CHIRP_MODEL,
+  ],
 };
 
 const renderPage = () =>
@@ -128,7 +164,7 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
     );
   });
 
-  it("shows both live provider cards while processing", async () => {
+  it("shows all four live provider cards while processing", async () => {
     const user = userEvent.setup();
 
     let resolveBenchmark;
@@ -158,7 +194,7 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
       screen.getAllByText("Benchmarking", {
         selector: ".voicebridge-status",
       })
-    ).toHaveLength(2);
+    ).toHaveLength(4);
 
     await act(async () => {
       resolveBenchmark(BENCHMARK_RESULT);
@@ -166,10 +202,10 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
 
     expect(
       await screen.findAllByText("FILE_TRANSCRIBED")
-    ).toHaveLength(2);
+    ).toHaveLength(4);
   });
 
-  it("shows Sahara and OpenAI results without inventing WER", async () => {
+  it("shows all four model results without inventing WER", async () => {
     const user = userEvent.setup();
 
     renderPage();
@@ -186,6 +222,12 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
 
     const openai =
       screen.getByTestId("openai-model-card");
+
+    const whisper =
+      screen.getByTestId("whisper-model-card");
+
+    const chirp =
+      screen.getByTestId("chirp-model-card");
 
     expect(
       within(sahara).getByText("Please check my order!")
@@ -204,6 +246,14 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
     ).toBeInTheDocument();
 
     expect(
+      within(whisper).getByText("780 ms")
+    ).toBeInTheDocument();
+
+    expect(
+      within(chirp).getByText("910 ms")
+    ).toBeInTheDocument();
+
+    expect(
       within(sahara).getByText(
         "Reference transcript required for WER."
       )
@@ -216,17 +266,29 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getAllByText("Not integrated")
-    ).toHaveLength(1);
+      within(whisper).getByText(
+        "Reference transcript required for WER."
+      )
+    ).toBeInTheDocument();
 
     expect(
-      screen.getByRole("heading", {
+      within(chirp).getByText(
+        "Reference transcript required for WER."
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByText("Not integrated")
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("heading", {
         name: "Gemini",
       })
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
   });
 
-  it("shows server-computed normalized WER for both providers", async () => {
+  it("shows server-computed normalized WER for all four providers", async () => {
     const user = userEvent.setup();
 
     runCodeswitchBenchmark.mockResolvedValue({
@@ -238,6 +300,14 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
         },
         {
           ...OPENAI_MODEL,
+          evaluation: WER_RESULT,
+        },
+        {
+          ...WHISPER_MODEL,
+          evaluation: WER_RESULT,
+        },
+        {
+          ...CHIRP_MODEL,
           evaluation: WER_RESULT,
         },
       ],
@@ -271,12 +341,26 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
     const openai =
       screen.getByTestId("openai-model-card");
 
+    const whisper =
+      screen.getByTestId("whisper-model-card");
+
+    const chirp =
+      screen.getByTestId("chirp-model-card");
+
     expect(
       within(sahara).getByText("0.00% (0.000)")
     ).toBeInTheDocument();
 
     expect(
       within(openai).getByText("0.00% (0.000)")
+    ).toBeInTheDocument();
+
+    expect(
+      within(whisper).getByText("0.00% (0.000)")
+    ).toBeInTheDocument();
+
+    expect(
+      within(chirp).getByText("0.00% (0.000)")
     ).toBeInTheDocument();
   });
 
@@ -285,7 +369,7 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
 
     runCodeswitchBenchmark.mockResolvedValue({
       ...BENCHMARK_RESULT,
-      successfulModels: 1,
+      successfulModels: 3,
       models: [
         SAHARA_MODEL,
         {
@@ -297,6 +381,8 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
               "OpenAI transcription is temporarily unavailable.",
           },
         },
+        WHISPER_MODEL,
+        CHIRP_MODEL,
       ],
     });
 

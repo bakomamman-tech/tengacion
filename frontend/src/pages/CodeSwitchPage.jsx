@@ -14,20 +14,6 @@ const LANGUAGE_PAIRS = [
   { value: "pcm-en", label: "Nigerian Pidgin ↔ English", code: "pcm" },
 ];
 
-const PENDING_MODEL_FIELDS = [
-  "Original transcript",
-  "Normalized transcript",
-  "Normalized WER",
-  "Substitutions",
-  "Deletions",
-  "Insertions",
-  "Latency",
-];
-
-const PENDING_MODELS = [
-  { name: "Gemini", label: "GE", tone: "blue" },
-];
-
 const DOWNSTREAM_FIELDS = [
   "Detected intent",
   "Extracted entities",
@@ -124,31 +110,6 @@ function SectionHeading({ number, icon, eyebrow, title, detail }) {
         {detail ? <span>{detail}</span> : null}
       </div>
     </div>
-  );
-}
-
-function PendingModelCard({ model }) {
-  return (
-    <article className={`voicebridge-model-card voicebridge-model-card--${model.tone}`}>
-      <header>
-        <span className="voicebridge-model-card__mark" aria-hidden="true">
-          {model.label}
-        </span>
-        <div>
-          <h3>{model.name}</h3>
-          <p>ASR evaluation model</p>
-        </div>
-        <span className="voicebridge-status">Not integrated</span>
-      </header>
-      <dl>
-        {PENDING_MODEL_FIELDS.map((field) => (
-          <div key={field}>
-            <dt>{field}</dt>
-            <dd aria-label={`${model.name} ${field}: not integrated`}>—</dd>
-          </div>
-        ))}
-      </dl>
-    </article>
   );
 }
 
@@ -325,6 +286,16 @@ export default function CodeSwitchPage() {
       (model) => model.provider === "openai"
     ) || null;
 
+  const whisperResult =
+    benchmarkResult?.models?.find(
+      (model) => model.provider === "whisper"
+    ) || null;
+
+  const chirpResult =
+    benchmarkResult?.models?.find(
+      (model) => model.provider === "chirp"
+    ) || null;
+
   useEffect(() => {
     const requestRef = activeRequestRef;
     return () => requestRef.current?.abort();
@@ -399,7 +370,7 @@ export default function CodeSwitchPage() {
     <main className="voicebridge-page">
       <SeoHead
         title="Tengacion VoiceBridge | African Code-Switching Voice Intelligence"
-        description="Phase 3 of Tengacion VoiceBridge benchmarks Sahara v2.5 and OpenAI GPT-Transcribe on the same Hausa-English or Nigerian Pidgin-English source audio using shared normalized WER."
+        description="Phase 3 of Tengacion VoiceBridge benchmarks Sahara v2.5, GPT-Transcribe, Whisper-1, and Google Chirp 3 on the same Hausa-English or Nigerian Pidgin-English source audio using shared normalized WER."
         canonical="/codeswitch"
         robots="noindex,follow"
       />
@@ -412,7 +383,7 @@ export default function CodeSwitchPage() {
           </Link>
           <span className="voicebridge-phase-pill">
             <i aria-hidden="true" />
-            Phase 3 | Sahara + OpenAI benchmark
+            Phase 3 | Four-model benchmark
           </span>
         </div>
       </header>
@@ -427,8 +398,9 @@ export default function CodeSwitchPage() {
             </p>
             <p className="voicebridge-hero__summary">
               Benchmark authorized Hausa-English and Nigerian Pidgin-English
-              recordings across Sahara and OpenAI using the exact same source
-              audio, normalization policy and evaluation metric.
+              recordings across Sahara v2.5, GPT-Transcribe, Whisper-1, and
+              Google Chirp 3 using the exact same source audio, normalization
+              policy, and evaluation metric.
             </p>
             <a className="voicebridge-hero__link" href="#voice-assistant">
               Open the benchmark workspace
@@ -438,7 +410,7 @@ export default function CodeSwitchPage() {
 
           <div className="voicebridge-signal" aria-label="VoiceBridge multi-model benchmark signal preview">
             <div className="voicebridge-signal__topline">
-              <span>Sahara + OpenAI</span>
+              <span>Sahara + GPT + Whisper + Chirp</span>
               <span><i aria-hidden="true" /> Ready for audio</span>
             </div>
             <div className="voicebridge-wave" aria-hidden="true">
@@ -550,10 +522,10 @@ export default function CodeSwitchPage() {
                 <VoiceBridgeIcon name="shield" size={20} />
               </span>
               <p>
-                Audio is sent to Sahara/Intron and OpenAI for benchmark
-                transcription. VoiceBridge does not intentionally persist
-                uploaded audio in this prototype. Use only recordings you are
-                authorized to process.
+                Audio is sent to Sahara/Intron, OpenAI, and Google Cloud for
+                benchmark transcription. VoiceBridge does not intentionally
+                persist uploaded audio in this prototype. Use only recordings
+                you are authorized to process.
               </p>
             </div>
 
@@ -588,7 +560,7 @@ export default function CodeSwitchPage() {
             icon="compare"
             eyebrow="Model comparison"
             title="One benchmark, side by side"
-            detail="Sahara and OpenAI are live from one shared-audio request. Gemini remains the third model to integrate."
+            detail="Four ASR models run from one shared-audio request: Sahara v2.5, GPT-Transcribe, Whisper-1, and Google Chirp 3."
           />
           <div className="voicebridge-model-grid">
             <BenchmarkModelCard
@@ -606,16 +578,34 @@ export default function CodeSwitchPage() {
               result={openAiResult}
               languagePairLabel={selectedLanguage.label}
               isLoading={isSubmitting}
-              name="OpenAI"
-              mark="OA"
-              subtitle="GPT-Transcribe benchmark transcription"
+              name="GPT-Transcribe"
+              mark="GPT"
+              subtitle="OpenAI benchmark transcription"
               tone="green"
               testId="openai-model-card"
             />
 
-            {PENDING_MODELS.map((model) => (
-              <PendingModelCard key={model.name} model={model} />
-            ))}
+            <BenchmarkModelCard
+              result={whisperResult}
+              languagePairLabel={selectedLanguage.label}
+              isLoading={isSubmitting}
+              name="Whisper-1"
+              mark="W1"
+              subtitle="OpenAI Whisper benchmark transcription"
+              tone="blue"
+              testId="whisper-model-card"
+            />
+
+            <BenchmarkModelCard
+              result={chirpResult}
+              languagePairLabel={selectedLanguage.label}
+              isLoading={isSubmitting}
+              name="Chirp 3"
+              mark="C3"
+              subtitle="Google Cloud Speech-to-Text benchmark"
+              tone="violet"
+              testId="chirp-model-card"
+            />
           </div>
         </section>
 
@@ -680,7 +670,7 @@ export default function CodeSwitchPage() {
       <footer className="voicebridge-footer">
         <div className="voicebridge-shell">
           <div><img src="/tengacion_logo_64.png" alt="" /><span>Tengacion VoiceBridge</span></div>
-          <p>Phase 3 | Sahara v2.5 + GPT-Transcribe + voicebridge-nwer-v1</p>
+          <p>Phase 3 | Sahara v2.5 + GPT-Transcribe + Whisper-1 + Chirp 3 + voicebridge-nwer-v1</p>
         </div>
       </footer>
     </main>

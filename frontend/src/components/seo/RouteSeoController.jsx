@@ -57,7 +57,7 @@ const NOINDEX_RULES = [
     patterns: ["/codeswitch"],
     title: "Tengacion VoiceBridge | African Code-Switching Voice Intelligence",
     description:
-      "Phase 2 of Tengacion VoiceBridge: Sahara transcription with deterministic normalization and normalized WER for African digital-commerce support.",
+      "Phase 3 of Tengacion VoiceBridge benchmarks Sahara v2.5, GPT-Transcribe, Whisper-1, and Google Chirp 3 using shared source audio and normalized WER for African digital-commerce support.",
     canonicalPath: "/codeswitch",
   },
   {

@@ -12,6 +12,18 @@ const {
   OpenAiCodeswitchError,
   transcribeWithOpenAI,
 } = require("../services/openAiCodeswitchService");
+const {
+  WhisperCodeswitchError,
+  transcribeWithWhisper,
+} = require("../services/whisperCodeswitchService");
+const {
+  GeminiCodeswitchError,
+  transcribeWithGemini,
+} = require("../services/geminiCodeswitchService");
+const {
+  ChirpCodeswitchError,
+  transcribeWithChirp,
+} = require("../services/chirpCodeswitchService");
 
 const SERVICE_NAME = "Tengacion VoiceBridge";
 const PHASE = 3;
@@ -221,6 +233,228 @@ const transcribeOpenAI = async (req, res) => {
     });
   }
 };
+const transcribeGemini = async (req, res) => {
+  res.set("Cache-Control", "no-store");
+
+  const languagePair =
+    typeof req.body?.languagePair === "string"
+      ? req.body.languagePair.trim()
+      : "";
+
+  if (!LANGUAGE_PAIR_TO_SAHARA_LANGUAGE[languagePair]) {
+    return res.status(400).json({
+      error: {
+        code: "UNSUPPORTED_LANGUAGE_PAIR",
+        message: "languagePair must be one of: ha-en, pcm-en.",
+      },
+    });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({
+      error: {
+        code: "AUDIO_REQUIRED",
+        message: "An audio file is required in the audio field.",
+      },
+    });
+  }
+
+  try {
+    const result = await transcribeWithGemini({
+      buffer: req.file.buffer,
+      filename: req.file.originalname,
+      mimeType: req.file.mimetype,
+    });
+
+    return res.json({
+      ok: true,
+      ...result,
+      languagePair,
+    });
+  } catch (error) {
+    const safeError =
+      error instanceof GeminiCodeswitchError
+        ? error
+        : new GeminiCodeswitchError(
+            "GEMINI_REQUEST_FAILED",
+            "Gemini transcription failed unexpectedly.",
+            502
+          );
+
+    console.warn(
+      "[voicebridge:gemini] transcription failed",
+      {
+        requestId: req.requestId || "",
+        code: safeError.code,
+        statusCode: safeError.statusCode,
+        upstreamStatus: safeError.upstreamStatus,
+        languagePair,
+        extension:
+          req.codeswitchAudioFormat?.extension || "",
+        fileSize: Number(req.file?.size || 0),
+      }
+    );
+
+    return res
+      .status(safeError.statusCode || 502)
+      .json({
+        ok: false,
+        error: {
+          code: safeError.code,
+          message: safeError.message,
+        },
+      });
+  }
+};
+
+const transcribeWhisper = async (req, res) => {
+  res.set("Cache-Control", "no-store");
+
+  const languagePair =
+    typeof req.body?.languagePair === "string"
+      ? req.body.languagePair.trim()
+      : "";
+
+  if (!LANGUAGE_PAIR_TO_SAHARA_LANGUAGE[languagePair]) {
+    return res.status(400).json({
+      error: {
+        code: "UNSUPPORTED_LANGUAGE_PAIR",
+        message: "languagePair must be one of: ha-en, pcm-en.",
+      },
+    });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({
+      error: {
+        code: "AUDIO_REQUIRED",
+        message: "An audio file is required in the audio field.",
+      },
+    });
+  }
+
+  try {
+    const result = await transcribeWithWhisper({
+      buffer: req.file.buffer,
+      filename: req.file.originalname,
+      mimeType: req.file.mimetype,
+    });
+
+    return res.json({
+      ok: true,
+      ...result,
+      languagePair,
+    });
+  } catch (error) {
+    const safeError =
+      error instanceof WhisperCodeswitchError
+        ? error
+        : new WhisperCodeswitchError(
+            "WHISPER_REQUEST_FAILED",
+            "Whisper transcription failed unexpectedly.",
+            502
+          );
+
+    console.warn(
+      "[voicebridge:whisper] transcription failed",
+      {
+        requestId: req.requestId || "",
+        code: safeError.code,
+        statusCode: safeError.statusCode,
+        upstreamStatus: safeError.upstreamStatus,
+        languagePair,
+        extension:
+          req.codeswitchAudioFormat?.extension || "",
+        fileSize: Number(req.file?.size || 0),
+      }
+    );
+
+    return res
+      .status(safeError.statusCode || 502)
+      .json({
+        ok: false,
+        error: {
+          code: safeError.code,
+          message: safeError.message,
+        },
+      });
+  }
+};
+
+const transcribeChirp = async (req, res) => {
+  res.set("Cache-Control", "no-store");
+
+  const languagePair =
+    typeof req.body?.languagePair === "string"
+      ? req.body.languagePair.trim()
+      : "";
+
+  if (!LANGUAGE_PAIR_TO_SAHARA_LANGUAGE[languagePair]) {
+    return res.status(400).json({
+      error: {
+        code: "UNSUPPORTED_LANGUAGE_PAIR",
+        message:
+          "languagePair must be one of: ha-en, pcm-en.",
+      },
+    });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({
+      error: {
+        code: "AUDIO_REQUIRED",
+        message:
+          "An audio file is required in the audio field.",
+      },
+    });
+  }
+
+  try {
+    const result = await transcribeWithChirp({
+      buffer: req.file.buffer,
+    });
+
+    return res.json({
+      ok: true,
+      ...result,
+      languagePair,
+    });
+  } catch (error) {
+    const safeError =
+      error instanceof ChirpCodeswitchError
+        ? error
+        : new ChirpCodeswitchError(
+            "CHIRP_REQUEST_FAILED",
+            "Chirp transcription failed unexpectedly.",
+            502
+          );
+
+    console.warn(
+      "[voicebridge:chirp] transcription failed",
+      {
+        requestId: req.requestId || "",
+        code: safeError.code,
+        statusCode: safeError.statusCode,
+        upstreamStatus: safeError.upstreamStatus,
+        languagePair,
+        extension:
+          req.codeswitchAudioFormat?.extension || "",
+        fileSize: Number(req.file?.size || 0),
+      }
+    );
+
+    return res
+      .status(safeError.statusCode || 502)
+      .json({
+        ok: false,
+        error: {
+          code: safeError.code,
+          message: safeError.message,
+        },
+      });
+  }
+};
+
 const benchmark = async (req, res) => {
   res.set("Cache-Control", "no-store");
 
@@ -285,6 +519,14 @@ const benchmark = async (req, res) => {
       provider: "openai",
       execute: () => transcribeWithOpenAI(audio),
     },
+    {
+      provider: "whisper",
+      execute: () => transcribeWithWhisper(audio),
+    },
+    {
+      provider: "chirp",
+      execute: () => transcribeWithChirp(audio),
+    },
   ];
 
   const settled = await Promise.allSettled(
@@ -320,7 +562,9 @@ const benchmark = async (req, res) => {
 
     const isKnownError =
       error instanceof SaharaServiceError ||
-      error instanceof OpenAiCodeswitchError;
+      error instanceof OpenAiCodeswitchError ||
+      error instanceof WhisperCodeswitchError ||
+      error instanceof ChirpCodeswitchError;
 
     console.warn("[voicebridge:benchmark] provider failed", {
       requestId: req.requestId || "",
@@ -376,6 +620,9 @@ module.exports = {
   normalize,
   transcribe,
   transcribeOpenAI,
+  transcribeWhisper,
+  transcribeGemini,
+  transcribeChirp,
   wer,
   LANGUAGE_PAIR_TO_SAHARA_LANGUAGE,
 };

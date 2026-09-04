@@ -11,6 +11,16 @@ jest.mock("../services/openAiCodeswitchService", () => {
   return { ...actual, transcribeWithOpenAI: jest.fn() };
 });
 
+jest.mock("../services/whisperCodeswitchService", () => {
+  const actual = jest.requireActual("../services/whisperCodeswitchService");
+  return { ...actual, transcribeWithWhisper: jest.fn() };
+});
+
+jest.mock("../services/chirpCodeswitchService", () => {
+  const actual = jest.requireActual("../services/chirpCodeswitchService");
+  return { ...actual, transcribeWithChirp: jest.fn() };
+});
+
 const errorHandler = require("../middleware/errorHandler");
 const codeswitchRoutes = require("../routes/codeswitch");
 const {
@@ -21,6 +31,14 @@ const {
 const {
   transcribeWithOpenAI,
 } = require("../services/openAiCodeswitchService");
+
+const {
+  transcribeWithWhisper,
+} = require("../services/whisperCodeswitchService");
+
+const {
+  transcribeWithChirp,
+} = require("../services/chirpCodeswitchService");
 
 const app = express();
 app.use(express.json());
@@ -61,10 +79,39 @@ const completedOpenAiTranscription = (overrides = {}) => ({
   ...overrides,
 });
 
+const completedWhisperTranscription = (overrides = {}) => ({
+  provider: "whisper",
+  model: "whisper-1",
+  transcript: "Don Allah, check my order!",
+  normalizedTranscript: "don allah check my order",
+  normalizationVersion: "voicebridge-nwer-v1",
+  latencyMs: 510,
+  processingStatus: "FILE_TRANSCRIBED",
+  benchmarkMode: true,
+  ...overrides,
+});
+
+const completedChirpTranscription = (overrides = {}) => ({
+  provider: "chirp",
+  vendor: "google-cloud",
+  model: "chirp_3",
+  transcript: "Don Allah, check my order!",
+  normalizedTranscript: "don allah check my order",
+  normalizationVersion: "voicebridge-nwer-v1",
+  latencyMs: 620,
+  detectedLanguageCodes: ["ha"],
+  processingStatus: "FILE_TRANSCRIBED",
+  benchmarkMode: true,
+  automaticLanguageDetection: true,
+  ...overrides,
+});
+
 describe("VoiceBridge CodeSwitch routes", () => {
   beforeEach(() => {
     transcribeWithSahara.mockReset();
     transcribeWithOpenAI.mockReset();
+    transcribeWithWhisper.mockReset();
+    transcribeWithChirp.mockReset();
     jest.spyOn(console, "warn").mockImplementation(() => {});
   });
 
@@ -236,9 +283,11 @@ describe("VoiceBridge CodeSwitch routes", () => {
     });
   });
 
-  test("benchmarks Sahara and OpenAI from the same uploaded audio", async () => {
+  test("benchmarks Sahara, GPT-Transcribe, Whisper, and Chirp from the same uploaded audio", async () => {
     transcribeWithSahara.mockResolvedValueOnce(completedTranscription());
     transcribeWithOpenAI.mockResolvedValueOnce(completedOpenAiTranscription());
+    transcribeWithWhisper.mockResolvedValueOnce(completedWhisperTranscription());
+    transcribeWithChirp.mockResolvedValueOnce(completedChirpTranscription());
 
     const response = await request(app)
       .post("/api/codeswitch/benchmark")
@@ -252,11 +301,17 @@ describe("VoiceBridge CodeSwitch routes", () => {
 
     expect(transcribeWithSahara).toHaveBeenCalledTimes(1);
     expect(transcribeWithOpenAI).toHaveBeenCalledTimes(1);
+    expect(transcribeWithWhisper).toHaveBeenCalledTimes(1);
+    expect(transcribeWithChirp).toHaveBeenCalledTimes(1);
 
     const saharaArgs = transcribeWithSahara.mock.calls[0][0];
     const openAiArgs = transcribeWithOpenAI.mock.calls[0][0];
+    const whisperArgs = transcribeWithWhisper.mock.calls[0][0];
+    const chirpArgs = transcribeWithChirp.mock.calls[0][0];
 
     expect(saharaArgs.buffer).toBe(openAiArgs.buffer);
+    expect(saharaArgs.buffer).toBe(whisperArgs.buffer);
+    expect(saharaArgs.buffer).toBe(chirpArgs.buffer);
 
     expect(response.body).toEqual(
       expect.objectContaining({
@@ -267,12 +322,12 @@ describe("VoiceBridge CodeSwitch routes", () => {
         normalizationVersion: "voicebridge-nwer-v1",
         benchmarkMode: true,
         sameSourceAudio: true,
-        successfulModels: 2,
-        requestedModels: 2,
+        successfulModels: 4,
+        requestedModels: 4,
       })
     );
 
-    expect(response.body.models).toHaveLength(2);
+    expect(response.body.models).toHaveLength(4);
 
     expect(response.body.models[0]).toEqual(
       expect.objectContaining({
@@ -286,6 +341,22 @@ describe("VoiceBridge CodeSwitch routes", () => {
       expect.objectContaining({
         ok: true,
         provider: "openai",
+        evaluation: expect.objectContaining({ wer: 0 }),
+      })
+    );
+
+    expect(response.body.models[2]).toEqual(
+      expect.objectContaining({
+        ok: true,
+        provider: "whisper",
+        evaluation: expect.objectContaining({ wer: 0 }),
+      })
+    );
+
+    expect(response.body.models[3]).toEqual(
+      expect.objectContaining({
+        ok: true,
+        provider: "chirp",
         evaluation: expect.objectContaining({ wer: 0 }),
       })
     );

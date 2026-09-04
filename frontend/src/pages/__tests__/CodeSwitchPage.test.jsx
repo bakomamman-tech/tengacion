@@ -5,13 +5,17 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import CodeSwitchPage from "../CodeSwitchPage";
-import { runCodeswitchBenchmark } from "../../services/codeswitchApi";
+import {
+  analyzeCodeswitchIntent,
+  runCodeswitchBenchmark,
+} from "../../services/codeswitchApi";
 
 vi.mock("../../components/seo/SeoHead", () => ({
   default: () => null,
 }));
 
 vi.mock("../../services/codeswitchApi", () => ({
+  analyzeCodeswitchIntent: vi.fn(),
   runCodeswitchBenchmark: vi.fn(),
 }));
 
@@ -105,6 +109,40 @@ const BENCHMARK_RESULT = {
   ],
 };
 
+const INTENT_RESULT = {
+  ok: true,
+  service: "Tengacion VoiceBridge",
+  phase: 3,
+  integrationEnabled: true,
+  intentVersion: "voicebridge-intent-v1",
+  languagePair: "ha-en",
+  normalizedTranscript:
+    "don allah check my payment na biya naira dubu biyar jiya amma ban samu confirmation ba",
+  intent: "payment_confirmation_check",
+  confidence: 0.98,
+  confidenceType:
+    "deterministic-heuristic-score-not-calibrated-probability",
+  entities: {
+    amount: 5000,
+    currency: "NGN",
+    timeReference: "yesterday",
+    transactionReference: null,
+  },
+  requestedAction: "check_payment_status",
+  actionPolicy: {
+    mode: "read_only",
+    moneyMovementAllowed: false,
+    requiresConfirmation: false,
+    manualReviewRequired: false,
+  },
+  execution: {
+    attempted: false,
+    moneyMovementPerformed: false,
+    message:
+      "Intent and entities extracted. No downstream action was executed.",
+  },
+};
+
 const renderPage = () =>
   render(
     <MemoryRouter>
@@ -134,6 +172,10 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
     runCodeswitchBenchmark.mockResolvedValue(
       BENCHMARK_RESULT
     );
+
+    analyzeCodeswitchIntent.mockResolvedValue(
+      INTENT_RESULT
+    );
   });
 
   it("uploads one file and launches the shared benchmark", async () => {
@@ -162,6 +204,76 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
         referenceTranscript: "",
       })
     );
+  });
+
+  it("drives the downstream task from the Sahara transcript", async () => {
+    const user = userEvent.setup();
+
+    const paymentTranscript =
+      "Don Allah, check my payment, na biya naira dubu biyar jiya amma ban samu confirmation ba.";
+
+    runCodeswitchBenchmark.mockResolvedValue({
+      ...BENCHMARK_RESULT,
+      models: [
+        {
+          ...SAHARA_MODEL,
+          transcript: paymentTranscript,
+          normalizedTranscript:
+            "don allah check my payment na biya naira dubu biyar jiya amma ban samu confirmation ba",
+        },
+        OPENAI_MODEL,
+        WHISPER_MODEL,
+        CHIRP_MODEL,
+      ],
+    });
+
+    renderPage();
+    await uploadAudio(user);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /run voicebridge benchmark/i,
+      })
+    );
+
+    expect(
+      await screen.findByText(
+        "payment_confirmation_check"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      analyzeCodeswitchIntent
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transcript: paymentTranscript,
+        languagePair: "ha-en",
+      })
+    );
+
+    expect(
+      screen.getByText(
+        "NGN 5,000 | yesterday"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "check_payment_status"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "Safe read-only analysis | No money moved"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "Intent and entities extracted. No downstream action was executed."
+      )
+    ).toBeInTheDocument();
   });
 
   it("shows all four live provider cards while processing", async () => {

@@ -82,3 +82,38 @@ export async function runCodeswitchBenchmark({
 
   return payload;
 }
+
+
+export async function analyzeCodeswitchIntent({
+  transcript,
+  languagePair,
+  signal,
+} = {}) {
+  const response = await fetch(
+    `${API_BASE}/codeswitch/intent`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        transcript,
+        languagePair,
+      }),
+      signal,
+    }
+  );
+
+  const payload = await readPayload(response);
+
+  if (!response.ok) {
+    throwApiError(
+      response,
+      payload,
+      "VoiceBridge intent analysis failed."
+    );
+  }
+
+  return payload;
+}

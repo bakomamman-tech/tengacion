@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import SeoHead from "../components/seo/SeoHead";
 import Button from "../components/ui/Button";
 import {
+  analyzeCodeswitchIntent,
   runCodeswitchBenchmark,
 } from "../services/codeswitchApi";
 
@@ -36,6 +37,43 @@ const METHODOLOGY = [
   "Normalized word error rate is the primary transcription benchmark.",
   "Downstream intent and task performance will be evaluated separately.",
 ];
+
+const formatDownstreamEntities = (
+  entities
+) => {
+  if (!entities) {
+    return "Awaiting benchmark";
+  }
+
+  const parts = [];
+
+  if (
+    Number.isFinite(entities.amount) &&
+    entities.currency
+  ) {
+    parts.push(
+      `${entities.currency} ${entities.amount.toLocaleString()}`
+    );
+  } else if (Number.isFinite(entities.amount)) {
+    parts.push(
+      entities.amount.toLocaleString()
+    );
+  }
+
+  if (entities.timeReference) {
+    parts.push(entities.timeReference);
+  }
+
+  if (entities.transactionReference) {
+    parts.push(
+      `Ref: ${entities.transactionReference}`
+    );
+  }
+
+  return parts.length > 0
+    ? parts.join(" | ")
+    : "No supported entities detected";
+};
 
 function VoiceBridgeIcon({ name, size = 24 }) {
   const paths = {
@@ -265,6 +303,8 @@ export default function CodeSwitchPage() {
   const [audioFile, setAudioFile] = useState(null);
   const [referenceTranscript, setReferenceTranscript] = useState("");
   const [benchmarkResult, setBenchmarkResult] = useState(null);
+  const [intentResult, setIntentResult] = useState(null);
+  const [intentError, setIntentError] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const activeRequestRef = useRef(null);
@@ -309,6 +349,8 @@ export default function CodeSwitchPage() {
 
   const resetResults = () => {
     setBenchmarkResult(null);
+    setIntentResult(null);
+    setIntentError("");
     setErrorMessage("");
   };
 
@@ -347,6 +389,52 @@ export default function CodeSwitchPage() {
 
       if (!controller.signal.aborted) {
         setBenchmarkResult(benchmark);
+
+        const saharaDownstream =
+          benchmark?.models?.find(
+            (model) =>
+              model.provider === "sahara" &&
+              model.ok === true &&
+              typeof model.transcript === "string" &&
+              model.transcript.trim()
+          ) || null;
+
+        if (!saharaDownstream) {
+          setIntentError(
+            "Sahara v2.5 did not return a usable transcript, so the downstream task was not run."
+          );
+          return;
+        }
+
+        try {
+          const intent =
+            await analyzeCodeswitchIntent({
+              transcript:
+                saharaDownstream.transcript,
+              languagePair,
+              signal: controller.signal,
+            });
+
+          if (!controller.signal.aborted) {
+            setIntentResult({
+              ...intent,
+              sourceProvider: "sahara",
+              sourceModel:
+                saharaDownstream.model ||
+                "sahara-v2.5",
+            });
+          }
+        } catch (intentFailure) {
+          if (
+            intentFailure?.name !==
+            "AbortError"
+          ) {
+            setIntentError(
+              intentFailure?.message ||
+                "VoiceBridge intent analysis could not be completed."
+            );
+          }
+        }
       }
     } catch (error) {
       if (error?.name !== "AbortError") {
@@ -364,6 +452,45 @@ export default function CodeSwitchPage() {
         setIsSubmitting(false);
       }
     }
+  };
+
+  const downstreamValues = {
+    "Detected intent":
+      intentResult?.intent ||
+      (intentError
+        ? "Intent analysis unavailable"
+        : "Awaiting benchmark"),
+
+    "Extracted entities":
+      intentResult
+        ? formatDownstreamEntities(
+            intentResult.entities
+          )
+        : intentError
+          ? "Unavailable"
+          : "Awaiting benchmark",
+
+    "Requested action":
+      intentResult?.requestedAction ||
+      (intentError
+        ? "No action selected"
+        : "Awaiting benchmark"),
+
+    "Task result":
+      intentResult?.execution?.message ||
+      (intentError
+        ? intentError
+        : "Awaiting benchmark"),
+
+    "Success / failure":
+      intentResult
+        ? intentResult.actionPolicy
+            ?.manualReviewRequired
+          ? "Manual review required | No money moved"
+          : "Safe read-only analysis | No money moved"
+        : intentError
+          ? "Downstream analysis unavailable"
+          : "Awaiting benchmark",
   };
 
   return (
@@ -498,6 +625,8 @@ export default function CodeSwitchPage() {
                 onChange={(event) => {
                   setReferenceTranscript(event.target.value);
                   setBenchmarkResult(null);
+                  setIntentResult(null);
+                  setIntentError("");
                 }}
               />
             </div>
@@ -616,7 +745,7 @@ export default function CodeSwitchPage() {
               icon="task"
               eyebrow="Downstream task"
               title="From speech to resolution"
-              detail="Intent extraction and downstream task-success evaluation are the next Phase 3 milestone."
+              detail="Sahara v2.5 drives the application path: its transcript is analyzed for intent, entities, and a safe downstream action without moving money."
             />
             <article className="voicebridge-task-card">
               <div className="voicebridge-task-card__flow" aria-hidden="true">
@@ -624,7 +753,10 @@ export default function CodeSwitchPage() {
               </div>
               <dl>
                 {DOWNSTREAM_FIELDS.map((field) => (
-                  <div key={field}><dt>{field}</dt><dd>Awaiting future evaluation</dd></div>
+                  <div key={field}>
+                    <dt>{field}</dt>
+                    <dd>{downstreamValues[field]}</dd>
+                  </div>
                 ))}
               </dl>
             </article>

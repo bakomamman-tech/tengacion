@@ -32,6 +32,10 @@ const {
   transcribeWithChirp,
 } = require("../services/chirpCodeswitchService");
 
+const {
+  runCodeswitchBenchmark,
+} = require("../services/codeswitchBenchmarkService");
+
 const SERVICE_NAME = "Tengacion VoiceBridge";
 const PHASE = 3;
 const LANGUAGE_PAIR_TO_SAHARA_LANGUAGE = Object.freeze({
@@ -644,14 +648,19 @@ const benchmark = async (req, res) => {
       ? req.body.languagePair.trim()
       : "";
 
-  const languageCode = LANGUAGE_PAIR_TO_SAHARA_LANGUAGE[languagePair];
+  const languageCode =
+    LANGUAGE_PAIR_TO_SAHARA_LANGUAGE[
+      languagePair
+    ];
 
   if (!languageCode) {
     return res.status(400).json({
       ok: false,
       error: {
-        code: "UNSUPPORTED_LANGUAGE_PAIR",
-        message: "languagePair must be one of: ha-en, pcm-en.",
+        code:
+          "UNSUPPORTED_LANGUAGE_PAIR",
+        message:
+          "languagePair must be one of: ha-en, pcm-en.",
       },
     });
   }
@@ -661,22 +670,28 @@ const benchmark = async (req, res) => {
       ok: false,
       error: {
         code: "AUDIO_REQUIRED",
-        message: "An audio file is required in the audio field.",
+        message:
+          "An audio file is required in the audio field.",
       },
     });
   }
 
   const referenceTranscript =
-    typeof req.body?.referenceTranscript === "string"
+    typeof req.body?.referenceTranscript ===
+    "string"
       ? req.body.referenceTranscript
       : "";
 
-  if (referenceTranscript.length > MAX_TRANSCRIPT_CHARS) {
+  if (
+    referenceTranscript.length >
+    MAX_TRANSCRIPT_CHARS
+  ) {
     return res.status(400).json({
       ok: false,
       error: {
         code: "REFERENCE_TOO_LONG",
-        message: `referenceTranscript must not exceed ${MAX_TRANSCRIPT_CHARS} characters.`,
+        message:
+          `referenceTranscript must not exceed ${MAX_TRANSCRIPT_CHARS} characters.`,
       },
     });
   }
@@ -687,103 +702,31 @@ const benchmark = async (req, res) => {
     mimeType: req.file.mimetype,
   };
 
-  const providers = [
-    {
-      provider: "sahara",
-      execute: () =>
-        transcribeWithSahara({
-          ...audio,
-          languageCode,
-        }),
-    },
-    {
-      provider: "openai",
-      execute: () => transcribeWithOpenAI(audio),
-    },
-    {
-      provider: "whisper",
-      execute: () => transcribeWithWhisper(audio),
-    },
-    {
-      provider: "chirp",
-      execute: () => transcribeWithChirp(audio),
-    },
-  ];
-
-  const settled = await Promise.allSettled(
-    providers.map((provider) => provider.execute())
-  );
-
-  const models = settled.map((entry, index) => {
-    const provider = providers[index].provider;
-
-    if (entry.status === "fulfilled") {
-      const result = entry.value;
-      const safeResult = { ...result };
-      delete safeResult.providerFileId;
-
-      let evaluation = null;
-
-      if (referenceTranscript.trim()) {
-        evaluation = calculateWordErrorRate({
-          reference: referenceTranscript,
-          hypothesis: result.transcript,
-        });
-      }
-
-      return {
-        ok: true,
-        ...safeResult,
-        languagePair,
-        evaluation,
-      };
-    }
-
-    const error = entry.reason;
-
-    const isKnownError =
-      error instanceof SaharaServiceError ||
-      error instanceof OpenAiCodeswitchError ||
-      error instanceof WhisperCodeswitchError ||
-      error instanceof ChirpCodeswitchError;
-
-    console.warn("[voicebridge:benchmark] provider failed", {
-      requestId: req.requestId || "",
-      provider,
-      code: isKnownError ? error.code : "PROVIDER_FAILED",
-      statusCode: isKnownError ? error.statusCode : 502,
+  const result =
+    await runCodeswitchBenchmark({
+      audio,
       languagePair,
-      fileSize: Number(req.file?.size || 0),
+      languageCode,
+      referenceTranscript,
+      requestId:
+        req.requestId || "",
     });
 
-    return {
-      ok: false,
-      provider,
-      error: {
-        code: isKnownError ? error.code : "PROVIDER_FAILED",
-        message: isKnownError
-          ? error.message
-          : `${provider} transcription failed unexpectedly.`,
-      },
-    };
-  });
+  const {
+    ok,
+    ...benchmarkBody
+  } = result.body;
 
-  const successfulModels = models.filter((model) => model.ok).length;
-
-  return res.status(successfulModels > 0 ? 200 : 502).json({
-    ok: successfulModels > 0,
-    service: SERVICE_NAME,
-    phase: PHASE,
-    languagePair,
-    normalizationVersion: NORMALIZATION_VERSION,
-    benchmarkMode: true,
-    sameSourceAudio: true,
-    sourceAudioBytes: req.file.buffer.length,
-    successfulModels,
-    requestedModels: providers.length,
-    models,
-  });
+  return res
+    .status(result.statusCode)
+    .json({
+      ok,
+      service: SERVICE_NAME,
+      phase: PHASE,
+      ...benchmarkBody,
+    });
 };
+
 module.exports = {
   action,
   benchmark,

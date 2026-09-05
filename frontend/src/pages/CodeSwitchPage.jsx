@@ -165,8 +165,52 @@ function SectionHeading({ number, icon, eyebrow, title, detail }) {
 const displayMetric = (value) =>
   Number.isFinite(value) ? String(value) : "—";
 
+const displayRate = (value) =>
+  Number.isFinite(value)
+    ? (value * 100).toFixed(1) + "%"
+    : "N/A";
+
+const displayOutcome = (value) =>
+  value === true
+    ? "PASS"
+    : value === false
+      ? "FAIL"
+      : "N/A";
+
+const buildDownstreamGold = (
+  analysis
+) => ({
+  intent:
+    analysis?.intent || "",
+
+  requestedAction:
+    analysis?.requestedAction || "",
+
+  entities: {
+    amount:
+      analysis?.entities?.amount ??
+      null,
+
+    currency:
+      analysis?.entities?.currency ??
+      null,
+
+    timeReference:
+      analysis?.entities
+        ?.timeReference ??
+      null,
+
+    transactionReference:
+      analysis?.entities
+        ?.transactionReference ??
+      null,
+  },
+});
+
+
 function BenchmarkModelCard({
   result,
+  downstreamEvaluation,
   languagePairLabel,
   isLoading,
   name,
@@ -178,6 +222,15 @@ function BenchmarkModelCard({
   const isSuccess = result?.ok === true;
   const isFailure = result?.ok === false;
   const evaluation = isSuccess ? result?.evaluation : null;
+
+  const downstreamAvailable =
+    downstreamEvaluation
+      ?.evaluationAvailable === true;
+
+  const downstreamMetrics =
+    downstreamAvailable
+      ? downstreamEvaluation.metrics
+      : null;
 
   const werDisplay = evaluation
     ? evaluation.wer === null
@@ -258,6 +311,72 @@ function BenchmarkModelCard({
           <dt>Normalized WER</dt>
           <dd>{werDisplay}</dd>
         </div>
+
+        {downstreamEvaluation ? (
+          <>
+            <div>
+              <dt>Intent match</dt>
+              <dd>
+                {downstreamAvailable
+                  ? displayOutcome(
+                      downstreamMetrics
+                        ?.intentCorrect
+                    )
+                  : "Not evaluated"}
+              </dd>
+            </div>
+
+            <div>
+              <dt>Action match</dt>
+              <dd>
+                {downstreamAvailable
+                  ? displayOutcome(
+                      downstreamMetrics
+                        ?.requestedActionCorrect
+                    )
+                  : "Not evaluated"}
+              </dd>
+            </div>
+
+            <div>
+              <dt>
+                Entity exact match
+              </dt>
+              <dd>
+                {downstreamAvailable
+                  ? displayOutcome(
+                      downstreamMetrics
+                        ?.entitiesExactMatch
+                    )
+                  : "Not evaluated"}
+              </dd>
+            </div>
+
+            <div>
+              <dt>
+                Required entity recall
+              </dt>
+              <dd>
+                {downstreamAvailable
+                  ? displayRate(
+                      downstreamMetrics
+                        ?.requiredEntityRecall
+                    )
+                  : "Not evaluated"}
+              </dd>
+            </div>
+
+            <div>
+              <dt>Task success</dt>
+              <dd>
+                {displayOutcome(
+                  downstreamEvaluation
+                    ?.taskSuccess
+                )}
+              </dd>
+            </div>
+          </>
+        ) : null}
 
         <div>
           <dt>Substitutions</dt>
@@ -351,6 +470,36 @@ export default function CodeSwitchPage() {
       (model) => model.provider === "chirp"
     ) || null;
 
+  const downstreamByProvider =
+    useMemo(() => {
+      const evaluations =
+        benchmarkResult
+          ?.downstreamEvaluation
+          ?.models;
+
+      if (
+        !Array.isArray(
+          evaluations
+        )
+      ) {
+        return {};
+      }
+
+      return Object.fromEntries(
+        evaluations.map(
+          (evaluation) => [
+            evaluation.provider,
+            evaluation,
+          ]
+        )
+      );
+    }, [benchmarkResult]);
+
+  const downstreamSummary =
+    benchmarkResult
+      ?.downstreamEvaluation
+      ?.summary || null;
+
   useEffect(() => {
     const requestRef = activeRequestRef;
     return () => requestRef.current?.abort();
@@ -403,12 +552,48 @@ export default function CodeSwitchPage() {
     resetResults();
 
     try {
-      const benchmark = await runCodeswitchBenchmark({
-        audio: audioFile,
-        languagePair,
-        referenceTranscript,
-        signal: controller.signal,
-      });
+      let downstreamGold = null;
+
+      if (
+        referenceTranscript.trim()
+      ) {
+        const goldAnalysis =
+          await analyzeCodeswitchIntent({
+            transcript:
+              referenceTranscript,
+
+            languagePair,
+
+            signal:
+              controller.signal,
+          });
+
+        if (
+          controller.signal.aborted
+        ) {
+          return;
+        }
+
+        downstreamGold =
+          buildDownstreamGold(
+            goldAnalysis
+          );
+      }
+
+      const benchmark =
+        await runCodeswitchBenchmark({
+          audio:
+            audioFile,
+
+          languagePair,
+
+          referenceTranscript,
+
+          downstreamGold,
+
+          signal:
+            controller.signal,
+        });
 
       if (!controller.signal.aborted) {
         setBenchmarkResult(benchmark);
@@ -735,7 +920,7 @@ export default function CodeSwitchPage() {
 
             <div className="voicebridge-reference-field">
               <label htmlFor="voicebridge-reference">
-                Reference transcript <span>Optional · enables normalized WER</span>
+                Reference transcript <span>Optional - enables normalized WER + downstream evaluation</span>
               </label>
               <textarea
                 id="voicebridge-reference"
@@ -817,6 +1002,10 @@ export default function CodeSwitchPage() {
           <div className="voicebridge-model-grid">
             <BenchmarkModelCard
               result={saharaResult}
+              downstreamEvaluation={
+                downstreamByProvider
+                  .sahara || null
+              }
               languagePairLabel={selectedLanguage.label}
               isLoading={isSubmitting}
               name="Sahara v2.5"
@@ -828,6 +1017,10 @@ export default function CodeSwitchPage() {
 
             <BenchmarkModelCard
               result={openAiResult}
+              downstreamEvaluation={
+                downstreamByProvider
+                  .openai || null
+              }
               languagePairLabel={selectedLanguage.label}
               isLoading={isSubmitting}
               name="GPT-Transcribe"
@@ -839,6 +1032,10 @@ export default function CodeSwitchPage() {
 
             <BenchmarkModelCard
               result={whisperResult}
+              downstreamEvaluation={
+                downstreamByProvider
+                  .whisper || null
+              }
               languagePairLabel={selectedLanguage.label}
               isLoading={isSubmitting}
               name="Whisper-1"
@@ -850,6 +1047,10 @@ export default function CodeSwitchPage() {
 
             <BenchmarkModelCard
               result={chirpResult}
+              downstreamEvaluation={
+                downstreamByProvider
+                  .chirp || null
+              }
               languagePairLabel={selectedLanguage.label}
               isLoading={isSubmitting}
               name="Chirp 3"
@@ -859,7 +1060,91 @@ export default function CodeSwitchPage() {
               testId="chirp-model-card"
             />
           </div>
-        </section>
+                  {downstreamSummary ? (
+            <div
+              className="voicebridge-downstream-benchmark-summary"
+              data-testid="downstream-benchmark-summary"
+            >
+              <div className="voicebridge-downstream-benchmark-summary__heading">
+                <strong>
+                  Downstream benchmark
+                </strong>
+
+                <span>
+                  Semantic gold comes from the verified reference transcript.
+                </span>
+              </div>
+
+              <div className="voicebridge-summary-grid">
+                <article>
+                  <span>
+                    Model completion
+                  </span>
+
+                  <strong>
+                    {displayRate(
+                      downstreamSummary
+                        .modelCompletionRate
+                    )}
+                  </strong>
+                </article>
+
+                <article>
+                  <span>
+                    Intent accuracy
+                  </span>
+
+                  <strong>
+                    {displayRate(
+                      downstreamSummary
+                        .intentAccuracy
+                    )}
+                  </strong>
+                </article>
+
+                <article>
+                  <span>
+                    Action accuracy
+                  </span>
+
+                  <strong>
+                    {displayRate(
+                      downstreamSummary
+                        .requestedActionAccuracy
+                    )}
+                  </strong>
+                </article>
+
+                <article>
+                  <span>
+                    Entity exact match
+                  </span>
+
+                  <strong>
+                    {displayRate(
+                      downstreamSummary
+                        .entityExactMatchRate
+                    )}
+                  </strong>
+                </article>
+
+                <article>
+                  <span>
+                    Task success
+                  </span>
+
+                  <strong>
+                    {displayRate(
+                      downstreamSummary
+                        .taskSuccessRate
+                    )}
+                  </strong>
+                </article>
+              </div>
+            </div>
+          ) : null}
+
+</section>
 
         <section className="voicebridge-section voicebridge-two-column">
           <div>

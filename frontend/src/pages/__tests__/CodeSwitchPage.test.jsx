@@ -696,4 +696,369 @@ describe("CodeSwitchPage Phase 3 benchmark", () => {
       "VoiceBridge benchmark is temporarily unavailable."
     );
   });
+
+
+  it(
+    "renders downstream benchmark metrics across the four providers",
+    async () => {
+      const user =
+        userEvent.setup();
+
+      const reference =
+        "Don Allah, check my payment, na biya naira dubu biyar jiya amma ban samu confirmation ba.";
+
+      runCodeswitchBenchmark
+        .mockResolvedValue({
+          ...BENCHMARK_RESULT,
+
+          downstreamEvaluation: {
+            evaluationVersion:
+              "voicebridge-downstream-eval-v1",
+
+            evaluationOnly:
+              true,
+
+            databaseWritesPerformed:
+              false,
+
+            moneyMovementPerformed:
+              false,
+
+            languagePair:
+              "ha-en",
+
+            requestedModels:
+              4,
+
+            evaluatedModels:
+              4,
+
+            summary: {
+              modelCompletionRate:
+                1,
+
+              intentAccuracy:
+                0.75,
+
+              requestedActionAccuracy:
+                1,
+
+              entityExactMatchRate:
+                0.75,
+
+              taskSuccessCount:
+                3,
+
+              taskSuccessRate:
+                0.75,
+            },
+
+            models: [
+              {
+                provider:
+                  "sahara",
+
+                model:
+                  "sahara-v2.5",
+
+                evaluationAvailable:
+                  true,
+
+                metrics: {
+                  intentCorrect:
+                    true,
+
+                  requestedActionCorrect:
+                    true,
+
+                  entitiesExactMatch:
+                    true,
+
+                  requiredEntityRecall:
+                    1,
+                },
+
+                taskSuccess:
+                  true,
+              },
+
+              {
+                provider:
+                  "openai",
+
+                model:
+                  "gpt-transcribe",
+
+                evaluationAvailable:
+                  true,
+
+                metrics: {
+                  intentCorrect:
+                    false,
+
+                  requestedActionCorrect:
+                    true,
+
+                  entitiesExactMatch:
+                    false,
+
+                  requiredEntityRecall:
+                    2 / 3,
+                },
+
+                taskSuccess:
+                  false,
+              },
+
+              {
+                provider:
+                  "whisper",
+
+                model:
+                  "whisper-1",
+
+                evaluationAvailable:
+                  true,
+
+                metrics: {
+                  intentCorrect:
+                    true,
+
+                  requestedActionCorrect:
+                    true,
+
+                  entitiesExactMatch:
+                    true,
+
+                  requiredEntityRecall:
+                    1,
+                },
+
+                taskSuccess:
+                  true,
+              },
+
+              {
+                provider:
+                  "chirp",
+
+                model:
+                  "chirp_3",
+
+                evaluationAvailable:
+                  true,
+
+                metrics: {
+                  intentCorrect:
+                    true,
+
+                  requestedActionCorrect:
+                    true,
+
+                  entitiesExactMatch:
+                    true,
+
+                  requiredEntityRecall:
+                    1,
+                },
+
+                taskSuccess:
+                  true,
+              },
+            ],
+          },
+        });
+
+      renderPage();
+
+      await user.type(
+        screen.getByLabelText(
+          /reference transcript/i
+        ),
+        reference
+      );
+
+      const file =
+        await uploadAudio(user);
+
+      await user.click(
+        screen.getByRole(
+          "button",
+          {
+            name:
+              /run voicebridge benchmark/i,
+          }
+        )
+      );
+
+      expect(
+        analyzeCodeswitchIntent
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transcript:
+            reference,
+
+          languagePair:
+            "ha-en",
+        })
+      );
+
+      expect(
+        runCodeswitchBenchmark
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          audio:
+            file,
+
+          languagePair:
+            "ha-en",
+
+          referenceTranscript:
+            reference,
+
+          downstreamGold: {
+            intent:
+              "payment_confirmation_check",
+
+            requestedAction:
+              "check_payment_status",
+
+            entities: {
+              amount:
+                5000,
+
+              currency:
+                "NGN",
+
+              timeReference:
+                "yesterday",
+
+              transactionReference:
+                null,
+            },
+          },
+        })
+      );
+
+      const sahara =
+        await screen.findByTestId(
+          "sahara-model-card"
+        );
+
+      const openai =
+        screen.getByTestId(
+          "openai-model-card"
+        );
+
+      expect(
+        within(sahara)
+          .getByText(
+            "Intent match"
+          )
+          .closest("div")
+      ).toHaveTextContent(
+        "PASS"
+      );
+
+      expect(
+        within(openai)
+          .getByText(
+            "Intent match"
+          )
+          .closest("div")
+      ).toHaveTextContent(
+        "FAIL"
+      );
+
+      expect(
+        within(openai)
+          .getByText(
+            "Entity exact match"
+          )
+          .closest("div")
+      ).toHaveTextContent(
+        "FAIL"
+      );
+
+      expect(
+        within(openai)
+          .getByText(
+            "Required entity recall"
+          )
+          .closest("div")
+      ).toHaveTextContent(
+        "66.7%"
+      );
+
+      expect(
+        within(sahara)
+          .getByText(
+            "Task success"
+          )
+          .closest("div")
+      ).toHaveTextContent(
+        "PASS"
+      );
+
+      expect(
+        within(openai)
+          .getByText(
+            "Task success"
+          )
+          .closest("div")
+      ).toHaveTextContent(
+        "FAIL"
+      );
+
+      const summary =
+        screen.getByTestId(
+          "downstream-benchmark-summary"
+        );
+
+      expect(
+        within(summary)
+          .getByText(
+            "Model completion"
+          )
+      ).toBeInTheDocument();
+
+      expect(
+        within(summary)
+          .getByText(
+            "Intent accuracy"
+          )
+      ).toBeInTheDocument();
+
+      expect(
+        within(summary)
+          .getByText(
+            "Action accuracy"
+          )
+      ).toBeInTheDocument();
+
+      expect(
+        within(summary)
+          .getByText(
+            "Entity exact match"
+          )
+      ).toBeInTheDocument();
+
+      expect(
+        within(summary)
+          .getByText(
+            "Task success"
+          )
+      ).toBeInTheDocument();
+
+      expect(
+        within(summary)
+          .getAllByText(
+            "75.0%"
+          )
+          .length
+      ).toBeGreaterThanOrEqual(
+        1
+      );
+    }
+  );
 });

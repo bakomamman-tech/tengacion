@@ -52,6 +52,7 @@ export async function runCodeswitchBenchmark({
   audio,
   languagePair,
   referenceTranscript = "",
+  downstreamGold = null,
   signal,
 } = {}) {
   const form = new FormData();
@@ -61,6 +62,18 @@ export async function runCodeswitchBenchmark({
 
   if (referenceTranscript.trim()) {
     form.append("referenceTranscript", referenceTranscript);
+  }
+
+  if (
+    downstreamGold &&
+    typeof downstreamGold === "object"
+  ) {
+    form.append(
+      "downstreamGold",
+      JSON.stringify(
+        downstreamGold
+      )
+    );
   }
 
   const response = await fetch(`${API_BASE}/codeswitch/benchmark`, {

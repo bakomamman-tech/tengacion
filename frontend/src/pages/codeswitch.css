@@ -1582,3 +1582,38 @@
     width: 100%;
   }
 }
+
+
+/* DOWNSTREAM BENCHMARK SCORECARD */
+
+.voicebridge-downstream-benchmark-summary {
+  margin-top: 26px;
+}
+
+.voicebridge-downstream-benchmark-summary__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.voicebridge-downstream-benchmark-summary__heading strong {
+  color: var(--vb-ink);
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.voicebridge-downstream-benchmark-summary__heading span {
+  color: var(--vb-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 720px) {
+  .voicebridge-downstream-benchmark-summary__heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+}

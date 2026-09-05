@@ -489,6 +489,77 @@ describe(
     );
 
     test(
+      "keeps asr-only samples out of downstream metric denominators",
+      () => {
+        const providers = [
+          "sahara",
+          "openai",
+          "whisper",
+          "chirp",
+        ];
+
+        const asrOnlyRun = {
+          sampleId:
+            "ha-en-asr-only",
+
+          languagePair:
+            "ha-en",
+
+          evaluationMode:
+            "asr-only",
+
+          benchmark: {
+            normalizationVersion:
+              "voicebridge-nwer-v1",
+
+            models:
+              providers.map(
+                (provider) =>
+                  successModel({
+                    provider,
+                    latencyMs:
+                      100,
+                    evaluation:
+                      wer({
+                        referenceWordCount:
+                          10,
+                      }),
+                  })
+              ),
+          },
+        };
+
+        const report =
+          aggregateCodeswitchBenchmarkRuns([
+            asrOnlyRun,
+          ]);
+
+        for (
+          const provider of
+            report.providers
+        ) {
+          expect(
+            provider
+              .downstreamRequestedSamples
+          ).toBe(0);
+
+          expect(
+            provider
+              .downstreamEvaluatedSamples
+          ).toBe(0);
+
+          expect(
+            provider.intentAccuracy
+          ).toBeNull();
+
+          expect(
+            provider.taskSuccessRate
+          ).toBeNull();
+        }
+      }
+    );
+
+    test(
       "exports report-ready CSV rows",
       () => {
         const report =

@@ -1,5 +1,7 @@
 const fs =
   require("fs/promises");
+const crypto =
+  require("crypto");
 const path =
   require("path");
 
@@ -38,6 +40,15 @@ const {
 
 const MANIFEST_VERSION =
   "voicebridge-benchmark-manifest-v1";
+
+const EVALUATION_MODES =
+  Object.freeze([
+    "asr-only",
+    "asr-and-downstream",
+  ]);
+
+const DEFAULT_EVALUATION_MODE =
+  "asr-and-downstream";
 
 const LANGUAGE_PAIR_TO_CODE =
   Object.freeze({
@@ -185,7 +196,8 @@ const validateReferenceTranscript =
 
 const validateSample = (
   sample,
-  seenSampleIds
+  seenSampleIds,
+  defaultEvaluationMode
 ) => {
   if (
     !isPlainObject(sample)
@@ -231,6 +243,20 @@ const validateSample = (
   seenSampleIds.add(
     sampleId
   );
+
+  const evaluationMode =
+    sample.evaluationMode ??
+    defaultEvaluationMode;
+
+  if (
+    !EVALUATION_MODES.includes(
+      evaluationMode
+    )
+  ) {
+    throw new RangeError(
+      "evaluationMode must be one of: asr-only, asr-and-downstream."
+    );
+  }
 
   if (
     !Object.prototype
@@ -286,6 +312,19 @@ const validateSample = (
   }
 
   if (
+    evaluationMode ===
+      "asr-only" &&
+    sample.downstreamGold !==
+      undefined &&
+    sample.downstreamGold !==
+      null
+  ) {
+    throw new RangeError(
+      `Benchmark sample ${sampleId} must not define downstreamGold when evaluationMode is asr-only.`
+    );
+  }
+
+  if (
     sample.downstreamGold !==
       undefined &&
     sample.downstreamGold !==
@@ -303,6 +342,7 @@ const validateSample = (
   return {
     ...sample,
     sampleId,
+    evaluationMode,
     audioPath:
       sample.audioPath.trim(),
   };
@@ -343,18 +383,36 @@ const validateCodeswitchBenchmarkManifest =
       );
     }
 
+    const defaultEvaluationMode =
+      manifest.evaluationMode ??
+      DEFAULT_EVALUATION_MODE;
+
+    if (
+      !EVALUATION_MODES.includes(
+        defaultEvaluationMode
+      )
+    ) {
+      throw new RangeError(
+        "evaluationMode must be one of: asr-only, asr-and-downstream."
+      );
+    }
+
     const seenSampleIds =
       new Set();
 
     return {
       ...manifest,
 
+      evaluationMode:
+        defaultEvaluationMode,
+
       samples:
         manifest.samples.map(
           (sample) =>
             validateSample(
               sample,
-              seenSampleIds
+              seenSampleIds,
+              defaultEvaluationMode
             )
         ),
     };
@@ -470,6 +528,12 @@ const preflightCodeswitchBenchmarkManifest =
         );
       }
 
+      const sha256 =
+        crypto
+          .createHash("sha256")
+          .update(buffer)
+          .digest("hex");
+
       const mimeType =
         sample.mimeType ||
         inferAudioMimeType(
@@ -477,41 +541,53 @@ const preflightCodeswitchBenchmarkManifest =
         );
 
       let downstreamGold =
-        sample.downstreamGold ||
         null;
 
       let goldSource =
-        "manifest";
+        "not-requested";
 
-      if (!downstreamGold) {
-        const analysis =
-          analyzeIntent({
-            transcript:
-              sample.referenceTranscript,
-
-            languagePair:
-              sample.languagePair,
-          });
-
+      if (
+        sample.evaluationMode ===
+        "asr-and-downstream"
+      ) {
         downstreamGold =
-          buildDownstreamGold(
-            analysis
-          );
+          sample.downstreamGold ||
+          null;
 
         goldSource =
-          "derived-from-reference";
-      }
+          downstreamGold
+            ? "manifest"
+            : "derived-from-reference";
 
-      /*
-       * Validate derived gold too.
-       */
-      evaluateDownstreamBenchmark({
-        models: [],
-        languagePair:
-          sample.languagePair,
-        gold:
-          downstreamGold,
-      });
+        if (!downstreamGold) {
+          const analysis =
+            analyzeIntent({
+              transcript:
+                sample.referenceTranscript,
+
+              languagePair:
+                sample.languagePair,
+            });
+
+          downstreamGold =
+            buildDownstreamGold(
+              analysis
+            );
+        }
+
+        /*
+         * Validate explicit or derived
+         * downstream gold before any
+         * provider API call.
+         */
+        evaluateDownstreamBenchmark({
+          models: [],
+          languagePair:
+            sample.languagePair,
+          gold:
+            downstreamGold,
+        });
+      }
 
       prepared.push({
         sample,
@@ -525,6 +601,8 @@ const preflightCodeswitchBenchmarkManifest =
             ),
 
           mimeType,
+
+          sha256,
         },
 
         downstreamGold,
@@ -678,6 +756,9 @@ const runCodeswitchBenchmarkManifest =
         languagePair:
           sample.languagePair,
 
+        evaluationMode:
+          sample.evaluationMode,
+
         source:
           sample.source ||
           null,
@@ -691,6 +772,9 @@ const runCodeswitchBenchmarkManifest =
 
           mimeType:
             audio.mimeType,
+
+          sha256:
+            audio.sha256,
 
           bytes:
             audio.buffer.length,
@@ -838,6 +922,8 @@ const runCodeswitchBenchmarkManifest =
   };
 
 module.exports = {
+  DEFAULT_EVALUATION_MODE,
+  EVALUATION_MODES,
   LANGUAGE_PAIR_TO_CODE,
   MANIFEST_VERSION,
   buildDownstreamGold,

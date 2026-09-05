@@ -1,5 +1,6 @@
 {
   "version": "voicebridge-benchmark-manifest-v1",
+  "evaluationMode": "asr-and-downstream",
   "samples": [
     {
       "sampleId": "ha-en-001",

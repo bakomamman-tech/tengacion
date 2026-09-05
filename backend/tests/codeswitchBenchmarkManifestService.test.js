@@ -39,6 +39,9 @@ const makeManifest = () => ({
   version:
     MANIFEST_VERSION,
 
+  evaluationMode:
+    "asr-and-downstream",
+
   samples: [
     {
       sampleId:
@@ -342,6 +345,96 @@ describe(
         ).toBe(
           "audio/wav"
         );
+
+        expect(
+          prepared[0]
+            .audio.sha256
+        ).toMatch(
+          /^[a-f0-9]{64}$/
+        );
+      }
+    );
+
+    test(
+      "preflights asr-only samples without deriving downstream gold",
+      async () => {
+        const manifest =
+          makeManifest();
+
+        manifest.evaluationMode =
+          "asr-only";
+
+        for (
+          const sample of
+            manifest.samples
+        ) {
+          delete sample.downstreamGold;
+        }
+
+        const analyzeIntent =
+          jest.fn();
+
+        const prepared =
+          await preflightCodeswitchBenchmarkManifest({
+            manifest,
+            repoRoot,
+            analyzeIntent,
+          });
+
+        expect(
+          prepared
+        ).toHaveLength(2);
+
+        expect(
+          analyzeIntent
+        ).not.toHaveBeenCalled();
+
+        for (
+          const item of prepared
+        ) {
+          expect(
+            item.sample
+              .evaluationMode
+          ).toBe(
+            "asr-only"
+          );
+
+          expect(
+            item.downstreamGold
+          ).toBeNull();
+
+          expect(
+            item.goldSource
+          ).toBe(
+            "not-requested"
+          );
+
+          expect(
+            item.audio.sha256
+          ).toMatch(
+            /^[a-f0-9]{64}$/
+          );
+        }
+      }
+    );
+
+    test(
+      "rejects downstream gold in asr-only mode",
+      () => {
+        const manifest =
+          makeManifest();
+
+        manifest.evaluationMode =
+          "asr-only";
+
+        expect(
+          () =>
+            validateCodeswitchBenchmarkManifest(
+              manifest
+            )
+        ).toThrow(
+          "must not define downstreamGold"
+        );
       }
     );
 
@@ -571,7 +664,18 @@ describe(
 
             mimeType:
               "audio/wav",
+
+            sha256:
+              expect.stringMatching(
+                /^[a-f0-9]{64}$/
+              ),
           })
+        );
+
+        expect(
+          rawRun.evaluationMode
+        ).toBe(
+          "asr-and-downstream"
         );
 
         expect(

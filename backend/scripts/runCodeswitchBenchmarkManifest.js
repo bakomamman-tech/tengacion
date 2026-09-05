@@ -42,11 +42,13 @@ const usage = () => {
 VoiceBridge benchmark manifest runner
 
 Usage:
-  npm run benchmark:codeswitch --prefix backend -- <manifest.json>
   npm run benchmark:codeswitch --prefix backend -- <manifest.json> --validate-only
-  npm run benchmark:codeswitch --prefix backend -- <manifest.json> --output <directory>
+  npm run benchmark:codeswitch --prefix backend -- <manifest.json> --live
+  npm run benchmark:codeswitch --prefix backend -- <manifest.json> --live --output <directory>
 
 Paths are resolved relative to the repository root unless absolute.
+
+Provider APIs are never called unless --live is explicitly supplied.
 
 Example:
   npm run benchmark:codeswitch --prefix backend -- artifacts/voicebridge-benchmark/manifest.json --validate-only
@@ -70,16 +72,14 @@ const parseArgs = (
 
   const manifestArg =
     args.find(
-      (arg) =>
+      (arg, index) =>
         !arg.startsWith(
           "--"
         ) &&
-        arg !==
-          args[
-            args.indexOf(
-              "--output"
-            ) + 1
-          ]
+        args[
+          index - 1
+        ] !==
+          "--output"
     );
 
   if (!manifestArg) {
@@ -114,15 +114,33 @@ const parseArgs = (
     );
   }
 
+  const validateOnly =
+    args.includes(
+      "--validate-only"
+    );
+
+  const live =
+    args.includes(
+      "--live"
+    );
+
+  if (
+    validateOnly &&
+    live
+  ) {
+    throw new RangeError(
+      "--validate-only and --live cannot be used together."
+    );
+  }
+
   return {
     help: false,
 
     manifestArg,
 
-    validateOnly:
-      args.includes(
-        "--validate-only"
-      ),
+    validateOnly,
+
+    live,
 
     outputArg,
   };
@@ -187,6 +205,9 @@ const main =
             languagePair:
               sample.languagePair,
 
+            evaluationMode:
+              sample.evaluationMode,
+
             filename:
               audio.filename,
 
@@ -195,6 +216,9 @@ const main =
 
             mimeType:
               audio.mimeType,
+
+            sha256:
+              audio.sha256,
 
             goldSource,
           })
@@ -206,6 +230,12 @@ const main =
       );
 
       return;
+    }
+
+    if (!parsed.live) {
+      throw new Error(
+        "Provider execution requires explicit --live. Use --validate-only for preflight."
+      );
     }
 
     const outputDir =

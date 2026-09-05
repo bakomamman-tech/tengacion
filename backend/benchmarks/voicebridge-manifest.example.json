@@ -1,0 +1,45 @@
+{
+  "version": "voicebridge-benchmark-manifest-v1",
+  "samples": [
+    {
+      "sampleId": "ha-en-001",
+      "languagePair": "ha-en",
+      "audioPath": "artifacts/voicebridge-benchmark/audio/ha-en-001.wav",
+      "referenceTranscript": "Don Allah check my payment, na biya naira dubu biyar jiya amma ban samu confirmation ba.",
+      "downstreamGold": {
+        "intent": "payment_confirmation_check",
+        "requestedAction": "check_payment_status",
+        "entities": {
+          "amount": 5000,
+          "currency": "NGN",
+          "timeReference": "yesterday",
+          "transactionReference": null
+        }
+      },
+      "source": {
+        "dataset": "replace-with-dataset-name",
+        "audioReference": "replace-with-source-reference"
+      }
+    },
+    {
+      "sampleId": "pcm-en-001",
+      "languagePair": "pcm-en",
+      "audioPath": "artifacts/voicebridge-benchmark/audio/pcm-en-001.wav",
+      "referenceTranscript": "Abeg check my payment, I pay five thousand naira yesterday but confirmation never enter.",
+      "downstreamGold": {
+        "intent": "payment_confirmation_check",
+        "requestedAction": "check_payment_status",
+        "entities": {
+          "amount": 5000,
+          "currency": "NGN",
+          "timeReference": "yesterday",
+          "transactionReference": null
+        }
+      },
+      "source": {
+        "dataset": "replace-with-dataset-name",
+        "audioReference": "replace-with-source-reference"
+      }
+    }
+  ]
+}

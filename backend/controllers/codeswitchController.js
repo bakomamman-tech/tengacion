@@ -696,35 +696,101 @@ const benchmark = async (req, res) => {
     });
   }
 
+  const rawDownstreamGold =
+    req.body?.downstreamGold;
+
+  let downstreamGold = null;
+
+  if (
+    typeof rawDownstreamGold ===
+      "string" &&
+    rawDownstreamGold.trim()
+  ) {
+    if (
+      rawDownstreamGold.length >
+      MAX_TRANSCRIPT_CHARS
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: {
+          code:
+            "DOWNSTREAM_GOLD_TOO_LONG",
+          message:
+            `downstreamGold must not exceed ${MAX_TRANSCRIPT_CHARS} characters.`,
+        },
+      });
+    }
+
+    try {
+      downstreamGold =
+        JSON.parse(
+          rawDownstreamGold
+        );
+    } catch (_error) {
+      return res.status(400).json({
+        ok: false,
+        error: {
+          code:
+            "INVALID_DOWNSTREAM_GOLD_JSON",
+          message:
+            "downstreamGold must contain valid JSON.",
+        },
+      });
+    }
+  }
+
   const audio = {
     buffer: req.file.buffer,
     filename: req.file.originalname,
     mimeType: req.file.mimetype,
   };
 
-  const result =
-    await runCodeswitchBenchmark({
-      audio,
-      languagePair,
-      languageCode,
-      referenceTranscript,
-      requestId:
-        req.requestId || "",
-    });
+  try {
+    const result =
+      await runCodeswitchBenchmark({
+        audio,
+        languagePair,
+        languageCode,
+        referenceTranscript,
+        downstreamGold,
+        requestId:
+          req.requestId || "",
+      });
 
-  const {
-    ok,
-    ...benchmarkBody
-  } = result.body;
-
-  return res
-    .status(result.statusCode)
-    .json({
+    const {
       ok,
-      service: SERVICE_NAME,
-      phase: PHASE,
-      ...benchmarkBody,
-    });
+      ...benchmarkBody
+    } = result.body;
+
+    return res
+      .status(result.statusCode)
+      .json({
+        ok,
+        service: SERVICE_NAME,
+        phase: PHASE,
+        ...benchmarkBody,
+      });
+  } catch (error) {
+    if (
+      downstreamGold !== null &&
+      (
+        error instanceof TypeError ||
+        error instanceof RangeError
+      )
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: {
+          code:
+            "INVALID_DOWNSTREAM_GOLD",
+          message:
+            error.message,
+        },
+      });
+    }
+
+    throw error;
+  }
 };
 
 module.exports = {

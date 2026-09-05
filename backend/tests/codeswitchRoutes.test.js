@@ -378,6 +378,189 @@ describe("VoiceBridge CodeSwitch routes", () => {
     expect(response.body.models[0].providerFileId).toBeUndefined();
   });
 
+  test(
+    "adds downstream task-success evaluation to the four-model benchmark",
+    async () => {
+      const transcript =
+        "Don Allah check my payment na biya naira dubu biyar jiya amma ban samu confirmation ba";
+
+      const normalizedTranscript =
+        "don allah check my payment na biya naira dubu biyar jiya amma ban samu confirmation ba";
+
+      transcribeWithSahara
+        .mockResolvedValueOnce(
+          completedTranscription({
+            transcript,
+            normalizedTranscript,
+          })
+        );
+
+      transcribeWithOpenAI
+        .mockResolvedValueOnce(
+          completedOpenAiTranscription({
+            transcript,
+            normalizedTranscript,
+          })
+        );
+
+      transcribeWithWhisper
+        .mockResolvedValueOnce(
+          completedWhisperTranscription({
+            transcript,
+            normalizedTranscript,
+          })
+        );
+
+      transcribeWithChirp
+        .mockResolvedValueOnce(
+          completedChirpTranscription({
+            transcript,
+            normalizedTranscript,
+          })
+        );
+
+      const downstreamGold = {
+        intent:
+          "payment_confirmation_check",
+        requestedAction:
+          "check_payment_status",
+        entities: {
+          amount: 5000,
+          currency: "NGN",
+          timeReference:
+            "yesterday",
+          transactionReference:
+            null,
+        },
+      };
+
+      const response =
+        await request(app)
+          .post(
+            "/api/codeswitch/benchmark"
+          )
+          .field(
+            "languagePair",
+            "ha-en"
+          )
+          .field(
+            "referenceTranscript",
+            transcript
+          )
+          .field(
+            "downstreamGold",
+            JSON.stringify(
+              downstreamGold
+            )
+          )
+          .attach(
+            "audio",
+            validWav,
+            {
+              filename:
+                "support.wav",
+              contentType:
+                "audio/wav",
+            }
+          )
+          .expect(200);
+
+      expect(
+        response.body
+          .downstreamEvaluation
+      ).toEqual(
+        expect.objectContaining({
+          evaluationVersion:
+            "voicebridge-downstream-eval-v1",
+          evaluationOnly:
+            true,
+          databaseWritesPerformed:
+            false,
+          moneyMovementPerformed:
+            false,
+          requestedModels:
+            4,
+          evaluatedModels:
+            4,
+        })
+      );
+
+      expect(
+        response.body
+          .downstreamEvaluation
+          .summary
+      ).toEqual({
+        modelCompletionRate:
+          1,
+        intentAccuracy:
+          1,
+        requestedActionAccuracy:
+          1,
+        entityExactMatchRate:
+          1,
+        taskSuccessCount:
+          4,
+        taskSuccessRate:
+          1,
+      });
+    }
+  );
+
+  test(
+    "rejects malformed downstream benchmark gold before calling providers",
+    async () => {
+      const response =
+        await request(app)
+          .post(
+            "/api/codeswitch/benchmark"
+          )
+          .field(
+            "languagePair",
+            "ha-en"
+          )
+          .field(
+            "downstreamGold",
+            "{not-valid-json"
+          )
+          .attach(
+            "audio",
+            validWav,
+            {
+              filename:
+                "support.wav",
+              contentType:
+                "audio/wav",
+            }
+          )
+          .expect(400);
+
+      expect(
+        response.body.error
+      ).toEqual({
+        code:
+          "INVALID_DOWNSTREAM_GOLD_JSON",
+        message:
+          "downstreamGold must contain valid JSON.",
+      });
+
+      expect(
+        transcribeWithSahara
+      ).not.toHaveBeenCalled();
+
+      expect(
+        transcribeWithOpenAI
+      ).not.toHaveBeenCalled();
+
+      expect(
+        transcribeWithWhisper
+      ).not.toHaveBeenCalled();
+
+      expect(
+        transcribeWithChirp
+      ).not.toHaveBeenCalled();
+    }
+  );
+
   test("extracts Hausa-English payment intent and entities through the API", async () => {
     const response = await request(app)
       .post("/api/codeswitch/intent")

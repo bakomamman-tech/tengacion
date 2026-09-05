@@ -7,6 +7,10 @@ const {
   createCodeswitchProviderRegistry,
 } = require("./codeswitchProviderRegistry");
 
+const {
+  evaluateDownstreamBenchmark,
+} = require("./codeswitchDownstreamBenchmarkService");
+
 const validateBenchmarkAudio = (audio) => {
   if (
     !audio ||
@@ -86,6 +90,7 @@ const runCodeswitchBenchmark = async ({
   languagePair,
   languageCode,
   referenceTranscript = "",
+  downstreamGold = null,
   requestId = "",
   providers =
     createCodeswitchProviderRegistry(),
@@ -101,6 +106,24 @@ const runCodeswitchBenchmark = async ({
     throw new TypeError(
       "referenceTranscript must be a string."
     );
+  }
+
+  const downstreamEvaluationRequested =
+    downstreamGold !== null &&
+    downstreamGold !== undefined;
+
+  /*
+   * Run the canonical evaluator against
+   * an empty model set first. This validates
+   * languagePair + gold intent/action/entities
+   * before spending provider API calls.
+   */
+  if (downstreamEvaluationRequested) {
+    evaluateDownstreamBenchmark({
+      models: [],
+      languagePair,
+      gold: downstreamGold,
+    });
   }
 
   const settled =
@@ -203,6 +226,15 @@ const runCodeswitchBenchmark = async ({
         model.ok === true
     ).length;
 
+  const downstreamEvaluation =
+    downstreamEvaluationRequested
+      ? evaluateDownstreamBenchmark({
+          models,
+          languagePair,
+          gold: downstreamGold,
+        })
+      : null;
+
   const body = {
     ok:
       successfulModels > 0,
@@ -223,6 +255,10 @@ const runCodeswitchBenchmark = async ({
 
     requestedModels:
       providers.length,
+
+    ...(downstreamEvaluationRequested
+      ? { downstreamEvaluation }
+      : {}),
 
     models,
   };

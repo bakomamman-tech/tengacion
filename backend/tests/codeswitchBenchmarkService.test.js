@@ -488,3 +488,237 @@ describe(
     );
   }
 );
+
+describe(
+  "VoiceBridge downstream-integrated benchmark",
+  () => {
+    const gold = {
+      intent:
+        "payment_confirmation_check",
+      requestedAction:
+        "check_payment_status",
+      entities: {
+        amount: 5000,
+        currency: "NGN",
+        timeReference:
+          "yesterday",
+        transactionReference:
+          null,
+      },
+    };
+
+    const successTranscript =
+      "Don Allah check my payment na biya naira dubu biyar jiya amma ban samu confirmation ba";
+
+    test(
+      "adds downstream task-success metrics when gold labels are supplied",
+      async () => {
+        const providers = [
+          {
+            id: "sahara",
+            isKnownError:
+              () => false,
+            transcribe:
+              async () => ({
+                provider:
+                  "sahara",
+                model:
+                  "sahara-v2.5",
+                transcript:
+                  successTranscript,
+              }),
+          },
+          {
+            id: "openai",
+            isKnownError:
+              () => false,
+            transcribe:
+              async () => ({
+                provider:
+                  "openai",
+                model:
+                  "gpt-transcribe",
+                transcript:
+                  successTranscript,
+              }),
+          },
+        ];
+
+        const result =
+          await runCodeswitchBenchmark({
+            audio: {
+              buffer:
+                Buffer.from(
+                  "phase-five-audio"
+                ),
+            },
+            languagePair:
+              "ha-en",
+            languageCode:
+              "ha",
+            referenceTranscript:
+              successTranscript,
+            downstreamGold:
+              gold,
+            providers,
+            logger: {
+              warn:
+                jest.fn(),
+            },
+          });
+
+        expect(
+          result.statusCode
+        ).toBe(200);
+
+        expect(
+          result.body
+            .downstreamEvaluation
+        ).toEqual(
+          expect.objectContaining({
+            evaluationVersion:
+              "voicebridge-downstream-eval-v1",
+            evaluationOnly:
+              true,
+            databaseWritesPerformed:
+              false,
+            moneyMovementPerformed:
+              false,
+            languagePair:
+              "ha-en",
+            requestedModels:
+              2,
+            evaluatedModels:
+              2,
+          })
+        );
+
+        expect(
+          result.body
+            .downstreamEvaluation
+            .summary
+        ).toEqual({
+          modelCompletionRate:
+            1,
+          intentAccuracy:
+            1,
+          requestedActionAccuracy:
+            1,
+          entityExactMatchRate:
+            1,
+          taskSuccessCount:
+            2,
+          taskSuccessRate:
+            1,
+        });
+
+        expect(
+          result.body
+            .downstreamEvaluation
+            .models
+            .every(
+              (model) =>
+                model.taskSuccess ===
+                true
+            )
+        ).toBe(true);
+      }
+    );
+
+    test(
+      "keeps WER-only benchmark responses backward-compatible",
+      async () => {
+        const result =
+          await runCodeswitchBenchmark({
+            audio: {
+              buffer:
+                Buffer.from(
+                  "wer-only"
+                ),
+            },
+            languagePair:
+              "pcm-en",
+            languageCode:
+              "pcm",
+            providers: [
+              {
+                id:
+                  "whisper",
+                isKnownError:
+                  () => false,
+                transcribe:
+                  async () => ({
+                    provider:
+                      "whisper",
+                    model:
+                      "whisper-1",
+                    transcript:
+                      "Abeg check am",
+                  }),
+              },
+            ],
+            logger: {
+              warn:
+                jest.fn(),
+            },
+          });
+
+        expect(
+          result.body
+            .downstreamEvaluation
+        ).toBeUndefined();
+      }
+    );
+
+    test(
+      "validates downstream gold before making provider calls",
+      async () => {
+        const transcribe =
+          jest.fn(
+            async () => ({
+              provider:
+                "sahara",
+              transcript:
+                successTranscript,
+            })
+          );
+
+        await expect(
+          runCodeswitchBenchmark({
+            audio: {
+              buffer:
+                Buffer.from(
+                  "audio"
+                ),
+            },
+            languagePair:
+              "ha-en",
+            languageCode:
+              "ha",
+            downstreamGold: {
+              intent: "",
+              requestedAction:
+                "check_payment_status",
+              entities: {},
+            },
+            providers: [
+              {
+                id:
+                  "sahara",
+                transcribe,
+                isKnownError:
+                  () => false,
+              },
+            ],
+          })
+        ).rejects.toThrow(
+          "gold.intent must be a non-empty string."
+        );
+
+        expect(
+          transcribe
+        ).not.toHaveBeenCalled();
+      }
+    );
+  }
+);

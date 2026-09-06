@@ -31,6 +31,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1038.0",
     "@google-cloud/speech": "^7.5.0",
     "@google/genai": "^2.21.0",
+    "africastalking": "^0.7.9",
     "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",

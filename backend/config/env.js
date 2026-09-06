@@ -65,6 +65,8 @@ const secretLogKeyLabels = new Map([
   ["openAiApiKey", "apiKeyConfigured"],
   ["SAHARA_API_KEY", "saharaApiKeyConfigured"],
   ["saharaApiKey", "saharaApiKeyConfigured"],
+  ["AFRICASTALKING_API_KEY", "africasTalkingApiKeyConfigured"],
+  ["africasTalkingApiKey", "africasTalkingApiKeyConfigured"],
   ["apiKey", "apiKeyConfigured"],
   ["PAYSTACK_SECRET_KEY", "paystackSecretConfigured"],
   ["paystackSecretKey", "paystackSecretConfigured"],
@@ -412,6 +414,100 @@ const requireEmailOtp = toText(process.env.REQUIRE_EMAIL_OTP) || "false";
 const assistantEnabledInput = toText(process.env.ASSISTANT_ENABLED);
 const openAiApiKey = toText(process.env.OPENAI_API_KEY);
 const saharaApiKey = toText(process.env.SAHARA_API_KEY);
+
+const africasTalkingEnvironmentInput =
+  toText(process.env.AFRICASTALKING_ENV).toLowerCase();
+
+const africasTalkingEnvironment =
+  africasTalkingEnvironmentInput ||
+  (isProduction ? "production" : "sandbox");
+
+const validAfricasTalkingEnvironments =
+  new Set(["sandbox", "production"]);
+
+if (
+  !validAfricasTalkingEnvironments.has(
+    africasTalkingEnvironment
+  )
+) {
+  throw new Error(
+    "AFRICASTALKING_ENV must be one of: sandbox, production"
+  );
+}
+
+const africasTalkingUsernameInput =
+  toText(
+    process.env.AFRICASTALKING_USERNAME
+  );
+
+const africasTalkingUsername =
+  africasTalkingUsernameInput ||
+  (
+    africasTalkingEnvironment ===
+      "sandbox"
+      ? "sandbox"
+      : ""
+  );
+
+const africasTalkingApiKey =
+  toText(
+    process.env.AFRICASTALKING_API_KEY
+  );
+
+const africasTalkingSmsEnabled =
+  toBool(
+    process.env.AFRICASTALKING_SMS_ENABLED ||
+      "false"
+  );
+
+const africasTalkingVoiceEnabled =
+  toBool(
+    process.env.AFRICASTALKING_VOICE_ENABLED ||
+      "false"
+  );
+
+const africasTalkingSmsSenderId =
+  toText(
+    process.env.AFRICASTALKING_SMS_SENDER_ID
+  );
+
+const africasTalkingVoiceNumber =
+  toText(
+    process.env.AFRICASTALKING_VOICE_NUMBER
+  );
+
+const africasTalkingCallbackBaseUrl =
+  normalizeOrigin(
+    process.env.AFRICASTALKING_CALLBACK_BASE_URL
+  );
+
+const africasTalkingCredentialsConfigured =
+  Boolean(
+    africasTalkingUsername &&
+    africasTalkingApiKey
+  );
+
+const africasTalkingSmsReady =
+  Boolean(
+    africasTalkingSmsEnabled &&
+    africasTalkingCredentialsConfigured
+  );
+
+const africasTalkingVoiceReady =
+  Boolean(
+    africasTalkingVoiceEnabled &&
+    africasTalkingCredentialsConfigured
+  );
+
+if (
+  isProduction &&
+  africasTalkingEnvironment === "sandbox"
+) {
+  throw new Error(
+    "Production runtime must not use AFRICASTALKING_ENV=sandbox"
+  );
+}
+
 const saharaRequestTimeoutMs = parseInteger(
   process.env.SAHARA_REQUEST_TIMEOUT_MS,
   135000,
@@ -550,6 +646,48 @@ const sahara = {
   pollMaxAttempts: saharaPollMaxAttempts,
 };
 
+const africasTalking = {
+  environment:
+    africasTalkingEnvironment,
+
+  username:
+    africasTalkingUsername,
+
+  apiKey:
+    africasTalkingApiKey,
+
+  apiKeyConfigured:
+    Boolean(africasTalkingApiKey),
+
+  credentialsConfigured:
+    africasTalkingCredentialsConfigured,
+
+  sms: {
+    enabled:
+      africasTalkingSmsEnabled,
+
+    ready:
+      africasTalkingSmsReady,
+
+    senderId:
+      africasTalkingSmsSenderId,
+  },
+
+  voice: {
+    enabled:
+      africasTalkingVoiceEnabled,
+
+    ready:
+      africasTalkingVoiceReady,
+
+    number:
+      africasTalkingVoiceNumber,
+  },
+
+  callbackBaseUrl:
+    africasTalkingCallbackBaseUrl,
+};
+
 const artistMusicTax = {
   enabled: artistMusicTaxEnabled,
   rateBps: artistMusicTaxRateBps,
@@ -637,6 +775,7 @@ const config = {
   hasOpenAI,
   saharaApiKey,
   sahara,
+  africasTalking,
   assistantEnabled,
   assistantAbuseWindowMs,
   assistantThrottleDurationMs,

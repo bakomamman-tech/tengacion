@@ -31,6 +31,7 @@ const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
 const TovidoAnthonyFoundationPage = lazy(() => import("./pages/TovidoAnthonyFoundationPage"));
 const CygroEnterprisePage = lazy(() => import("./pages/CygroEnterprisePage"));
 const CodeSwitchPage = lazy(() => import("./pages/CodeSwitchPage"));
+const TengaAgentLandingPage = lazy(() => import("./pages/tengaAgent/TengaAgentLandingPage"));
 const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
 const TeacherTrainingPage = lazy(() => import("./pages/TeacherTrainingPage"));
 const Register = lazy(() => import("./pages/Register"));
@@ -201,7 +202,7 @@ export default function App() {
     <>
       <LowBandwidthController />
       <WelcomeVoiceController
-        user={isCygroEnterpriseRoute || isBrightFutureRoute || isCodeSwitchRoute ? null : user}
+        user={isCygroEnterpriseRoute || isBrightFutureRoute || isCodeSwitchRoute || isTengaAgentRoute ? null : user}
       />
       <RouteSeoController />
       <Suspense fallback={<AppShellFallback />}>
@@ -224,6 +225,7 @@ export default function App() {
           <Route path="/foundation/tovido-anthony" element={<TovidoAnthonyFoundationPage />} />
           <Route path="/cygro-enterprise" element={<CygroEnterprisePage />} />
           <Route path="/codeswitch" element={<CodeSwitchPage />} />
+          <Route path="/tengaagent" element={<TengaAgentLandingPage />} />
           <Route
             path="/schools/kurahtechandartsacademy"
             element={<Navigate to="/kurahtechandartsacademy" replace />}

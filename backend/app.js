@@ -258,6 +258,7 @@ app.use("/api/marketplace", require("./routes/marketplaceRoutes"));
 app.use("/api/schools", require("./routes/schools"));
 app.use("/api/teacher-training", require("./routes/teacherTraining"));
 app.use("/api/tengaharvest", require("./routes/tengaharvest"));
+app.use("/api/tengaagent", require("./routes/tengaAgent"));
 
 app.get(
   [

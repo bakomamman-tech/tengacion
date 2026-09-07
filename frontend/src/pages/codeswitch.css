@@ -1617,3 +1617,358 @@
     gap: 5px;
   }
 }
+
+/* === VOICEBRIDGE ACCESSIBILITY CONTRAST FIX === */
+
+/*
+ * Keep VoiceBridge readable independently of Tengacion's global theme tokens.
+ * These values deliberately belong to the CodeSwitch/VoiceBridge interface.
+ */
+
+.voicebridge-page {
+  --vb-bg: #f4f7f3;
+  --vb-ink: #10251a;
+  --vb-muted: #52655a;
+  --vb-muted-strong: #344b3e;
+
+  --vb-surface: #ffffff;
+  --vb-soft: #eef4ef;
+  --vb-border: #b9ccc0;
+
+  --vb-accent: #17633f;
+  --vb-accent-strong: #0d472d;
+
+  --vb-green: #1c6547;
+  --vb-green-deep: #08291e;
+  --vb-mint: #83d4a7;
+  --vb-gold: #edbd63;
+
+  background:
+    radial-gradient(
+      circle at 8% 28%,
+      rgba(92, 173, 123, 0.08),
+      transparent 26rem
+    ),
+    var(--vb-bg);
+
+  color: var(--vb-ink);
+}
+
+/* Section titles */
+
+.voicebridge-section-heading h2 {
+  color: var(--vb-ink);
+}
+
+.voicebridge-section-heading p {
+  color: var(--vb-accent);
+}
+
+.voicebridge-section-heading div > span {
+  color: var(--vb-muted);
+}
+
+.voicebridge-section-heading__number {
+  color: var(--vb-muted);
+}
+
+.voicebridge-section-heading__icon {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--vb-accent) 32%,
+      transparent
+    );
+
+  background:
+    color-mix(
+      in srgb,
+      var(--vb-accent) 12%,
+      transparent
+    );
+
+  color: var(--vb-accent-strong);
+}
+
+/* Main benchmark panel */
+
+.voicebridge-input-panel,
+.voicebridge-model-card,
+.voicebridge-task-card,
+.voicebridge-summary-grid article {
+  background:
+    color-mix(
+      in srgb,
+      var(--vb-surface) 97%,
+      transparent
+    );
+
+  border-color: var(--vb-border);
+  color: var(--vb-ink);
+}
+
+/* Labels */
+
+.voicebridge-field > label,
+.voicebridge-reference-field > label {
+  color: var(--vb-muted-strong);
+  font-weight: 850;
+}
+
+.voicebridge-reference-field > label span {
+  color: var(--vb-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+/* Select */
+
+.voicebridge-select-wrap select {
+  background: var(--vb-soft);
+  color: var(--vb-ink);
+  border-color: var(--vb-border);
+}
+
+.voicebridge-select-wrap select option {
+  background: var(--vb-surface);
+  color: var(--vb-ink);
+}
+
+.voicebridge-select-wrap > span {
+  color: var(--vb-muted);
+}
+
+/* Reference transcript */
+
+.voicebridge-reference-field textarea {
+  background: var(--vb-soft);
+  color: var(--vb-ink);
+  border-color: var(--vb-border);
+}
+
+.voicebridge-reference-field textarea::placeholder {
+  color: var(--vb-muted);
+  opacity: 1;
+}
+
+/* Strong keyboard accessibility */
+
+.voicebridge-select-wrap select:focus-visible,
+.voicebridge-reference-field textarea:focus-visible {
+  border-color: var(--vb-accent);
+
+  outline:
+    3px solid
+    color-mix(
+      in srgb,
+      var(--vb-accent) 28%,
+      transparent
+    );
+
+  outline-offset: 2px;
+}
+
+/* Prevent secondary information from disappearing */
+
+.voicebridge-input-panel small,
+.voicebridge-input-panel p {
+  color: var(--vb-muted);
+}
+
+/* Keep disabled buttons visible */
+
+.voicebridge-audio-actions button:disabled,
+.voicebridge-audio-actions .tg-btn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+/*
+ * DARK MODE
+ * High contrast foregrounds are paired explicitly with dark surfaces.
+ */
+
+html[data-theme="dark"] .voicebridge-page {
+  --vb-bg: #07110d;
+
+  --vb-ink: #f2faf5;
+  --vb-muted: #b9ccc0;
+  --vb-muted-strong: #d9e6de;
+
+  --vb-surface: #102219;
+  --vb-soft: #162c21;
+  --vb-border: #476657;
+
+  --vb-accent: #91dfb3;
+  --vb-accent-strong: #b8eed0;
+
+  --vb-green: #75d4a0;
+  --vb-green-deep: #06130d;
+  --vb-mint: #9ce5ba;
+  --vb-gold: #f2c96f;
+
+  background:
+    radial-gradient(
+      circle at 8% 28%,
+      rgba(92, 173, 123, 0.10),
+      transparent 26rem
+    ),
+    var(--vb-bg);
+
+  color: var(--vb-ink);
+}
+
+html[data-theme="dark"]
+.voicebridge-section-heading h2 {
+  color: #f4fbf7;
+}
+
+html[data-theme="dark"]
+.voicebridge-section-heading p {
+  color: #9ce5ba;
+}
+
+html[data-theme="dark"]
+.voicebridge-section-heading div > span {
+  color: #c1d2c8;
+}
+
+html[data-theme="dark"]
+.voicebridge-field > label,
+html[data-theme="dark"]
+.voicebridge-reference-field > label {
+  color: #dce9e1;
+}
+
+html[data-theme="dark"]
+.voicebridge-reference-field > label span {
+  color: #b9ccc0;
+}
+
+html[data-theme="dark"]
+.voicebridge-select-wrap select,
+html[data-theme="dark"]
+.voicebridge-reference-field textarea {
+  background: #102219;
+  color: #f5fbf7;
+  border-color: #52705f;
+}
+
+html[data-theme="dark"]
+.voicebridge-reference-field textarea::placeholder {
+  color: #aebfb5;
+}
+
+html[data-theme="dark"]
+.voicebridge-select-wrap > span {
+  color: #c4d6cb;
+}
+
+/*
+ * Extra protection for Tengacion themes whose global text/surface variables
+ * differ strongly from the VoiceBridge palette.
+ */
+
+html[data-theme="nature-green"] .voicebridge-page,
+html[data-theme="royalty"] .voicebridge-page {
+  color: var(--vb-ink);
+}
+
+
+/* === VOICEBRIDGE BUTTON CONTRAST FIX === */
+
+/*
+ * Disabled buttons must remain readable while still looking unavailable.
+ * Do not reduce opacity because that also reduces text contrast.
+ */
+
+.voicebridge-audio-actions .tg-btn:disabled,
+.voicebridge-audio-actions button:disabled,
+.voicebridge-transcribe-row .tg-btn:disabled,
+.voicebridge-transcribe-row button:disabled {
+  opacity: 1 !important;
+
+  background: #e1e9e4 !important;
+  background-image: none !important;
+
+  color: #33483c !important;
+
+  border: 1px solid #9fb5a7 !important;
+
+  box-shadow: none !important;
+
+  cursor: not-allowed !important;
+
+  filter: none !important;
+}
+
+/* Keep SVG icons as readable as their text */
+
+.voicebridge-audio-actions .tg-btn:disabled svg,
+.voicebridge-audio-actions button:disabled svg,
+.voicebridge-transcribe-row .tg-btn:disabled svg,
+.voicebridge-transcribe-row button:disabled svg {
+  color: #33483c !important;
+  stroke: currentColor !important;
+  opacity: 1 !important;
+}
+
+/*
+ * Enabled primary actions:
+ * deep green + white gives strong, unmistakable contrast.
+ */
+
+.voicebridge-audio-actions .tg-btn:not(:disabled),
+.voicebridge-transcribe-row .tg-btn:not(:disabled),
+.voicebridge-transcribe-row button:not(:disabled) {
+  background: #17633f !important;
+  background-image: none !important;
+
+  color: #ffffff !important;
+
+  border-color: #17633f !important;
+
+  opacity: 1 !important;
+}
+
+.voicebridge-audio-actions .tg-btn:not(:disabled) svg,
+.voicebridge-transcribe-row .tg-btn:not(:disabled) svg,
+.voicebridge-transcribe-row button:not(:disabled) svg {
+  color: #ffffff !important;
+  stroke: currentColor !important;
+}
+
+/* Hover only when the button can actually be used */
+
+.voicebridge-audio-actions .tg-btn:not(:disabled):hover,
+.voicebridge-transcribe-row .tg-btn:not(:disabled):hover,
+.voicebridge-transcribe-row button:not(:disabled):hover {
+  background: #0e5133 !important;
+  border-color: #0e5133 !important;
+}
+
+/* Dark theme disabled state */
+
+html[data-theme="dark"]
+.voicebridge-audio-actions .tg-btn:disabled,
+html[data-theme="dark"]
+.voicebridge-audio-actions button:disabled,
+html[data-theme="dark"]
+.voicebridge-transcribe-row .tg-btn:disabled,
+html[data-theme="dark"]
+.voicebridge-transcribe-row button:disabled {
+  background: #263b30 !important;
+  color: #e4eee8 !important;
+  border-color: #597064 !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="dark"]
+.voicebridge-audio-actions .tg-btn:disabled svg,
+html[data-theme="dark"]
+.voicebridge-transcribe-row .tg-btn:disabled svg,
+html[data-theme="dark"]
+.voicebridge-transcribe-row button:disabled svg {
+  color: #e4eee8 !important;
+}
+

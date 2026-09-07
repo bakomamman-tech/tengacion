@@ -25,6 +25,7 @@ const TengaAgentKnowledgeSourceSchema =
           "website",
           "document",
           "service",
+          "hours",
         ],
         default: "manual",
         index: true,

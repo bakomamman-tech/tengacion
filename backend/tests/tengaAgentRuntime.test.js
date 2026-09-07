@@ -1,4 +1,4 @@
-﻿process.env.NODE_ENV =
+process.env.NODE_ENV =
   "test";
 
 process.env.MONGO_URI =
@@ -33,7 +33,13 @@ describe(
               expect(
                 instructions
               ).toContain(
-                "TENGACION KNOWLEDGE"
+                "Tengacion Technologies Limited"
+              );
+
+              expect(
+                instructions
+              ).toContain(
+                "TENGACION CUSTOMER #0 KNOWLEDGE"
               );
 
               expect(

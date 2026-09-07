@@ -67,7 +67,7 @@ describe(
         expect(
           xml
         ).toContain(
-          'callbackUrl="https://voicebridge.example.com/api/codeswitch/africastalking/voice/recording"'
+          'callbackUrl="https://voicebridge.example.com/api/codeswitch/africastalking/voice/recording?languagePair=ha-en"'
         );
 
         expect(

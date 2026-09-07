@@ -15,6 +15,15 @@ const MAX_PROMPT_CHARS =
 const MAX_RECORDING_SECONDS =
   60;
 
+const DEFAULT_LANGUAGE_PAIR =
+  "ha-en";
+
+const SUPPORTED_LANGUAGE_PAIRS =
+  new Set([
+    "ha-en",
+    "pcm-en",
+  ]);
+
 const DEFAULT_GREETING =
   "Welcome to Tengacion VoiceBridge.";
 
@@ -235,7 +244,10 @@ const validateHttpsUrl = (
 const buildRecordingCallbackUrl = (
   callbackBaseUrl =
     config.africasTalking
-      ?.callbackBaseUrl
+      ?.callbackBaseUrl,
+
+  languagePair =
+    DEFAULT_LANGUAGE_PAIR
 ) => {
 
   const base =
@@ -291,10 +303,37 @@ const buildRecordingCallbackUrl = (
   }
 
 
-  return new URL(
-    RECORDING_CALLBACK_PATH,
-    parsed.origin
-  ).toString();
+  const pair =
+    toText(
+      languagePair
+    );
+
+  if (
+    !SUPPORTED_LANGUAGE_PAIRS.has(
+      pair
+    )
+  ) {
+
+    throw new AfricasTalkingVoiceError(
+      "AFRICASTALKING_INVALID_LANGUAGE_PAIR",
+      "languagePair must be one of: ha-en, pcm-en."
+    );
+  }
+
+
+  const callbackUrl =
+    new URL(
+      RECORDING_CALLBACK_PATH,
+      parsed.origin
+    );
+
+  callbackUrl.searchParams.set(
+    "languagePair",
+    pair
+  );
+
+
+  return callbackUrl.toString();
 };
 
 
@@ -327,6 +366,9 @@ const buildVoiceCallbackXml = ({
   callbackBaseUrl =
     config.africasTalking
       ?.callbackBaseUrl,
+
+  languagePair =
+    DEFAULT_LANGUAGE_PAIR,
 
   maxLength =
     30,
@@ -416,7 +458,8 @@ const buildVoiceCallbackXml = ({
 
   const callbackUrl =
     buildRecordingCallbackUrl(
-      callbackBaseUrl
+      callbackBaseUrl,
+      languagePair
     );
 
 
@@ -660,6 +703,8 @@ module.exports = {
   RECORDING_CALLBACK_PATH,
   MAX_PROMPT_CHARS,
   MAX_RECORDING_SECONDS,
+  DEFAULT_LANGUAGE_PAIR,
+  SUPPORTED_LANGUAGE_PAIRS,
   DEFAULT_GREETING,
   DEFAULT_RECORDING_PROMPT,
   AfricasTalkingVoiceError,

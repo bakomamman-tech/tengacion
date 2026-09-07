@@ -76,7 +76,10 @@ const ingestKnowledgeSource =
         type,
         title:
           title.trim(),
-        sourceUrl,
+        sourceUrl:
+          String(
+            sourceUrl || ""
+          ).trim(),
         contentHash:
           hashText(normalizedText),
         status: "processing",
@@ -89,7 +92,9 @@ const ingestKnowledgeSource =
           normalizedText
         );
 
-      if (chunks.length === 0) {
+      if (
+        chunks.length === 0
+      ) {
         throw new Error(
           "No knowledge chunks were produced."
         );
@@ -112,7 +117,10 @@ const ingestKnowledgeSource =
 
       const documents =
         chunks.map(
-          (chunk, chunkIndex) => {
+          (
+            chunk,
+            chunkIndex
+          ) => {
             const embedding =
               embeddings[
                 chunkIndex
@@ -122,7 +130,8 @@ const ingestKnowledgeSource =
               !Array.isArray(
                 embedding
               ) ||
-              embedding.length === 0
+              embedding.length ===
+                0
             ) {
               throw new Error(
                 "Knowledge embedding was empty."
@@ -185,7 +194,10 @@ const ingestKnowledgeSource =
         String(
           error?.message ||
             "Knowledge ingestion failed."
-        ).slice(0, 1000);
+        ).slice(
+          0,
+          1000
+        );
 
       await source.save();
 
@@ -193,7 +205,156 @@ const ingestKnowledgeSource =
     }
   };
 
+const syncKnowledgeSource =
+  async ({
+    organizationId,
+    agentId = null,
+    type = "manual",
+    title,
+    text,
+    sourceUrl = "",
+    metadata = {},
+    embedder = embedTexts,
+  }) => {
+    const normalizedText =
+      normalizeKnowledgeText(text);
+
+    if (!organizationId) {
+      throw new Error(
+        "organizationId is required."
+      );
+    }
+
+    if (!title?.trim()) {
+      throw new Error(
+        "Knowledge source title is required."
+      );
+    }
+
+    if (!normalizedText) {
+      throw new Error(
+        "Knowledge source text is required."
+      );
+    }
+
+    const cleanSourceUrl =
+      String(
+        sourceUrl || ""
+      ).trim();
+
+    const desiredHash =
+      hashText(
+        normalizedText
+      );
+
+    const identity = {
+      organizationId,
+      agentId:
+        agentId || null,
+      type,
+    };
+
+    if (cleanSourceUrl) {
+      identity.sourceUrl =
+        cleanSourceUrl;
+    } else {
+      identity.title =
+        title.trim();
+    }
+
+    const existing =
+      await KnowledgeSource
+        .findOne({
+          ...identity,
+          status: "ready",
+        })
+        .sort({
+          updatedAt: -1,
+        });
+
+    if (
+      existing &&
+      existing.contentHash ===
+        desiredHash
+    ) {
+      return {
+        source:
+          existing,
+        chunksCreated:
+          existing.chunkCount,
+        unchanged: true,
+      };
+    }
+
+    const result =
+      await ingestKnowledgeSource({
+        organizationId,
+        agentId,
+        type,
+        title,
+        text:
+          normalizedText,
+        sourceUrl:
+          cleanSourceUrl,
+        metadata,
+        embedder,
+      });
+
+    const previousSources =
+      await KnowledgeSource
+        .find({
+          ...identity,
+          _id: {
+            $ne:
+              result.source._id,
+          },
+          status: {
+            $ne: "archived",
+          },
+        })
+        .select("_id")
+        .lean();
+
+    const previousIds =
+      previousSources.map(
+        (entry) =>
+          entry._id
+      );
+
+    if (
+      previousIds.length > 0
+    ) {
+      await KnowledgeChunk.deleteMany({
+        sourceId: {
+          $in:
+            previousIds,
+        },
+      });
+
+      await KnowledgeSource.updateMany(
+        {
+          _id: {
+            $in:
+              previousIds,
+          },
+        },
+        {
+          $set: {
+            status:
+              "archived",
+          },
+        }
+      );
+    }
+
+    return {
+      ...result,
+      unchanged: false,
+    };
+  };
+
 module.exports = {
   hashText,
   ingestKnowledgeSource,
+  syncKnowledgeSource,
 };

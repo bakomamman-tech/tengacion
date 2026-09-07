@@ -145,6 +145,10 @@ router.post(
       const result =
         await respondToCustomerZero({
           message,
+          organizationId:
+            organization._id,
+          agentId:
+            agent._id,
           conversationHistory,
         });
 

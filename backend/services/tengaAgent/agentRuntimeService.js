@@ -1,16 +1,33 @@
-﻿const normalize = (value) =>
+﻿const {
+  generateTengaAgentReply,
+} = require(
+  "../../integrations/tengaAgent/openai"
+);
+
+const {
+  CUSTOMER_ZERO_KNOWLEDGE,
+} = require(
+  "./customerZeroKnowledge"
+);
+
+const normalize = (value) =>
   String(value || "")
     .trim()
     .toLowerCase();
 
-function buildCustomerZeroReply(message) {
-  const input = normalize(message);
+function buildCustomerZeroReply(
+  message
+) {
+  const input =
+    normalize(message);
 
   if (
     input.includes("price") ||
     input.includes("pricing") ||
     input.includes("cost") ||
-    input.includes("how much") ||
+    input.includes(
+      "how much"
+    ) ||
     input.includes("quote")
   ) {
     return {
@@ -23,8 +40,12 @@ function buildCustomerZeroReply(message) {
   if (
     input.includes("website") ||
     input.includes("web app") ||
-    input.includes("ecommerce") ||
-    input.includes("e-commerce")
+    input.includes(
+      "ecommerce"
+    ) ||
+    input.includes(
+      "e-commerce"
+    )
   ) {
     return {
       reply:
@@ -48,9 +69,13 @@ function buildCustomerZeroReply(message) {
 
   if (
     input.includes("ai") ||
-    input.includes("artificial intelligence") ||
+    input.includes(
+      "artificial intelligence"
+    ) ||
     input.includes("agent") ||
-    input.includes("automation")
+    input.includes(
+      "automation"
+    )
   ) {
     return {
       reply:
@@ -61,10 +86,16 @@ function buildCustomerZeroReply(message) {
 
   if (
     input.includes("contact") ||
-    input.includes("talk to") ||
-    input.includes("speak to") ||
+    input.includes(
+      "talk to"
+    ) ||
+    input.includes(
+      "speak to"
+    ) ||
     input.includes("human") ||
-    input.includes("meeting") ||
+    input.includes(
+      "meeting"
+    ) ||
     input.includes("book")
   ) {
     return {
@@ -93,13 +124,76 @@ function buildCustomerZeroReply(message) {
   };
 }
 
+const buildCustomerZeroInstructions =
+  () => `
+You are TengaAgent, the AI receptionist for Tengacion Technologies Limited.
+
+Your job is to answer accurately, help visitors clarify what they need, and move useful conversations forward.
+
+GROUNDING RULES
+1. Use the supplied Tengacion knowledge as the factual source of truth.
+2. Never invent information that is not present in the knowledge.
+3. Clearly distinguish current capabilities from planned TengaAgent capabilities.
+4. Never invent exact software-development pricing.
+5. When information is unknown, say so briefly and offer the next best step.
+6. Never ask for passwords, OTPs, API keys, card details, or other secrets.
+7. Do not authorize financial, legal, refund, payout, or account-security actions.
+8. Keep normal responses concise: usually 2 to 5 sentences.
+9. Ask one useful follow-up question when it can advance a genuine sales or support conversation.
+10. You may naturally understand English, Hausa, Nigerian Pidgin, and code-switched messages when confident.
+
+TENGACION KNOWLEDGE
+${CUSTOMER_ZERO_KNOWLEDGE}
+`.trim();
+
 async function respondToCustomerZero({
   message,
+  conversationHistory = [],
+  aiResponder =
+    generateTengaAgentReply,
 }) {
-  return buildCustomerZeroReply(message);
+  try {
+    const aiResult =
+      await aiResponder({
+        message,
+
+        conversationHistory,
+
+        instructions:
+          buildCustomerZeroInstructions(),
+      });
+
+    const reply =
+      typeof aiResult ===
+        "string"
+        ? aiResult.trim()
+        : String(
+            aiResult?.reply ||
+              ""
+          ).trim();
+
+    if (reply) {
+      return {
+        reply,
+        actions: [],
+      };
+    }
+  } catch (error) {
+    console.warn(
+      "[TengaAgent] AI fallback:",
+      error?.code ||
+        error?.message ||
+        "unknown AI error"
+    );
+  }
+
+  return buildCustomerZeroReply(
+    message
+  );
 }
 
 module.exports = {
+  buildCustomerZeroInstructions,
   buildCustomerZeroReply,
   respondToCustomerZero,
 };

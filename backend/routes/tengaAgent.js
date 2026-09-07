@@ -1,4 +1,4 @@
-﻿const crypto = require("crypto");
+const crypto = require("crypto");
 const express = require("express");
 
 const Conversation = require("../models/tengaAgent/Conversation");
@@ -121,9 +121,31 @@ router.post(
         content: message,
       });
 
+      const recentMessages =
+        await Message.find({
+          conversationId:
+            conversation._id,
+        })
+          .sort({
+            createdAt: -1,
+          })
+          .limit(12)
+          .lean();
+
+      const conversationHistory =
+        recentMessages
+          .reverse()
+          .map((entry) => ({
+            sender:
+              entry.sender,
+            content:
+              entry.content,
+          }));
+
       const result =
         await respondToCustomerZero({
           message,
+          conversationHistory,
         });
 
       const agentMessage =

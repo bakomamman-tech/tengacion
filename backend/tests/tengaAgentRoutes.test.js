@@ -7,6 +7,7 @@ const {
 } = require("mongodb-memory-server");
 
 process.env.NODE_ENV = "test";
+process.env.OPENAI_API_KEY = "";
 process.env.MONGO_URI =
   process.env.MONGO_URI ||
   "mongodb://127.0.0.1:27017/tengaagent-test";

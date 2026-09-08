@@ -34,6 +34,7 @@ const SITEMAP_CACHE_TTL_MS = 15 * 60 * 1000;
 const MAX_URLS_PER_SITEMAP = 1000;
 
 const STATIC_PUBLIC_ROUTES = [
+  { path: "/Lorietta-Billys-Portfolio" },
   { path: "/" },
   { path: "/about" },
   { path: "/leadership" },

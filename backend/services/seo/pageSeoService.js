@@ -69,6 +69,15 @@ const HOME_DESCRIPTION =
   "Create, connect, sell, stream, and earn on Tengacion, Africa's social commerce and creator monetization platform.";
 
 const PUBLIC_INFO_PAGES = {
+  "/Lorietta-Billys-Portfolio": {
+    title: "Lorietta Billy | Administrative & Operations Virtual Assistant",
+    description: "Reliable remote administrative and operations support for business owners and teams. Explore Lorietta Billy's services, sample projects and work enquiries.",
+    canonicalPath: "/Lorietta-Billys-Portfolio",
+    image: "/lorietta/portrait.jpg",
+    imageAlt: "Lorietta Billy in a royal blue suit",
+    previewTitle: "Lorietta Billy - Administrative & Operations Support",
+    previewDescription: "Reliable virtual support for the work behind your business.",
+  },
   "/creators": {
     title: "Find African Musicians, Authors, Podcasters & Digital Creators | Tengacion",
     description:
@@ -1094,7 +1103,7 @@ const renderSeoHtml = (template = "", seo = {}) => {
 };
 
 const buildStaticPageSeo = async (pathname) => {
-  const page = PUBLIC_INFO_PAGES[pathname];
+  const page = PUBLIC_INFO_PAGES[pathname.toLowerCase() === "/lorietta-billys-portfolio" ? "/Lorietta-Billys-Portfolio" : pathname];
   if (!page) {
     return null;
   }

@@ -11,7 +11,7 @@ const selectAkusoModel = ({ policyResult = {}, routePurpose = "chat" } = {}) => 
     };
   }
 
-  if (routePurpose === "hints" || policyResult.categoryBucket === "APP_GUIDANCE") {
+  if (routePurpose === "hints" || (policyResult.categoryBucket === "APP_GUIDANCE" && policyResult.mode !== AKUSO_MODES.CREATOR_WRITING)) {
     return {
       useModel: true,
       model: config.akuso.models.fast,

@@ -1,6 +1,6 @@
 # Tengacion World-Class Roadmap Implementation Tracker
 
-Last updated: 2 September 2026
+Last updated: 10 September 2026
 
 This document is the authoritative implementation record for the Facebook benchmark roadmap. A work package is marked complete only after its definition of done is implemented and verified. Planning documents and code presence alone do not count as completion.
 
@@ -235,6 +235,61 @@ This document is the authoritative implementation record for the Facebook benchm
 | AUDIT-010 | Run Akuso and AI governance audit | COMPLETE | Twelve sample contracts connect capabilities, routes, policy history, grounding, evals, refusals, privacy/memory, incidents, reviews and model cost/routing. |
 | AUDIT-011 | Publish first audit findings report | COMPLETE | Executive, owner and aggregate external views report tested counts, findings, remediation and readiness while restricted sample/finding details stay internal. |
 
+### External readiness: next 45 packages
+
+Implementation completion below refers to the verified software workflows. Real-world assessments, evidence collection, certification, external conversations and capital decisions still require their named owners and recorded evidence. See [implementation contract](./tengacion-next-forty-five-external-readiness-controls.md) and [handoff](./tengacion-external-readiness-handoff.md).
+
+| ID | Work package | Status | Verification record |
+|---|---|---|---|
+| AUDIT-012 | Retest High-risk Findings | COMPLETE | Canonical finding and passed-retest evidence gates prevent owner assertions from approving unresolved findings. |
+| AUDIT-013 | Launch Control Owner Certification | COMPLETE | Owner signoff and current canonical control tests are required before independent approval. |
+| AUDIT-014 | Prepare External Review Packets | COMPLETE | Versioned evidence responses and independent review produce recipient-bound sanitized summaries with expiry and revocation. |
+| AUDIT-015 | Build Audit Dashboard And Calendar | COMPLETE | Durable due dates, cadence, owners and escalation fields drive the operating calendar and overdue blockers. |
+| AUDIT-016 | Decide The Next Assurance Path | COMPLETE | Decision records require evidence, alternatives, owner signoff, independent review and reversal conditions. |
+| CERTIFICATION-001 | Build The Certification Candidate Inventory | COMPLETE | Candidate paths record value, demand, readiness, risk, cost, timeline, renewal burden and overclaim risk for human selection. |
+| CERTIFICATION-002 | Select Scope And Readiness Gates | COMPLETE | Scoped records preserve exclusions, canonical audit domain, evidence requirements, dependencies and independent readiness gates. |
+| CERTIFICATION-003 | Define Trust Center And Evidence Sharing Model | COMPLETE | Versioned evidence responses and independent review produce recipient-bound sanitized summaries with expiry and revocation. |
+| CERTIFICATION-004 | Create The Claims Register | COMPLETE | Claims have scope, evidence, owner, review, expiry and withdrawal; stale evidence prevents sharing. |
+| CERTIFICATION-005 | Map Certification Gaps And Reviewer Workflow | COMPLETE | Requirement-linked evidence and observed passing review outcomes are required; unresolved findings block approval. |
+| CERTIFICATION-006 | Launch Internal Trust Center | COMPLETE | Versioned evidence responses and independent review produce recipient-bound sanitized summaries with expiry and revocation. |
+| CERTIFICATION-007 | Run Mock Security, Privacy, Data, And Vendor Review | COMPLETE | Requirement-linked evidence and observed passing review outcomes are required; unresolved findings block approval. |
+| CERTIFICATION-008 | Run Mock Finance, Creator Earnings, And Payout Review | COMPLETE | Requirement-linked evidence and observed passing review outcomes are required; unresolved findings block approval. |
+| CERTIFICATION-009 | Run Mock Partner, API, Content, Market, And Reporting Review | COMPLETE | Requirement-linked evidence and observed passing review outcomes are required; unresolved findings block approval. |
+| CERTIFICATION-010 | Run Mock Akuso And AI Governance Review | COMPLETE | Requirement-linked evidence and observed passing review outcomes are required; unresolved findings block approval. |
+| CERTIFICATION-011 | Automate Fragile Evidence Paths | COMPLETE | Evidence freshness and due-date monitors expose blockers and escalation ownership in the all-time report. |
+| CERTIFICATION-012 | Prepare Approved External Packets | COMPLETE | Versioned evidence responses and independent review produce recipient-bound sanitized summaries with expiry and revocation. |
+| CERTIFICATION-013 | Close Or Risk-accept Certification Blockers | COMPLETE | Risk records require mitigation; acceptance expires and needs compensating controls and review triggers, with critical acceptance blocked. |
+| CERTIFICATION-014 | Launch Controlled Trust Center Sharing | COMPLETE | Authenticated recipient grants recheck packet version, evidence, scope, expiry and revocation; diligence answers need independent review. |
+| CERTIFICATION-015 | Begin Selected External Review Or Assessor Intake | COMPLETE | Requirement-linked evidence and observed passing review outcomes are required; unresolved findings block approval. |
+| CERTIFICATION-016 | Publish Certification Readiness Report | COMPLETE | The bounded internal operating report exposes evidence gaps, findings, reviews and decision holds without fabricating outcomes. |
+| INSTITUTIONAL-001 | Create The Governance Calendar | COMPLETE | Durable due dates, cadence, owners and escalation fields drive the operating calendar and overdue blockers. |
+| INSTITUTIONAL-002 | Standardize Decision Records | COMPLETE | Decision records require evidence, alternatives, owner signoff, independent review and reversal conditions. |
+| INSTITUTIONAL-003 | Build Institutional Data-room Structure | COMPLETE | Versioned evidence responses and independent review produce recipient-bound sanitized summaries with expiry and revocation. |
+| INSTITUTIONAL-004 | Define Risk Appetite Statements | COMPLETE | Warning/blocker thresholds and incident triggers gate readiness when recorded exposure exceeds appetite. |
+| INSTITUTIONAL-005 | Map Finance, Enterprise, Market, And AI Governance Gaps | COMPLETE | Risk records require mitigation; acceptance expires and needs compensating controls and review triggers, with critical acceptance blocked. |
+| INSTITUTIONAL-006 | Run First Executive Operating Review | COMPLETE | Requirement-linked evidence and observed passing review outcomes are required; unresolved findings block approval. |
+| INSTITUTIONAL-007 | Prepare Investor And Institutional Data-room Packets | COMPLETE | Versioned evidence responses and independent review produce recipient-bound sanitized summaries with expiry and revocation. |
+| INSTITUTIONAL-008 | Strengthen Finance, Capital, And Unit Economics Reporting | COMPLETE | Validated monthly scenario inputs preserve missing values, confidence and single-count revenue; runway never authorizes spending. |
+| INSTITUTIONAL-009 | Build Enterprise, Partner, API, And Market Readiness Packets | COMPLETE | Versioned evidence responses and independent review produce recipient-bound sanitized summaries with expiry and revocation. |
+| INSTITUTIONAL-010 | Launch Risk Register And Commitment Tracking | COMPLETE | Commitments retain risk mitigation, dependencies, decision and reversal conditions under independent review. |
+| INSTITUTIONAL-011 | Run Akuso Institutional Governance Review | COMPLETE | Requirement-linked evidence and observed passing review outcomes are required; unresolved findings block approval. |
+| INSTITUTIONAL-012 | Publish Institutional Operating Report | COMPLETE | The bounded internal operating report exposes evidence gaps, findings, reviews and decision holds without fabricating outcomes. |
+| INSTITUTIONAL-013 | Run Strategic External Readiness Review | COMPLETE | Requirement-linked evidence and observed passing review outcomes are required; unresolved findings block approval. |
+| INSTITUTIONAL-014 | Close Or Accept Institutional Risks | COMPLETE | Risk records require mitigation; acceptance expires and needs compensating controls and review triggers, with critical acceptance blocked. |
+| INSTITUTIONAL-015 | Stabilize Governance And Data-room Maintenance | COMPLETE | Evidence freshness and due-date monitors expose blockers and escalation ownership in the all-time report. |
+| INSTITUTIONAL-016 | Decide The Next Institutional Path | COMPLETE | Decision records require evidence, alternatives, owner signoff, independent review and reversal conditions. |
+| CAPITAL-001 | Define The Capital Strategy | COMPLETE | Decision records require evidence, alternatives, owner signoff, independent review and reversal conditions. |
+| CAPITAL-002 | Build The Capital Readiness Scorecard | COMPLETE | Requirement-level evidence coverage and canonical blockers expose readiness gaps without treating empty records as success. |
+| CAPITAL-003 | Strengthen The Financial Model | COMPLETE | Validated monthly scenario inputs preserve missing values, confidence and single-count revenue; runway never authorizes spending. |
+| CAPITAL-004 | Define Use-of-funds And Capital Allocation Gates | COMPLETE | Budget bounds, currency, milestone, success/risk metrics, stop-loss and reversal gates remain human-reviewed. |
+| CAPITAL-005 | Create Investor, Strategic Partner, And Claims Governance | COMPLETE | Candidate paths record value, demand, readiness, risk, cost, timeline, renewal burden and overclaim risk for human selection. |
+| CAPITAL-006 | Build The Capital Data-room Packet | COMPLETE | Versioned evidence responses and independent review produce recipient-bound sanitized summaries with expiry and revocation. |
+| CAPITAL-007 | Run Mock Investor Diligence | COMPLETE | Requirement-linked evidence and observed passing review outcomes are required; unresolved findings block approval. |
+| CAPITAL-008 | Run Mock Strategic Partner Diligence | COMPLETE | Requirement-linked evidence and observed passing review outcomes are required; unresolved findings block approval. |
+| CAPITAL-009 | Validate Unit Economics And Capital Allocation | COMPLETE | Database-backed assumption register, sensitivity analysis, break-even milestones, risk triggers and revised use-of-funds gates preserve evidence quality, period/currency invariants, human approval and no automatic financial action. |
+| CAPITAL-010 | Close Or Narrow Capital Blockers | COMPLETE | Durable blocker decisions cover all eleven roadmap categories, require current evidence for closure or claim narrowing, enforce resolution-specific controls and advisor-review gates, link applicable CAPITAL-009 economics risk triggers, reject software acceptance of critical risk, and preserve human-only authority for outreach, financing, risk acceptance, spending and money movement. |
+| CAPITAL-011 | Make The Capital Path Decision | COMPLETE | Human-selected path, rationale, timeline and evidence requirements; eight evidence-linked packet sections; deterministic blockers and internal analysis; independent review and save-before-review governance controls; no automatic capital authority. |
+
 ### Phase 1 work packages
 
 | ID | Work package | Status | Verification record |
@@ -249,6 +304,26 @@ This document is the authoritative implementation record for the Facebook benchm
 |---|---|---|---|
 | SAFETY-001 | Make account blocking authoritative and user-manageable | COMPLETE | Privacy Settings now provides searchable, server-confirmed limited-account lists; canonical blocks remove relationship links and are enforced mutually across people discovery, profiles, feeds, creator follows, contacts, friend requests and every direct-message write transport, while unblocking never fabricates restored relationships. |
 ## Change log
+
+### 10 September 2026 — CAPITAL-011
+
+- Completed CAPITAL-011; catalog now contains 48 unique packages, including CAPITAL-001–011.
+- Validation: focused backend 42/42; combined backend 109/109 (5 suites); focused frontend 16/16; combined frontend 30/30 (4 suites); backend syntax, frontend ESLint, production Vite build and git diff --check PASS.
+- This is software completion only, not a real financing choice, transaction, risk acceptance or external approval. No-go/delay remains valid; all capital authority remains human-only.
+- Next verified roadmap deliverable: Run Controlled Outreach Or Strategic Conversations, Days 61–90 deliverable 2. CAPITAL-012 is the next available identifier and remains unimplemented.
+
+
+### 9 September 2026
+
+- Resumed the six unfinished external-readiness files and completed the next 45 software packages: AUDIT-012?016, CERTIFICATION-001?016, INSTITUTIONAL-001?016 and CAPITAL-001?008.
+- Added the protected External readiness admin workspace, durable evidence/review records, financial scenarios, calendar, blockers and internal JSON report; added authenticated recipient packets, expiring grants, revocation and independently reviewed diligence responses.
+- Strengthened review independence, canonical retest gates, stale evidence checks, bounded dependency scans, optimistic concurrency and route privacy.
+- Added four bounded Akuso writing profiles and fixed explicit audit drafting being routed to app guidance. All 76 local Akuso evaluations pass.
+- Verified database-backed readiness/audit regressions, frontend journeys, route coverage, lint, actionable controls and production build. The encoding audit reports 14 pre-existing replacement characters in untouched local VoiceBridge benchmark artifacts dated 6 September; no changed source file has encoding defects.
+- CAPITAL-009 completed and validated with 31/31 focused backend tests, 8/8 focused frontend tests, frontend lint, production build, 71/71 Akuso/TengaAgent regression tests and 76/76 Akuso evaluations.
+- CAPITAL-010 completed and validated with 22/22 focused backend tests and 67/67 combined External Readiness backend regression tests. The dedicated CAPITAL-010 frontend journey passes 6/6, while the combined External Readiness frontend regression passes 14/14. Frontend ESLint, production Vite build and `git diff --check` also pass.
+- CAPITAL-010 remains decision support only: software records, validates and surfaces human-reviewed blocker decisions but does not establish real-world closure, authorize investor or partner outreach, change a financing path, accept risk, approve spending or move money.
+- Next roadmap phase: Days 61-90 — choose and run the first disciplined capital path.
 
 ### 2 September 2026
 

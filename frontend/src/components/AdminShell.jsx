@@ -6,6 +6,7 @@ const ADMIN_ITEMS = [
   { key: "overview", label: "Overview", path: "/admin/dashboard" },
   { key: "creator-earnings", label: "Earnings From Creators", path: "/admin/creator-earnings" },
   { key: "assurance", label: "Assurance", path: "/admin/assurance" },
+  { key: "external-readiness", label: "External readiness", path: "/admin/external-readiness" },
   { key: "users", label: "Users", path: "/admin/users" },
   { key: "content", label: "Content", path: "/admin/content" },
   { key: "messages", label: "Messages", path: "/admin/messages" },

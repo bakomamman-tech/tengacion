@@ -1,0 +1,10 @@
+.readiness-workspace { max-width: 1100px; margin: 0 auto; padding: 20px; overflow-wrap: anywhere; }
+.readiness-workspace section, .readiness-workspace article { margin: 16px 0; padding: 16px; border: 1px solid #ccd3dc; border-radius: 8px; }
+.readiness-workspace label { display: block; margin: 10px 0; }
+.readiness-workspace input:not([type=checkbox]), .readiness-workspace select, .readiness-workspace textarea { display: block; width: 100%; padding: 9px; border: 1px solid #7c8798; border-radius: 4px; color: #172033; background: #fff; }
+.readiness-workspace textarea { min-height: 75px; }
+.readiness-workspace fieldset { min-width: 0; padding: 12px; margin: 12px 0; border: 1px solid #ccd3dc; }
+.readiness-workspace button { margin: 5px 8px 5px 0; padding: 9px 14px; border: 1px solid #7c8798; border-radius: 5px; cursor: pointer; }
+.readiness-workspace button:disabled { opacity: .55; cursor: default; }
+.readiness-workspace [role=alert] { color: #a21d24; padding: 12px; background: #fff2f2; }
+.readiness-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }

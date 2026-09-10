@@ -62,6 +62,10 @@ const WRITING_CONTENT_TYPES = [
   "resilience_status_summary",
   "assurance_evidence_summary",
   "audit_findings_summary",
+  "certification_readiness_summary",
+  "institutional_decision_brief",
+  "capital_scenario_explanation",
+  "diligence_response_draft",
 ];
 
 const normalizeWritingPreferences = (value = {}) => ({
@@ -441,6 +445,20 @@ const buildWritingFallbackDraft = ({
       `Assurance evidence summary for ${cleanTopic}: state the control owner and reviewer, source systems, evidence freshness, current exceptions, reconciliation state, incidents, impact, readiness, approval shelf life, and next review.`,
       `Sharing boundary: stale, delayed, disputed, blocked, withdrawn, restricted, or unreviewed evidence cannot support an external assurance claim.`,
       `Decision boundary: Akuso may draft the packet and highlight missing evidence but cannot approve a gate, accept an exception, grant access, move money, or make a legal, rights, privacy, or moderation decision.`,
+    ]);
+  }
+
+  if (["certification_readiness_summary", "institutional_decision_brief", "capital_scenario_explanation", "diligence_response_draft"].includes(contentType)) {
+    const focus = {
+      certification_readiness_summary: "Describe the candidate review path, scope, tested controls, open findings, evidence expiry, assessor intake and claim withdrawal rules. An internal review is not certification.",
+      institutional_decision_brief: "Describe the decision, alternatives, accountable owner, risk appetite, dissent, dependency gates, review date and reversal conditions. Recommendations require a recorded human decision.",
+      capital_scenario_explanation: "Distinguish actual, estimated, assumed and disputed monthly inputs, currency, scenario, net burn, runway and milestone gates. Missing inputs remain unknown; platform revenue includes subscription and partner revenue. Do not promise returns or authorize spending.",
+      diligence_response_draft: "Answer only within the approved packet scope, cite the source and period, identify missing evidence, exclusions and expiry, and require independent review before a recipient can see the answer.",
+    };
+    return buildVariants([
+      `Readiness draft for ${cleanTopic}: ${focus[contentType]}`,
+      "Evidence boundary: stale, disputed, untested or withdrawn evidence cannot support external claims. Keep private messages, payment details, security secrets and Akuso memory out of external summaries.",
+      "Authority boundary: Akuso cannot approve claims, certify controls, accept risk, close findings, grant access, publish packets, contact investors, move money or make financial or legal decisions. A human reviewer must verify scope and evidence.",
     ]);
   }
 

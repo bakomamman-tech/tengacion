@@ -570,6 +570,12 @@ Choose and run the first disciplined capital path.
 
 #### 1. Make The Capital Path Decision
 
+Implementation status (10 September 2026): **CAPITAL-011 COMPLETE as software**. The existing External Readiness workflow records a human-selected path and validates its evidence packet for independent review. Validation: 42 focused backend tests, 109 combined backend tests, 16 focused frontend tests and 30 combined frontend tests passed; backend syntax, frontend lint, production build and git diff --check passed. See docs/tengacion-external-readiness-handoff.md for the validation record.
+
+Software completion does not mean Tengacion has actually chosen, approved, initiated, or completed a real-world financing transaction. Real capital-path selection remains a human governance decision based on current evidence and independent review. No financing path was selected by this implementation, including no-go or delay.
+
+The catalog ends at CAPITAL-011 (48 total packages, 11 capital packages). The next deliverable below, Run Controlled Outreach Or Strategic Conversations, corresponds to the next available identifier CAPITAL-012; it is not implemented in this task.
+
 - Decide among:
   - no external capital yet
   - targeted advisor review

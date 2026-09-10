@@ -10,6 +10,7 @@ const NAV_GROUPS = [
       { key: "dashboard", label: "Dashboard", icon: "dashboard", path: "/admin/dashboard" },
       { key: "analytics", label: "Analytics", icon: "analytics", path: "/admin/analytics", dotKey: "analytics" },
       { key: "assurance", label: "Assurance", icon: "analytics", path: "/admin/assurance" },
+      { key: "external-readiness", label: "External readiness", icon: "analytics", path: "/admin/external-readiness" },
     ],
   },
   {

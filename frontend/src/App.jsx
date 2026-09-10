@@ -74,6 +74,8 @@ const AdminTransactionsPage = lazy(() => import("./pages/AdminTransactions"));
 const AdminTuitionPaymentsPage = lazy(() => import("./pages/AdminTuitionPayments"));
 const AdminTeacherTrainingPage = lazy(() => import("./pages/AdminTeacherTraining"));
 const AdminCreatorEarningsPage = lazy(() => import("./pages/AdminCreatorEarnings"));
+const ExternalReadinessPage = lazy(() => import("./pages/ExternalReadiness"));
+const ReadinessPacketPage = lazy(() => import("./pages/ReadinessPacket"));
 const AdminAssurancePage = lazy(() => import("./pages/AdminAssurance"));
 const AdminCreatorDetailPage = lazy(() => import("./pages/AdminCreatorDetail"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboard"));
@@ -877,6 +879,11 @@ export default function App() {
               </AdminRoute>
             }
           />
+          <Route
+            path="/admin/external-readiness"
+            element={<AdminRoute user={user}><ExternalReadinessPage user={user} /></AdminRoute>}
+          />
+          <Route path="/readiness/packets/:shareId" element={<ProtectedRoute user={user}><ReadinessPacketPage /></ProtectedRoute>} />
           <Route
             path="/admin/assurance"
             element={

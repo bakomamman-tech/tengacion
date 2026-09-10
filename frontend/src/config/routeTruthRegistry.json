@@ -19,6 +19,25 @@
   },
   "features": [
     {
+      "id": "external_readiness_packets",
+      "title": "Controlled diligence packets",
+      "status": "beta",
+      "surface": "business",
+      "access": "authenticated",
+      "canonicalPath": "/readiness/packets/:shareId",
+      "appPaths": [
+        "/readiness/packets/:shareId"
+      ],
+      "dataAuthority": "Recipient-bound ExternalReadinessShare grants, versioned approved summaries and independently reviewed diligence responses.",
+      "ownerRole": "Internal Operations Owner",
+      "kpi": "Current approved packet reads and reviewed diligence responses",
+      "featureFlag": null,
+      "testEvidence": [
+        "backend/tests/externalReadiness.test.js",
+        "frontend/src/pages/__tests__/ExternalReadiness.test.jsx"
+      ]
+    },
+    {
       "id": "codeswitch_voicebridge",
       "title": "Tengacion VoiceBridge",
       "status": "experimental",
@@ -564,7 +583,7 @@
       "surface": "admin",
       "access": "admin",
       "canonicalPath": "/admin/dashboard",
-      "appPaths": ["/admin", "/admin/dashboard", "/admin/users", "/admin/content", "/admin/marketplace", "/admin/transactions", "/admin/tuition-payments", "/admin/teacher-training", "/admin/creator-earnings", "/admin/assurance", "/admin/creators/:creatorId", "/admin/audit-logs", "/admin/reports", "/admin/moderation", "/admin/moderation/cases/:caseId", "/admin/analytics", "/admin/assistant", "/admin/assistant/metrics", "/admin/assistant/reviews", "/admin/assistant/evals", "/admin/messages", "/admin/campaigns", "/admin/top-up-bank-account-promo", "/admin/top-up-bank-account-promo/preview", "/admin/recharge-raffle", "/admin/millionaire", "/admin/bright-future-academy", "/admin/settings", "/admin/storage"],
+      "appPaths": ["/admin", "/admin/dashboard", "/admin/users", "/admin/content", "/admin/marketplace", "/admin/transactions", "/admin/tuition-payments", "/admin/teacher-training", "/admin/creator-earnings", "/admin/assurance", "/admin/external-readiness", "/admin/creators/:creatorId", "/admin/audit-logs", "/admin/reports", "/admin/moderation", "/admin/moderation/cases/:caseId", "/admin/analytics", "/admin/assistant", "/admin/assistant/metrics", "/admin/assistant/reviews", "/admin/assistant/evals", "/admin/messages", "/admin/campaigns", "/admin/top-up-bank-account-promo", "/admin/top-up-bank-account-promo/preview", "/admin/recharge-raffle", "/admin/millionaire", "/admin/bright-future-academy", "/admin/settings", "/admin/storage"],
       "dataAuthority": "Admin, moderation, audit, finance, storage, teacher-training and analytics APIs.",
       "ownerRole": "Internal Operations Owner",
       "kpi": "Verified operational task completion",

@@ -209,6 +209,7 @@ app.get("/api/me", auth, async (req, res) => {
 });
 
 app.use("/api/auth", authLimiter, require("../apps/api/routes/auth"));
+app.use("/api/external-readiness", adminLimiter, require("./routes/externalReadiness"));
 app.use("/api/admin", adminLimiter, require("../apps/api/routes/admin"));
 app.use("/api/moderation", require("./routes/moderation"));
 app.use("/api/users", require("./routes/users"));

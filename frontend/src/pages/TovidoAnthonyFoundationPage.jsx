@@ -29,6 +29,7 @@ const FOUNDATION = {
 const NAV_ITEMS = [
   { href: "#about", label: "About" },
   { href: "#programs", label: "Programs" },
+  { href: "#romi-outreach", label: "Outreach" },
   { href: "#registration", label: "Registration" },
   { href: "#gallery", label: "Gallery" },
   { href: "#contact", label: "Contact" },
@@ -127,6 +128,58 @@ const GALLERY = [
     src: `${ASSET_ROOT}/team-community-outreach.jpg`,
     alt: "Two Tovido Anthony Humanitarian Foundation representatives at a community event",
     caption: "Showing up for community",
+  },
+];
+
+const ROMI_OUTREACH_PHOTOS = [
+  {
+    src: `${ASSET_ROOT}/romi-widows-outreach/1.jpg`,
+    alt: "Foundation team members standing before seated attendees at the Romi outreach",
+    caption: "Coming together in Romi",
+    width: 1536,
+    height: 2048,
+  },
+  {
+    src: `${ASSET_ROOT}/romi-widows-outreach/2.jpg`,
+    alt: "A foundation representative speaking to women seated at the gathering",
+    caption: "A community conversation",
+    width: 2048,
+    height: 1536,
+  },
+  {
+    src: `${ASSET_ROOT}/romi-widows-outreach/3.jpg`,
+    alt: "Foundation team members and attendees posing together indoors",
+    caption: "Together with the community",
+    width: 2048,
+    height: 1536,
+  },
+  {
+    src: `${ASSET_ROOT}/romi-widows-outreach/4.jpg`,
+    alt: "Attendees and foundation representatives gathered for a group photograph",
+    caption: "Faces of the Romi gathering",
+    width: 2048,
+    height: 1536,
+  },
+  {
+    src: `${ASSET_ROOT}/romi-widows-outreach/5.jpg`,
+    alt: "A woman speaking beside foundation team members as attendees listen",
+    caption: "Space for community voices",
+    width: 1536,
+    height: 2048,
+  },
+  {
+    src: `${ASSET_ROOT}/romi-widows-outreach/6.jpg`,
+    alt: "Women seated together during the indoor outreach gathering",
+    caption: "Time together",
+    width: 2048,
+    height: 1536,
+  },
+  {
+    src: `${ASSET_ROOT}/romi-widows-outreach/7.jpg`,
+    alt: "Women seated in a row, with a person holding a camera nearby",
+    caption: "Moments from the gathering",
+    width: 1536,
+    height: 2048,
   },
 ];
 
@@ -435,6 +488,85 @@ export default function TovidoAnthonyFoundationPage() {
                 </article>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="tovido-section tovido-outreach" id="romi-outreach" aria-labelledby="romi-outreach-title">
+          <div className="tovido-section__heading">
+            <p className="tovido-eyebrow">Romi widows outreach</p>
+            <h2 id="romi-outreach-title">Standing with widows through compassion, dignity, and community.</h2>
+            <p className="tovido-outreach__intro">
+              Compassion becomes practical community action when we show up for one another.
+              In Romi, our humanitarian outreach brings together community engagement and
+              support for widows and vulnerable families, with dignity at the heart of our work.
+            </p>
+          </div>
+          <div className="tovido-outreach__story">
+            <p className="tovido-eyebrow">Romi, Kaduna · 8 September 2026</p>
+            <h3>Visiting the widows of Romi, Kaduna.</h3>
+            <p>
+              Widows and underserved families are central to our humanitarian work.
+              Listening, offering encouragement, and building community connections reflect
+              our commitment to practical support and empowerment.
+            </p>
+            <p>
+              We took a little step towards helping women feel seen, remembered, and appreciated.
+              Tovido Anthony Humanitarian Foundation reached out to widows in Romi, Kaduna,
+              with support from{" "}
+              <a href="https://www.facebook.com/profile.php?id=61578189287817">Anny’s Kitchen Kaduna</a>
+              {" "}and <a href="https://www.facebook.com/ross.bud.18">Farm Boss</a>.
+            </p>
+            <p>
+              Kindness is about what we give and reminding people that they matter. Behind every
+              widow is a woman with a story: someone who has experienced loss and continues to
+              show strength every day. Every woman deserves support, encouragement, and the
+              reassurance that she has not been forgotten.
+            </p>
+            <p>
+              Thank you to the helping hands at Anny’s Kitchen and to Farm Boss for supporting
+              this outreach and helping us put smiles on these women’s faces. Your kindness
+              means more than words can express.
+            </p>
+            <p><strong>Compassion. Empowerment. Community. Hope.</strong> This is what we stand for.</p>
+            <a className="tovido-text-link" href={partnershipMailto}>
+              Partner with the foundation
+              <ArrowIcon />
+            </a>
+          </div>
+          <div className="tovido-outreach__photos">
+            {ROMI_OUTREACH_PHOTOS.map((photo) => (
+              <figure key={photo.src}>
+                <a
+                  href={photo.src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`View full-size photo: ${photo.caption} (opens in a new tab)`}
+                >
+                  <img
+                    src={photo.src}
+                    alt={photo.alt}
+                    width={photo.width}
+                    height={photo.height}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </a>
+                <figcaption>{photo.caption}</figcaption>
+              </figure>
+            ))}
+          </div>
+          <div className="tovido-outreach__cta">
+            <div>
+              <h3>Help support future outreaches.</h3>
+              <p>
+                Individuals, organizations, volunteers, and community partners are welcome
+                to join us in supporting widows and vulnerable families with compassion and care.
+              </p>
+            </div>
+            <a className="tovido-button tovido-button--primary" href={partnershipMailto}>
+              Support future outreaches
+              <ArrowIcon />
+            </a>
           </div>
         </section>
 

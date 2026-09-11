@@ -533,6 +533,27 @@ export default function TovidoAnthonyFoundationPage() {
               <ArrowIcon />
             </a>
           </div>
+          <figure className="tovido-outreach__video">
+            <video
+              controls
+              playsInline
+              preload="none"
+              poster={`${ASSET_ROOT}/romi-widows-outreach/3.jpg`}
+              aria-labelledby="romi-outreach-video-caption"
+            >
+              <source
+                src={`${ASSET_ROOT}/romi-widows-outreach/romi-widows-outreach.mp4`}
+                type="video/mp4"
+              />
+              Your browser does not support embedded video. Use the link below to watch it.
+            </video>
+            <figcaption id="romi-outreach-video-caption">
+              <span>Watch: Romi widows outreach</span>
+              <a href={`${ASSET_ROOT}/romi-widows-outreach/romi-widows-outreach.mp4`}>
+                Open the video directly
+              </a>
+            </figcaption>
+          </figure>
           <div className="tovido-outreach__photos">
             {ROMI_OUTREACH_PHOTOS.map((photo) => (
               <figure key={photo.src}>

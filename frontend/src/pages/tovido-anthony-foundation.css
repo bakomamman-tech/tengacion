@@ -1109,6 +1109,42 @@
   text-underline-offset: 4px;
 }
 
+.tovido-outreach__video {
+  margin: 0 0 40px;
+  border-radius: 12px;
+  background: var(--tovido-paper);
+}
+
+.tovido-outreach__video video {
+  display: block;
+  width: 100%;
+  max-height: 75vh;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px 12px 0 0;
+  background: var(--tovido-navy);
+  object-fit: contain;
+}
+
+.tovido-outreach__video video:focus-visible {
+  outline: 3px solid var(--tovido-gold);
+  outline-offset: 4px;
+}
+
+.tovido-outreach__video figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 20px;
+  color: var(--tovido-navy);
+  line-height: 1.5;
+}
+
+.tovido-outreach__video figcaption a {
+  color: var(--tovido-green-dark);
+  text-underline-offset: 4px;
+}
+
 .tovido-outreach__photos {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

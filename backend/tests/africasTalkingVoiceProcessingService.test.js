@@ -496,6 +496,103 @@ describe(
 
 
     test(
+      "retries a transient recording upstream error before Sahara processing",
+      async () => {
+
+        const upstreamError =
+          new Error(
+            "Recording host returned an unsuccessful response."
+          );
+
+        upstreamError.code =
+          "AFRICASTALKING_RECORDING_UPSTREAM_ERROR";
+
+        upstreamError.statusCode =
+          502;
+
+
+        const fetchRecording =
+          jest.fn()
+            .mockRejectedValueOnce(
+              upstreamError
+            )
+            .mockResolvedValue(
+              buildRecording()
+            );
+
+        const waitForRecordingRetry =
+          jest.fn()
+            .mockResolvedValue(
+              undefined
+            );
+
+        const transcribe =
+          jest.fn()
+            .mockResolvedValue(
+              buildTranscription()
+            );
+
+        const orchestrate =
+          jest.fn()
+            .mockResolvedValue(
+              buildOrchestration()
+            );
+
+
+        await processAfricasTalkingVoiceRecording(
+          {
+            recordingUrl:
+              "https://recordings.example.com/call.wav",
+
+            sessionId:
+              "AT_RECORDING_RETRY_123",
+
+            languagePair:
+              "ha-en",
+          },
+          {
+            fetchRecording,
+            waitForRecordingRetry,
+            transcribe,
+            orchestrate,
+          }
+        );
+
+
+        expect(
+          fetchRecording
+        ).toHaveBeenCalledTimes(
+          2
+        );
+
+        expect(
+          waitForRecordingRetry
+        ).toHaveBeenCalledTimes(
+          1
+        );
+
+        expect(
+          waitForRecordingRetry
+        ).toHaveBeenCalledWith(
+          1000
+        );
+
+        expect(
+          transcribe
+        ).toHaveBeenCalledTimes(
+          1
+        );
+
+        expect(
+          orchestrate
+        ).toHaveBeenCalledTimes(
+          1
+        );
+      }
+    );
+
+
+    test(
       "rejects empty Sahara transcript before downstream action",
       async () => {
 

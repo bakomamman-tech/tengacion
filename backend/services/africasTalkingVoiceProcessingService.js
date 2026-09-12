@@ -33,6 +33,23 @@ const LANGUAGE_PAIR_TO_SAHARA_LANGUAGE =
   });
 
 
+const RECORDING_FETCH_MAX_ATTEMPTS =
+  4;
+
+const RECORDING_FETCH_RETRY_DELAY_MS =
+  1000;
+
+const waitForRecordingRetryDefault =
+  (delayMs) =>
+    new Promise(
+      (resolve) =>
+        setTimeout(
+          resolve,
+          delayMs
+        )
+    );
+
+
 class AfricasTalkingVoiceProcessingError
   extends Error {
 
@@ -179,6 +196,58 @@ const ensureTranscript = (
 };
 
 
+const fetchRecordingWithRetry =
+  async (
+    recordingUrl,
+    {
+      fetchRecording,
+      waitForRecordingRetry,
+    }
+  ) => {
+
+    let lastError =
+      null;
+
+    for (
+      let attempt = 1;
+      attempt <=
+        RECORDING_FETCH_MAX_ATTEMPTS;
+      attempt += 1
+    ) {
+
+      try {
+
+        return await fetchRecording(
+          recordingUrl
+        );
+
+      } catch (error) {
+
+        lastError =
+          error;
+
+        const retryable =
+          error?.code ===
+            "AFRICASTALKING_RECORDING_UPSTREAM_ERROR";
+
+        if (
+          !retryable ||
+          attempt ===
+            RECORDING_FETCH_MAX_ATTEMPTS
+        ) {
+          throw error;
+        }
+
+        await waitForRecordingRetry(
+          RECORDING_FETCH_RETRY_DELAY_MS
+        );
+      }
+    }
+
+    throw lastError;
+  };
+
+
 const processAfricasTalkingVoiceRecording =
   async (
     {
@@ -191,6 +260,9 @@ const processAfricasTalkingVoiceRecording =
     {
       fetchRecording =
         fetchRecordingIntoMemory,
+
+      waitForRecordingRetry =
+        waitForRecordingRetryDefault,
 
       transcribe =
         transcribeWithSahara,
@@ -217,8 +289,12 @@ const processAfricasTalkingVoiceRecording =
      * memory only.
      */
     const recording =
-      await fetchRecording(
-        recordingUrl
+      await fetchRecordingWithRetry(
+        recordingUrl,
+        {
+          fetchRecording,
+          waitForRecordingRetry,
+        }
       );
 
 

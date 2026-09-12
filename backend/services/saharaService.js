@@ -352,6 +352,7 @@ const pollSaharaStatus = async (
   }
 ) => {
   const pollingStartedAt = now();
+  let sawCompletedWithoutTranscript = false;
 
   for (let attempt = 1; attempt <= pollMaxAttempts; attempt += 1) {
     const elapsedMs = Math.max(0, now() - pollingStartedAt);
@@ -390,7 +391,19 @@ const pollSaharaStatus = async (
     const responseFileId = extractProviderFileId(payload);
 
     if (processingStatus === COMPLETED_STATE) {
-      return parseCompletedData(payload, { expectedFileId: fileId });
+      const transcript = data?.audio_transcript;
+
+      if (typeof transcript === "string" && transcript.trim()) {
+        return parseCompletedData(payload, { expectedFileId: fileId });
+      }
+
+      /*
+       * Sahara can briefly report FILE_TRANSCRIBED before the usable
+       * transcript has propagated. Retry within the existing bounded
+       * polling window instead of failing the telephone call immediately.
+       */
+      sawCompletedWithoutTranscript = true;
+      continue;
     }
 
     if (processingStatus === FAILED_STATE) {
@@ -421,6 +434,14 @@ const pollSaharaStatus = async (
       "SAHARA_MALFORMED_RESPONSE",
       "Sahara returned an unknown processing status.",
       { providerFileId: fileId }
+    );
+  }
+
+  if (sawCompletedWithoutTranscript) {
+    throw new SaharaServiceError(
+      "SAHARA_EMPTY_TRANSCRIPT",
+      "Sahara completed processing but did not return a usable transcript within the bounded wait period.",
+      { statusCode: 502, providerFileId: fileId }
     );
   }
 

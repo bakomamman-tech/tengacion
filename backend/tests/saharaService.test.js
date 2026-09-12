@@ -295,6 +295,45 @@ describe("Sahara transcription adapter", () => {
     );
   });
 
+  test("keeps polling when FILE_TRANSCRIBED is briefly returned without a usable transcript", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(
+          200,
+          providerPayload({ status: "FILE_QUEUED", includeTranscript: false })
+        )
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          200,
+          providerPayload({ status: "FILE_TRANSCRIBED", transcript: "   " })
+        )
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          200,
+          providerPayload({
+            status: "FILE_TRANSCRIBED",
+            transcript: "Don Allah duba biyan kudina.",
+          })
+        )
+      );
+
+    const wait = jest.fn().mockResolvedValue(undefined);
+
+    const result = await transcribe({ fetchImpl, wait });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(wait).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(
+      expect.objectContaining({
+        transcript: "Don Allah duba biyan kudina.",
+        processingStatus: "FILE_TRANSCRIBED",
+      })
+    );
+  });
+
   test("stops polling when Sahara reports FILE_PROCESSING_FAILED", async () => {
     const fetchImpl = jest
       .fn()

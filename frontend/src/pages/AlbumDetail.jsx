@@ -1,3 +1,4 @@
+import ProtectedAudioPlayer from "../components/media/ProtectedAudioPlayer";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useParams } from "react-router-dom";
@@ -270,7 +271,7 @@ export default function AlbumDetail() {
                   ) : null}
                 </div>
                 {track.streamUrl ? (
-                  <audio
+                  <ProtectedAudioPlayer
                     controls
                     controlsList="nodownload noplaybackrate"
                     disablePictureInPicture

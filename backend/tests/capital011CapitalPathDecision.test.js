@@ -24,9 +24,9 @@ const authority = result => {
   expect(result.externalUse).toBe("requires_current_evidence_and_independent_human_review");
 };
 test("catalog and configuration preserve the authoritative contract", () => {
-  expect(service.catalog).toHaveLength(48);
-  expect(new Set(service.catalog.map(x => x.key)).size).toBe(48);
-  expect(service.catalog.filter(x => x.cycle === "capital").map(x => x.key)).toEqual(Array.from({length:11}, (_,i) => "CAPITAL-"+String(i+1).padStart(3,"0")));
+  expect(service.catalog).toHaveLength(88);
+  expect(new Set(service.catalog.map(x => x.key)).size).toBe(88);
+  expect(service.catalog.filter(x => x.cycle === "capital").map(x => x.key)).toEqual(Array.from({length:15}, (_,i) => "CAPITAL-"+String(i+1).padStart(3,"0")));
   expect(service.catalog.find(x => x.key === "CAPITAL-011")).toMatchObject({kind:"decision", title:"Make The Capital Path Decision"});
   expect(config.paths).toHaveLength(9); expect(config.packetSections).toHaveLength(8);
   expect(service.analyzeCapitalPath).toBe(analyze);

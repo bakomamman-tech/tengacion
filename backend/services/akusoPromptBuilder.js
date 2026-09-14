@@ -1,3 +1,4 @@
+const { commercialWritingInstructions } = require("./assistant/commercialWritingProfiles");
 const {
   sanitizeCodeCapableText,
   sanitizeMultilineText,
@@ -491,6 +492,8 @@ ${AKUSO_ANSWERING_INTELLIGENCE_RULES}
 ${isSoftwareEngineering ? AKUSO_CODING_INTELLIGENCE_RULES : ""}
 
 ${groundingRules}
+
+${commercialWritingInstructions(String(input.contentType || "").trim().toLowerCase())}
 
 Current mode: ${sanitizePlainText(policyResult.mode || "knowledge_learning", 40)}
 Academic subject: ${sanitizePlainText(policyResult.classification?.subject || "general", 40)}

@@ -287,6 +287,8 @@ const schema = new mongoose.Schema(
       overclaimRisk: text(),
     },
 
+    commercial: { type: require("./commercialWorkflowSchema"), default: undefined },
+
     capitalBlocker: {
       type: require("./capitalBlockerSchema"),
       default: undefined,
@@ -392,6 +394,31 @@ const schema = new mongoose.Schema(
 
 schema.pre("validate", function () {
   const now = Date.now();
+  if (Number.isFinite(this.allocation?.minimum) && Number.isFinite(this.allocation?.maximum) && this.allocation.minimum > this.allocation.maximum) this.invalidate('allocation', 'Allocation minimum cannot exceed maximum');
+  if (this.packageKey === 'CAPITAL-013' && this.financial?.currency && this.allocation?.currency && this.financial.currency !== this.allocation.currency) this.invalidate('allocation.currency', 'Financial model and allocation currencies must match');
+  if (this.commercial) {
+    if (this.commercial.outreachTargets?.length && this.packageKey !== 'CAPITAL-012') this.invalidate('commercial.outreachTargets', 'Outreach targets belong to CAPITAL-012');
+    for (const target of this.commercial.outreachTargets || []) {
+      const indexes = target.advisorReviewEvidenceIndexes || [];
+      if (new Set(indexes).size !== indexes.length || indexes.some(index => !Number.isInteger(index) || index < 0 || index >= this.evidence.length)) this.invalidate('commercial.outreachTargets', 'Advisor evidence indexes must be unique and in range');
+    }
+    if (!require('../config/commercialRoadmap').kinds[this.packageKey]) this.invalidate('commercial', 'Commercial workflow is not supported for this package');
+    for (const group of ['scores', 'gates', 'metrics', 'thresholds', 'details', 'steps', 'acceptance', 'outreachTargets']) {
+      const entries = this.commercial[group] || [];
+      if (new Set(entries.map(entry => entry.key)).size !== entries.length) this.invalidate('commercial.' + group, 'Keys must be unique');
+      for (const entry of entries) {
+        const indexes = entry.evidenceIndexes || [];
+        if (new Set(indexes).size !== indexes.length || indexes.some(index => !Number.isInteger(index) || index < 0 || index >= this.evidence.length)) this.invalidate('commercial.' + group, 'Evidence indexes must be unique and in range');
+      }
+    }
+  }
+  if (require('../config/commercialRoadmap').kinds[this.packageKey] && this.status === 'approved') {
+    if (this.outcome !== 'pass') this.invalidate('outcome', 'Commercial approval requires an observed passing review');
+    if (require('../services/commercialWorkflowAnalysis').analyzeCommercialWorkflow(this).blockers.length) this.invalidate('commercial', 'Incomplete commercial workflow cannot be approved');
+    if (!this.isNew && ['commercial', 'financial', 'allocation', 'evidence', 'responses', 'owner', 'dueAt', 'expiresAt', 'dependencies', 'findingIds', 'audience', 'classification', 'publicSummary'].some(field => this.isModified(field))) {
+      this.invalidate('status', 'Revise changed commercial workflow as a draft before approval');
+    }
+  }
   const spec = catalog.find(
     (p) => p.key === this.packageKey
   );

@@ -1,3 +1,4 @@
+const {profiles: commercialProfiles, boundary: commercialBoundary, commercialWritingInstructions} = require("./commercialWritingProfiles");
 const normalizeText = (value = "", max = 200) =>
   String(value || "")
     .replace(/\s+/g, " ")
@@ -9,6 +10,7 @@ const WRITING_AUDIENCES = ["fans", "buyers", "investors", "general public", "stu
 const WRITING_LENGTHS = ["short", "medium", "long"];
 const WRITING_SIMPLICITY = ["basic", "standard", "advanced"];
 const WRITING_CONTENT_TYPES = [
+  ...Object.keys(commercialProfiles),
   "caption",
   "bio",
   "post",
@@ -110,6 +112,8 @@ const buildWritingBrief = ({
     lines.push(`Source text: ${normalizeText(sourceText, 400)}`);
   }
 
+  const commercialInstructions = commercialWritingInstructions(contentType);
+  if (commercialInstructions) lines.push(`Commercial drafting contract: ${commercialInstructions}`);
   return lines.join("\n");
 };
 
@@ -167,6 +171,14 @@ const buildWritingFallbackDraft = ({
   const prefix = buildVariantPrefix(normalized.tone);
   const audienceTail = buildAudienceTail(normalized.audience);
   const lengthHint = buildLengthHint(normalized.length);
+
+  if (Object.hasOwn(commercialProfiles, contentType)) {
+    return buildVariants([
+      `Review draft for ${cleanTopic}: ${commercialProfiles[contentType]}`,
+      cleanSource ? 'Source text needs verification against current approved evidence before it can support claims.' : 'No source evidence was supplied. Leave product terms, prices and performance claims unfilled until verified.',
+      commercialBoundary,
+    ]);
+  }
 
   if (task === "rewrite" && cleanSource) {
     return buildVariants([

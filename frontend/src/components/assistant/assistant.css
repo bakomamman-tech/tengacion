@@ -2895,6 +2895,7 @@ html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock :is(
   color: #ffffff;
   caret-color: #ffd979;
   -webkit-text-fill-color: #ffffff;
+  color-scheme: dark;
   opacity: 1;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),

@@ -4,6 +4,9 @@ import {
   useState,
 } from "react";
 
+import CommercialPortfolioPanel, {CommercialRevisionPanel} from "../components/admin/CommercialPortfolioPanel";
+import CommercialEvidencePanel from "../components/admin/CommercialEvidencePanel";
+import CommercialRoadmapWorkspace from "../components/admin/CommercialRoadmapWorkspace";
 import CapitalPathDecisionWorkspace from "../components/admin/CapitalPathDecisionWorkspace";
 import UnitEconomicsWorkspace from "../components/admin/UnitEconomicsWorkspace";
 import AdminShell from "../components/AdminShell";
@@ -1220,6 +1223,7 @@ export default function ExternalReadiness({
       "financial",
       "allocation",
       "capitalPathDecision",
+      "commercial",
       "capitalBlocker",
       "unitEconomics",
     ];
@@ -1329,9 +1333,14 @@ export default function ExternalReadiness({
     ].some((field) => !sameValue(draft[field], selected[field]))
   );
 
+  const commercialDirty = Boolean(data?.commercialConfig?.kinds?.[key]) && (
+    !selected || ["commercial", "financial", "allocation", "evidence", "responses", "dependencies", "findingIds", "owner", "dueAt", "expiresAt", "audience", "classification", "publicSummary"]
+      .some(field => !sameValue(draft[field], selected[field]))
+  );
+
   const governanceDirty =
     economicsDirty ||
-    capitalBlockerDirty || capitalPathDirty;
+    capitalBlockerDirty || capitalPathDirty || commercialDirty;
 
   const textField = (
     field,
@@ -1427,6 +1436,10 @@ export default function ExternalReadiness({
           </p>
         ) : (
           <>
+            <CommercialPortfolioPanel portfolios={data.commercialPortfolio} onOpen={id => {
+              const row = data.records.find(item => item.id === id);
+              if (row) { edit(row); }
+            }} />
             <section>
               <h2>
                 Operating report
@@ -2019,7 +2032,7 @@ export default function ExternalReadiness({
                     "withdrawalRule",
                     ...(
                       fieldsByKind[
-                        spec?.kind
+                        spec?.workflowKind === "model_revision" ? "allocation" : spec?.kind
                       ] || []
                     ),
                   ].map(
@@ -2107,7 +2120,7 @@ export default function ExternalReadiness({
                     "CAPITAL-010" &&
                     Object.entries(
                       groupsByKind[
-                        spec?.kind
+                        spec?.workflowKind === "model_revision" ? "allocation" : spec?.kind
                       ] || {}
                     ).map(
                       ([
@@ -2210,8 +2223,7 @@ export default function ExternalReadiness({
                       )
                     )}
 
-                  {spec?.kind ===
-                    "financial" && (
+                  {(spec?.kind === "financial" || spec?.workflowKind === "model_revision") && (
                     <fieldset>
                       <legend>
                         Financial
@@ -2523,6 +2535,18 @@ export default function ExternalReadiness({
                       analysis={selected?.capitalPathAnalysis}
                       dirty={capitalPathDirty}
                     />
+                  )}
+
+                  {data.commercialConfig?.kinds?.[key] && (
+                    <><CommercialEvidencePanel />{selected && <CommercialRevisionPanel key={selected.id} recordId={selected.id} />}<CommercialRoadmapWorkspace
+                      value={draft.commercial}
+                      onChange={value => set("commercial", value)}
+                      config={data.commercialConfig}
+                      spec={data.packages.find(item => item.key === key)}
+                      evidence={draft.evidence || []}
+                      analysis={selected?.commercialAnalysis}
+                      dirty={commercialDirty}
+                    /></>
                   )}
 
                   <h3>

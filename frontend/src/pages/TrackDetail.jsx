@@ -1,3 +1,4 @@
+import ProtectedAudioPlayer from "../components/media/ProtectedAudioPlayer";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -425,7 +426,7 @@ export default function TrackDetail() {
         </section>
 
         <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <audio
+          <ProtectedAudioPlayer
             ref={audioRef}
             controls
             controlsList="nodownload noplaybackrate"

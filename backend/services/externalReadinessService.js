@@ -10,6 +10,9 @@ const { analyzeUnitEconomics } = require("./unitEconomicsAnalysis");
 const { analyzeCapitalBlocker } = require("./capitalBlockerAnalysis");
 const { analyzeCapitalPath } = require("./capitalPathAnalysis");
 
+const commercialConfig = require("../config/commercialRoadmap");
+const { analyzeCommercialWorkflow } = require("./commercialWorkflowAnalysis");
+
 const FINANCIAL_KEYS = [
   "gmv",
   "platform_revenue",
@@ -71,6 +74,7 @@ const EDIT_FIELDS = [
   "allocation",
   "capitalBlocker",
   "capitalPathDecision",
+  "commercial",
   "unitEconomics",
 ];
 
@@ -298,6 +302,7 @@ function localBlockers(
 ) {
   const spec = specFor(row);
   const blockers = [];
+  if (commercialConfig.kinds[row.packageKey]) blockers.push(...analyzeCommercialWorkflow(row, now).blockers);
 
   if (row.packageKey === "CAPITAL-011") {
     blockers.push(...analyzeCapitalPath(row, now).blockers);
@@ -516,7 +521,7 @@ function localBlockers(
   }
 
   if (
-    spec.kind === "financial"
+    (spec.kind === "financial" || spec.workflowKind === "model_revision")
   ) {
     const summary =
       financialSummary(
@@ -556,7 +561,7 @@ function localBlockers(
   }
 
   if (
-    spec.kind === "allocation" &&
+    (spec.kind === "allocation" || spec.workflowKind === "model_revision") &&
     (
       !Number.isFinite(
         row.allocation?.minimum
@@ -580,6 +585,12 @@ function localBlockers(
       "allocation_gates_missing"
     );
   }
+
+  if (spec.workflowKind === 'model_revision') {
+    if (!row.decision?.trim() || !row.reversalCondition?.trim()) blockers.push('model_revision_decision_and_reversal_required');
+    if (row.financial?.currency !== row.allocation?.currency) blockers.push('model_revision_currency_mismatch');
+  }
+  if (Number.isFinite(row.allocation?.minimum) && Number.isFinite(row.allocation?.maximum) && row.allocation.minimum > row.allocation.maximum) blockers.push('allocation_bounds_invalid');
 
   if (
     spec.kind === "candidate" &&
@@ -961,6 +972,16 @@ async function blockersFor(
     }
   }
 
+  for (const requiredPackage of commercialConfig.requiredPackages[row.packageKey] || []) {
+    if (!dependencies.some(dependency => dependency.packageKey === requiredPackage)) blockers.push('commercial_dependency_required:' + requiredPackage);
+  }
+  if (row.packageKey === 'CAPITAL-012') {
+    const grantIds = (row.commercial?.outreachTargets || []).map(target => target.grant).filter(value => mongoose.isValidObjectId(value));
+    const grants = await Share.find({_id: {$in: grantIds}}).limit(50).lean();
+    blockers.push(...require('./commercialOutreach').outreachGrantBlockers(row, dependencies, grants));
+    const choice = dependencies.find(dependency => dependency.packageKey === 'CAPITAL-011');
+    if (choice && ['no_external_capital_yet', 'defer_and_prove_milestones'].includes(choice.capitalPathDecision?.path)) blockers.push('commercial_capital_path_defers_outreach');
+  }
   for (
     const dependency of
     dependencies
@@ -1121,6 +1142,17 @@ async function saveDraft({
   ) {
     fail(
       "Package cannot be changed"
+    );
+  }
+
+  if (recordId && commercialConfig.kinds[row.packageKey]) {
+    if (row.commercial?.state === 'retired' && body.commercial?.state && body.commercial.state !== 'retired') fail('Retired workflows cannot be reactivated; create a new scoped record', 409);
+    const snapshot = plain(row);
+    delete snapshot.history;
+    await require('../models/CommercialWorkflowRevision').updateOne(
+      {record: row._id, version: row.__v},
+      {$setOnInsert: {capturedAt: new Date(), changedBy: row.lastChangedBy, snapshot}},
+      {upsert: true, runValidators: true}
     );
   }
 
@@ -1385,6 +1417,7 @@ async function transition({
         [
           "review",
           "retest",
+          "commercial_workflow",
         ].includes(
           specFor(row).kind
         ) &&
@@ -1400,6 +1433,7 @@ async function transition({
         [
           "review",
           "retest",
+          "commercial_workflow",
         ].includes(
           specFor(row).kind
         )
@@ -1538,6 +1572,12 @@ async function report() {
             )
           : undefined,
 
+      commercialAnalysis: commercialConfig.kinds[row.packageKey] ? {
+        ...analyzeCommercialWorkflow(row), blockers,
+        reviewedRecordAvailable: row.status === 'approved' && !blockers.length,
+        effectiveState: row.status === 'approved' && !blockers.length ? row.commercial?.state : 'not_ready',
+      } : undefined,
+
       capitalPathAnalysis:
         row.packageKey === "CAPITAL-011" ? analyzeCapitalPath(row) : undefined,
 
@@ -1550,8 +1590,7 @@ async function report() {
           : undefined,
 
       financialSummary:
-        specFor(row).kind ===
-        "financial"
+        (specFor(row).kind === "financial" || specFor(row).workflowKind === "model_revision")
           ? financialSummary(
               row.financial
             )
@@ -1579,8 +1618,7 @@ async function report() {
       (spec) => ({
         ...spec,
 
-        implementationStatus:
-          "implemented",
+        implementationStatus: spec.kind === "commercial_workflow" ? "in_progress" : "implemented",
 
         operationalStatus:
           records.some(
@@ -1655,6 +1693,9 @@ async function report() {
       require(
         "../config/unitEconomics"
       ),
+
+    commercialConfig,
+    commercialPortfolio: require("./commercialPortfolio").buildCommercialPortfolio(records, {truncated: count > 250}),
 
     capitalPathConfig: require("../config/capitalPaths"),
 

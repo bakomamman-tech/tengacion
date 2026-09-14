@@ -1,3 +1,4 @@
+import ProtectedAudioPlayer from "../components/media/ProtectedAudioPlayer";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -272,7 +273,7 @@ function CreatorPublicAudioPreview({ preview }) {
         alt={preview?.title}
       />
       <div className="creator-public-preview__audio-copy">
-        <audio
+        <ProtectedAudioPlayer
           ref={audioRef}
           className="creator-public-preview__player"
           controls

@@ -195,11 +195,11 @@ afterAll(async () => {
 });
 
 test(
-  "all 48 contracts trace to checked-in roadmaps, with truthful empty readiness",
+  "all 88 contracts trace to checked-in roadmaps, with truthful empty readiness",
   async () => {
     expect(
       service.catalog
-    ).toHaveLength(48);
+    ).toHaveLength(88);
 
     expect(
       new Set(
@@ -208,7 +208,7 @@ test(
             packageSpec.key
         )
       ).size
-    ).toBe(48);
+    ).toBe(88);
 
     for (
       const packageSpec of
@@ -249,7 +249,7 @@ test(
     expect(
       report.summary
     ).toMatchObject({
-      packageCount: 48,
+      packageCount: 88,
       records: 0,
       readyRecords: 0,
       observedReviews: 0,
@@ -479,6 +479,11 @@ test(
     ).toBe(
       "Scoped summary"
     );
+
+    const accessLog = await AuditLog.findOne({action: 'external_readiness.packet_access', targetId: String(share._id)}).lean();
+    expect(String(accessLog.actorId)).toBe(String(recipient._id));
+    expect(accessLog.targetType).toBe('ExternalReadiness');
+    expect(JSON.stringify(accessLog)).not.toContain('Scoped summary');
 
     let question =
       await service.askQuestion({
@@ -985,3 +990,13 @@ test(
     );
   }
 );
+test('commercial evidence and revision history remain administrator-only', async () => {
+  for (const url of ['/readiness/commercial/evidence', '/readiness/records/000000000000000000000001/revisions']) {
+    expect((await request(app).get(url)).status).toBe(401);
+    expect((await request(app).get(url).set(as(recipient, 'user'))).status).toBe(403);
+  }
+  const response = await request(app).get('/readiness/commercial/evidence').set(as(owner));
+  expect(response.status).toBe(200);
+  expect(response.headers['cache-control']).toBe('no-store');
+  expect(response.body).toMatchObject({actorRowsExposed: false, externalUseApproved: false});
+});

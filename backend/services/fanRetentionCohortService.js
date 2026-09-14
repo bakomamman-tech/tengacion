@@ -143,7 +143,7 @@ const buildFanRetentionCohortsFromRows = ({
   const rangeEnd = toDate(end);
   if (!rangeStart || !rangeEnd) throw new Error("Invalid retention cohort range");
   const requestedObservationEnd = toDate(observedThrough) || rangeEnd;
-  const observationEnd = new Date(Math.max(requestedObservationEnd.getTime(), rangeEnd.getTime()));
+  const observationEnd = requestedObservationEnd;
   const observableEventRows = eventRows.filter(
     (event) => (toDate(event?.createdAt)?.getTime() || 0) <= observationEnd.getTime()
   );
@@ -173,9 +173,9 @@ const buildFanRetentionCohortsFromRows = ({
   const cohorts = COHORT_DEFINITIONS.map((definition) => {
     const members = entriesByCohort[definition.key] || [];
     const retention = {};
-    for (const day of [1, 7, 30]) {
+    for (const day of [1, 7, 14, 30]) {
       const matureMembers = members.filter(
-        (member) => member.entryAt.getTime() + day * DAY_MS <= observationEnd.getTime()
+        (member) => member.entryAt.getTime() + (day + 1) * DAY_MS <= observationEnd.getTime()
       );
       const returned = matureMembers.filter((member) => {
         const activity = activityMap.get(member.userId) || [];
@@ -244,6 +244,7 @@ const buildFanRetentionCohortsFromRows = ({
   };
   const d1 = summarizeRetention("d1");
   const d7 = summarizeRetention("d7");
+  const d14 = summarizeRetention("d14");
   const d30 = summarizeRetention("d30");
   const matureD7 = cohorts.filter((cohort) => cohort.retention.d7.mature);
   const weakestD7 = [...matureD7].sort(
@@ -258,7 +259,7 @@ const buildFanRetentionCohortsFromRows = ({
       startDate: rangeStart.toISOString(),
       endDate: rangeEnd.toISOString(),
       observedThrough: observationEnd.toISOString(),
-      maturityRule: "D1, D7, and D30 use the 24-hour activity window beginning on that cohort day.",
+      maturityRule: "D1, D7, D14, and D30 use the fully observed 24-hour activity window beginning on that cohort day.",
     },
     summary: {
       entrants,
@@ -268,6 +269,9 @@ const buildFanRetentionCohortsFromRows = ({
       d7Eligible: d7.eligible,
       d7Returned: d7.returned,
       d7RetentionRate: d7.rate,
+      d14Eligible: d14.eligible,
+      d14Returned: d14.returned,
+      d14RetentionRate: d14.rate,
       d30Eligible: d30.eligible,
       d30Returned: d30.returned,
       d30RetentionRate: d30.rate,

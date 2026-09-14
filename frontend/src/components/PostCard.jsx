@@ -1,3 +1,4 @@
+import ProtectedAudioPlayer from "./media/ProtectedAudioPlayer";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
@@ -1608,7 +1609,7 @@ export default function PostCard({
                   <img src={audioTrack.coverImageUrl} alt="Track cover" />
                 </div>
               ) : null}
-              <audio
+              <ProtectedAudioPlayer
                 controls
                 controlsList="nodownload noplaybackrate"
                 disablePictureInPicture

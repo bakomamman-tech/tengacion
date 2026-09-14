@@ -30,13 +30,19 @@ router.get("/shares/:id", handle(async (req) => {
   const questions = await Question.find({ share: req.params.id, askedBy: req.user.id }).sort({ createdAt: -1 }).limit(100).lean();
   return { packet, questions: questions.map((q) => ({ id: q._id, question: q.question, status: q.status,
     response: ["approved", "closed"].includes(q.status) ? q.response : "" })) };
-}));
+}, "packet_access"));
 router.post("/shares/:id/questions", limiter, handle(async (req) => {
   const row = await service.askQuestion({ shareId: req.params.id, actor: req.user.id, body: req.body });
   return { id: row._id, question: row.question, status: row.status };
 }, "question"));
 
 router.use(requireRole.requireAdmin());
+router.get('/records/:id/revisions', handle(async req => {
+  const row = await service.getRecord(req.params.id);
+  const revisions = await require('../models/CommercialWorkflowRevision').find({record: row._id}).sort({version: -1}).limit(101).lean();
+  return {revisions: revisions.slice(0, 100), truncated: revisions.length > 100, scope: 'Immutable prior saved versions; current version remains on the record.'};
+}));
+router.get("/commercial/evidence", limiter, handle(() => require("../services/commercialEvidenceService").buildCommercialEvidence()));
 router.get("/", handle(() => service.report()));
 router.post("/records", limiter, handle((req) => service.saveDraft({ body: req.body, actor: req.user.id }), "create"));
 router.patch("/records/:id", limiter, handle((req) => service.saveDraft({ recordId: req.params.id, body: req.body, actor: req.user.id }), "revise"));

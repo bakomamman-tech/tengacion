@@ -11,18 +11,26 @@ function revenueFromRows(rows = []) {
     const key = currency + ":" + category;
     if (!groups.has(key)) groups.set(key, {currency, category, paidOrders: 0, failedOrders: 0, pendingOrders: 0,
       refundedOrders: 0, subscriptionOrders: 0, scheduledCancellations: 0, grossPaidAmount: 0, refundedAmount: 0,
-      creatorEarningsEstimate: 0, platformRevenueEstimate: 0, missingShareRates: 0, missingAmounts: 0});
+      creatorEarningsEstimate: 0, platformRevenueEstimate: 0, missingShareRates: 0, missingAmounts: 0, missingPaidAmounts: 0, missingRefundAmounts: 0});
     const group = groups.get(key);
     if (row.status === "failed") group.failedOrders++;
     if (["initiated", "pending", "abandoned"].includes(row.status)) group.pendingOrders++;
     const amountKnown = typeof row.amount === "number" && Number.isFinite(row.amount) && row.amount >= 0;
-    if (!amountKnown) group.missingAmounts++;
     if (row.status === "refunded") {
       group.refundedOrders++;
-      if (amountKnown) group.refundedAmount += row.amount;
+      if (amountKnown) {
+        group.refundedAmount += row.amount;
+      } else {
+        group.missingAmounts++;
+        group.missingRefundAmounts++;
+      }
     }
     if (row.status !== "paid") continue;
     group.paidOrders++;
+    if (!amountKnown) {
+      group.missingAmounts++;
+      group.missingPaidAmounts++;
+    }
     if (row.itemType === "subscription") group.subscriptionOrders++;
     if (row.cancelAtPeriodEnd) group.scheduledCancellations++;
     if (amountKnown) group.grossPaidAmount += row.amount;
@@ -33,8 +41,8 @@ function revenueFromRows(rows = []) {
     } else group.missingShareRates++;
   }
   return [...groups.values()].map(group => ({...group,
-    grossPaidAmount: group.missingAmounts ? null : group.grossPaidAmount,
-    refundedAmount: group.missingAmounts ? null : group.refundedAmount,
+    grossPaidAmount: group.missingPaidAmounts ? null : group.grossPaidAmount,
+    refundedAmount: group.missingRefundAmounts ? null : group.refundedAmount,
     creatorEarningsEstimate: group.missingShareRates ? null : group.creatorEarningsEstimate,
     platformRevenueEstimate: group.missingShareRates ? null : group.platformRevenueEstimate,
     shareEstimateBasis: "Purchase amount times stored share rate; excludes ledger reconciliation, fees, tax adjustments, and disputes.",

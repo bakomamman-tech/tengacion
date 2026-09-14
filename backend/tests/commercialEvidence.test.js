@@ -51,3 +51,49 @@ test("dependency-blocked pilots never appear active in the portfolio", () => {
   expect(portfolio.inventoryComplete).toBe(false);
   expect(portfolio.limitations.length).toBeGreaterThan(0);
 });
+test("failed and pending rows with missing amounts do not poison paid revenue totals", () => {
+  const paid = {
+    status: "paid",
+    amount: 100,
+    currency: "NGN",
+    revenueCategory: "music",
+    itemType: "track",
+    creatorShareRate: 0.8,
+    platformShareRate: 0.2,
+  };
+
+  const rows = revenueFromRows([
+    paid,
+    {
+      ...paid,
+      status: "failed",
+      amount: undefined,
+    },
+    {
+      ...paid,
+      status: "pending",
+      amount: null,
+    },
+  ]);
+
+  expect(rows[0]).toMatchObject({
+    paidOrders: 1,
+    failedOrders: 1,
+    pendingOrders: 1,
+    grossPaidAmount: 100,
+    creatorEarningsEstimate: 80,
+    platformRevenueEstimate: 20,
+  });
+});
+test.each([
+  ["paid", null, 25, 1, 0],
+  ["refunded", 100, null, 0, 1],
+])("missing %s amounts invalidate only the corresponding total", (status, grossPaidAmount, refundedAmount, missingPaidAmounts, missingRefundAmounts) => {
+  const base = {currency: "NGN", revenueCategory: "music", creatorShareRate: 0.8, platformShareRate: 0.2};
+  const [result] = revenueFromRows([
+    {...base, status: "paid", amount: 100},
+    {...base, status: "refunded", amount: 25},
+    {...base, status, amount: undefined},
+  ]);
+  expect(result).toMatchObject({grossPaidAmount, refundedAmount, missingAmounts: 1, missingPaidAmounts, missingRefundAmounts});
+});

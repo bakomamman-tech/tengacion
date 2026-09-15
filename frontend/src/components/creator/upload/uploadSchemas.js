@@ -130,6 +130,17 @@ export const musicUploadSchema = z.object({
     });
   }
 
+  if (Number(value.price || 0) > 0 && !value.previewSampleFile) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["previewSampleFile"],
+      message:
+        value.releaseMediaType === "video"
+          ? "A preview clip is required for paid music videos"
+          : "A 30-second preview sample is required for paid songs",
+    });
+  }
+
   if (value.releaseMediaType === "audio" && !String(value.genre || "").trim()) {
     ctx.addIssue({
       code: "custom",

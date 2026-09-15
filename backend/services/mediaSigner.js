@@ -66,18 +66,35 @@ const buildSignedMediaUrl = ({
   bindToRequest = false,
   req,
 }) => {
-  if (!sourceUrl || !req) {
+  if (!req) {
+    return "";
+  }
+
+  const normalizedItemType = toTokenText(itemType, 32).toLowerCase();
+  const resolvedAccessType = toTokenText(accessType, 24).toLowerCase();
+  const isProtectedTrack = ["track", "song", "podcast"].includes(normalizedItemType)
+    && ["preview", "stream", "download"].includes(resolvedAccessType)
+    && Boolean(toTokenText(itemId, 64));
+
+  if (!sourceUrl && !isProtectedTrack) {
     return "";
   }
 
   const payload = {
-    src: sourceUrl,
-    itemType: String(itemType || ""),
+    itemType: normalizedItemType || String(itemType || ""),
     itemId: String(itemId || ""),
     uid: String(userId || ""),
     dl: Boolean(allowDownload),
     exp: createStableExpiry(expiresInSec),
   };
+
+  // Protected track tokens intentionally omit the backing storage URL. The
+  // delivery route resolves the canonical source server-side after entitlement
+  // checks, so decoding a token cannot reveal the paid master URL.
+  if (!isProtectedTrack && sourceUrl) {
+    payload.src = sourceUrl;
+  }
+
   const resolvedFilename = toTokenText(filename);
   const resolvedContentType = toTokenText(contentType, 120);
   if (resolvedFilename) {
@@ -90,7 +107,6 @@ const buildSignedMediaUrl = ({
   if (["inline", "attachment"].includes(resolvedDisposition)) {
     payload.disposition = resolvedDisposition;
   }
-  const resolvedAccessType = toTokenText(accessType, 24).toLowerCase();
   if (["preview", "stream", "download"].includes(resolvedAccessType)) {
     payload.accessType = resolvedAccessType;
   }
@@ -126,7 +142,10 @@ const verifySignedMediaToken = (token, { req } = {}) => {
     }
 
     const payload = JSON.parse(base64UrlDecode(encodedPayload) || "{}");
-    if (!payload?.src || !payload?.exp) {
+    const hasTrackReference = ["track", "song", "podcast"].includes(
+      String(payload?.itemType || "").trim().toLowerCase()
+    ) && Boolean(String(payload?.itemId || "").trim());
+    if ((!payload?.src && !hasTrackReference) || !payload?.exp) {
       throw new Error("Invalid media payload");
     }
     if (Number(payload.exp) <= Math.floor(Date.now() / 1000)) {

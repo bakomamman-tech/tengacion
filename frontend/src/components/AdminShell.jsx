@@ -4,6 +4,7 @@ import "../pages/admin-analytics.css";
 
 const ADMIN_ITEMS = [
   { key: "overview", label: "Overview", path: "/admin/dashboard" },
+  { key: "voicebridge", label: "VoiceBridge Diagnostics", path: "/admin/voicebridge" },
   { key: "creator-earnings", label: "Earnings From Creators", path: "/admin/creator-earnings" },
   { key: "assurance", label: "Assurance", path: "/admin/assurance" },
   { key: "external-readiness", label: "External readiness", path: "/admin/external-readiness" },

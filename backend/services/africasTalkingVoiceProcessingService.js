@@ -34,10 +34,21 @@ const LANGUAGE_PAIR_TO_SAHARA_LANGUAGE =
 
 
 const RECORDING_FETCH_MAX_ATTEMPTS =
-  4;
+  7;
 
-const RECORDING_FETCH_RETRY_DELAY_MS =
+const RECORDING_FETCH_BASE_RETRY_DELAY_MS =
   1000;
+
+const RECORDING_FETCH_MAX_RETRY_DELAY_MS =
+  5000;
+
+const getRecordingFetchRetryDelayMs =
+  (attempt) =>
+    Math.min(
+      RECORDING_FETCH_BASE_RETRY_DELAY_MS *
+        (2 ** Math.max(0, attempt - 1)),
+      RECORDING_FETCH_MAX_RETRY_DELAY_MS
+    );
 
 const waitForRecordingRetryDefault =
   (delayMs) =>
@@ -238,8 +249,26 @@ const fetchRecordingWithRetry =
           throw error;
         }
 
+        const delayMs =
+          getRecordingFetchRetryDelayMs(
+            attempt
+          );
+
+        console.info(
+          "[voicebridge:africastalking] recording fetch retry",
+          {
+            attempt,
+            nextAttempt:
+              attempt + 1,
+            delayMs,
+            code:
+              error?.code ||
+              "unknown",
+          }
+        );
+
         await waitForRecordingRetry(
-          RECORDING_FETCH_RETRY_DELAY_MS
+          delayMs
         );
       }
     }
@@ -286,7 +315,10 @@ const processAfricasTalkingVoiceRecording =
      * STEP 1
      *
      * Retrieve the provider recording into
-     * memory only.
+     * memory only. Africa's Talking can deliver
+     * the callback before the recording object
+     * is immediately available, so transient
+     * upstream failures use bounded backoff.
      */
     const recording =
       await fetchRecordingWithRetry(

@@ -41,6 +41,12 @@ jobs:
   paid-track-media:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      NODE_ENV: test
+      NODE_PATH: ${{ github.workspace }}/backend/node_modules
+      MONGO_URI: mongodb://127.0.0.1:27017/tengacion-paid-track-ci
+      JWT_SECRET: paid-track-ci-jwt-secret-12345678901234567890
+      MEDIA_SIGNING_SECRET: paid-track-ci-media-signing-secret-1234567890
     defaults:
       run:
         working-directory: backend

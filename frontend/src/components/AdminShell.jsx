@@ -4,7 +4,12 @@ import "../pages/admin-analytics.css";
 
 const ADMIN_ITEMS = [
   { key: "overview", label: "Overview", path: "/admin/dashboard" },
-  { key: "voicebridge", label: "VoiceBridge Diagnostics", path: "/admin/voicebridge" },
+  {
+    key: "voicebridge",
+    label: "VoiceBridge Diagnostics",
+    path: "/admin/voicebridge",
+    roles: ["admin", "super_admin"],
+  },
   { key: "creator-earnings", label: "Earnings From Creators", path: "/admin/creator-earnings" },
   { key: "assurance", label: "Assurance", path: "/admin/assurance" },
   { key: "external-readiness", label: "External readiness", path: "/admin/external-readiness" },
@@ -30,6 +35,11 @@ const ADMIN_ITEMS = [
 export default function AdminShell({ title, subtitle = "", user, actions = null, children }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const userRole = String(user?.role || "").trim().toLowerCase();
+  const visibleItems = useMemo(
+    () => ADMIN_ITEMS.filter((item) => !item.roles || item.roles.includes(userRole)),
+    [userRole]
+  );
 
   const activePath = useMemo(() => {
     if (location.pathname === "/admin") {return "/admin/dashboard";}
@@ -41,8 +51,8 @@ export default function AdminShell({ title, subtitle = "", user, actions = null,
     if (location.pathname.startsWith("/admin/millionaire")) {return "/admin/millionaire";}
     if (location.pathname.startsWith("/admin/bright-future-academy")) {return "/admin/bright-future-academy";}
     if (location.pathname.startsWith("/admin/top-up-bank-account-promo")) {return "/admin/top-up-bank-account-promo";}
-    return ADMIN_ITEMS.find((item) => location.pathname.startsWith(item.path))?.path || "/admin/dashboard";
-  }, [location.pathname]);
+    return visibleItems.find((item) => location.pathname.startsWith(item.path))?.path || "/admin/dashboard";
+  }, [location.pathname, visibleItems]);
 
   return (
     <div className="adminx-shell">
@@ -56,7 +66,7 @@ export default function AdminShell({ title, subtitle = "", user, actions = null,
         </div>
 
         <nav className="adminx-nav">
-          {ADMIN_ITEMS.map((item) => (
+          {visibleItems.map((item) => (
             <button
               key={item.key}
               type="button"

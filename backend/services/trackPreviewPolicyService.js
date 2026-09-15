@@ -15,26 +15,41 @@ const resolveFullTrackSources = (track = {}) =>
     track.videoUrl,
   ].map(toText).filter(Boolean));
 
-const resolvePreviewCandidates = (track = {}) => [
-  {
-    url: mediaAssetUrl(track.previewMedia) || toText(track.previewUrl || track.previewSampleUrl),
-    durationSec: Number(track.previewMedia?.duration || 0),
-  },
-  {
-    url: mediaAssetUrl(track.previewClipMedia) || toText(track.previewClipUrl),
-    durationSec: Number(track.previewClipMedia?.duration || 0),
-  },
-].filter((entry) => entry.url);
+const resolvePreviewCandidates = (track = {}) => {
+  const candidates = [];
+  const seen = new Set();
+  const add = (url, durationSec = 0) => {
+    const normalizedUrl = toText(url);
+    if (!normalizedUrl || seen.has(normalizedUrl)) return;
+    seen.add(normalizedUrl);
+    candidates.push({
+      url: normalizedUrl,
+      durationSec: Number(durationSec || 0),
+    });
+  };
+
+  const previewMediaUrl = mediaAssetUrl(track.previewMedia);
+  const previewClipMediaUrl = mediaAssetUrl(track.previewClipMedia);
+  add(previewMediaUrl, track.previewMedia?.duration);
+  add(track.previewUrl, previewMediaUrl === toText(track.previewUrl) ? track.previewMedia?.duration : 0);
+  add(track.previewSampleUrl, previewMediaUrl === toText(track.previewSampleUrl) ? track.previewMedia?.duration : 0);
+  add(previewClipMediaUrl, track.previewClipMedia?.duration);
+  add(track.previewClipUrl, previewClipMediaUrl === toText(track.previewClipUrl) ? track.previewClipMedia?.duration : 0);
+
+  return candidates;
+};
 
 const resolveSafeTrackPreview = (track = {}) => {
-  const isPaid = Number(track.price || 0) > 0;
+  const numericPrice = Number(track.price);
+  const isExplicitlyFree = Number.isFinite(numericPrice) && numericPrice === 0;
+  const requiresShortPreview = !isExplicitlyFree;
   const fullSources = resolveFullTrackSources(track);
   const candidate = resolvePreviewCandidates(track).find(
     (entry) => entry.url && !fullSources.has(entry.url)
   );
 
   if (!candidate) {
-    if (!isPaid) {
+    if (isExplicitlyFree) {
       const fullUrl = [...fullSources][0] || "";
       return {
         ok: Boolean(fullUrl),
@@ -53,7 +68,7 @@ const resolveSafeTrackPreview = (track = {}) => {
     };
   }
 
-  if (!isPaid) {
+  if (!requiresShortPreview) {
     return {
       ok: true,
       sourceUrl: candidate.url,
@@ -63,9 +78,9 @@ const resolveSafeTrackPreview = (track = {}) => {
     };
   }
 
-  // A paid preview must be independently verifiable as a short asset. A
-  // frontend playback timer is not security because the browser still receives
-  // the entire file. Cloudinary uploads persist their media duration here.
+  // A paid/unknown-price preview must be independently verifiable as a short
+  // asset. A frontend playback timer is not security because the browser still
+  // receives the entire file. Cloudinary uploads persist their duration here.
   if (!Number.isFinite(candidate.durationSec) || candidate.durationSec <= 0) {
     return {
       ok: false,

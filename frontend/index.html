@@ -92,6 +92,79 @@
       }
     ]
   </script>
+
+  <!-- VoiceBridge / Africa's Talking live-phone channel. Scoped to /codeswitch only. -->
+  <style>
+    #voicebridge-africastalking-callout {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 1200;
+      width: min(370px, calc(100vw - 36px));
+      padding: 15px 16px;
+      border: 1px solid rgba(131, 212, 167, 0.42);
+      border-radius: 18px;
+      background: rgba(7, 37, 27, 0.96);
+      color: #f6fff9;
+      box-shadow: 0 20px 50px rgba(4, 24, 17, 0.28);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #voicebridge-africastalking-callout .vb-at-kicker {
+      margin: 0 0 5px;
+      color: #83d4a7;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    #voicebridge-africastalking-callout .vb-at-title {
+      display: block;
+      margin: 0 0 4px;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 850;
+      line-height: 1.2;
+    }
+
+    #voicebridge-africastalking-callout .vb-at-number {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 8px;
+      color: #edbd63;
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1.1;
+      text-decoration: none;
+    }
+
+    #voicebridge-africastalking-callout .vb-at-number:hover,
+    #voicebridge-africastalking-callout .vb-at-number:focus-visible {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    #voicebridge-africastalking-callout .vb-at-note {
+      display: block;
+      margin-top: 8px;
+      color: rgba(246, 255, 249, 0.78);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 640px) {
+      #voicebridge-africastalking-callout {
+        right: 12px;
+        bottom: 12px;
+        width: calc(100vw - 24px);
+        border-radius: 15px;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -115,6 +188,58 @@
       <p>Africa's social commerce and creator monetization platform. Create, connect, sell, stream, and earn.</p>
     </div>
   </div>
+
+  <script>
+    (() => {
+      const calloutId = "voicebridge-africastalking-callout";
+      const voiceNumber = "+2342017000692";
+
+      const syncVoiceBridgeCallout = () => {
+        const onCodeSwitchPage = window.location.pathname === "/codeswitch";
+        const existing = document.getElementById(calloutId);
+
+        if (!onCodeSwitchPage) {
+          existing?.remove();
+          return;
+        }
+
+        if (existing) return;
+
+        const callout = document.createElement("aside");
+        callout.id = calloutId;
+        callout.setAttribute("aria-label", "Africa's Talking Voice access for Tengacion VoiceBridge");
+        callout.innerHTML = `
+          <p class="vb-at-kicker">Live phone channel</p>
+          <strong class="vb-at-title">Africa's Talking Voice × Tengacion VoiceBridge</strong>
+          <a class="vb-at-number" href="tel:${voiceNumber}" aria-label="Call Tengacion VoiceBridge on +234 201 700 0692">
+            ☎ +234 201 700 0692
+          </a>
+          <span class="vb-at-note">Call the dedicated Nigeria number to enter the VoiceBridge phone flow. Africa's Talking provides telephony access; Sahara remains the speech-intelligence layer.</span>
+        `;
+
+        document.body.appendChild(callout);
+      };
+
+      const originalPushState = history.pushState.bind(history);
+      const originalReplaceState = history.replaceState.bind(history);
+
+      history.pushState = (...args) => {
+        const result = originalPushState(...args);
+        queueMicrotask(syncVoiceBridgeCallout);
+        return result;
+      };
+
+      history.replaceState = (...args) => {
+        const result = originalReplaceState(...args);
+        queueMicrotask(syncVoiceBridgeCallout);
+        return result;
+      };
+
+      window.addEventListener("popstate", syncVoiceBridgeCallout);
+      window.addEventListener("pageshow", syncVoiceBridgeCallout);
+      syncVoiceBridgeCallout();
+    })();
+  </script>
 
   <script type="module" src="/src/main.jsx"></script>
 </body>

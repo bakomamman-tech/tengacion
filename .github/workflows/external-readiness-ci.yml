@@ -1,3 +1,4 @@
+# Validates governed External Readiness roadmap changes before merge.
 name: External Readiness CI
 
 on:

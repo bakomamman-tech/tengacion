@@ -17,6 +17,7 @@ const NAV_GROUPS = [
     label: "Operations",
     items: [
       { key: "assistant", label: "Assistant Ops", icon: "spark", path: "/admin/assistant", dotKey: "assistant" },
+      { key: "voicebridge", label: "VoiceBridge / CodeSwitch", icon: "messages", path: "/admin/voicebridge" },
       { key: "posts", label: "Posts", icon: "posts", path: "/admin/content", dotKey: "content" },
       { key: "users", label: "Users", icon: "users", path: "/admin/users" },
       { key: "messages", label: "Messages", icon: "messages", path: "/admin/messages", dotKey: "messages" },

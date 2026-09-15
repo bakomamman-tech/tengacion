@@ -55,6 +55,27 @@ router.get(
   codeswitchVoiceDiagnosticController.latest
 );
 
+router.get(
+  "/africastalking/voice/diagnostics",
+  auth,
+  requireAdmin,
+  codeswitchVoiceDiagnosticController.list
+);
+
+router.get(
+  "/africastalking/voice/diagnostics/:id",
+  auth,
+  requireAdmin,
+  codeswitchVoiceDiagnosticController.reveal
+);
+
+router.delete(
+  "/africastalking/voice/diagnostics/:id",
+  auth,
+  requireAdmin,
+  codeswitchVoiceDiagnosticController.remove
+);
+
 router.delete(
   "/africastalking/voice/diagnostics",
   auth,

@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const VoicebridgeDiagnosticTranscript = require(
   "../models/VoicebridgeDiagnosticTranscript"
 );
@@ -17,22 +18,21 @@ const toText = (value) =>
 
 const clampCaptureMinutes = (value) => {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return DEFAULT_CAPTURE_WINDOW_MINUTES;
-  }
-  return Math.max(
-    1,
-    Math.min(MAX_CAPTURE_WINDOW_MINUTES, Math.floor(parsed))
-  );
+  if (!Number.isFinite(parsed)) return DEFAULT_CAPTURE_WINDOW_MINUTES;
+  return Math.max(1, Math.min(MAX_CAPTURE_WINDOW_MINUTES, Math.floor(parsed)));
+};
+
+const clampLimit = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 50;
+  return Math.max(1, Math.min(100, Math.floor(parsed)));
 };
 
 const getCaptureStatus = ({ nowMs = Date.now() } = {}) => {
   const active = captureEnabledUntilMs > nowMs;
   return {
     active,
-    enabledUntil: active
-      ? new Date(captureEnabledUntilMs).toISOString()
-      : null,
+    enabledUntil: active ? new Date(captureEnabledUntilMs).toISOString() : null,
     captureWindowMinutesDefault: DEFAULT_CAPTURE_WINDOW_MINUTES,
     captureWindowMinutesMax: MAX_CAPTURE_WINDOW_MINUTES,
     transcriptRetentionMinutes: TRANSCRIPT_RETENTION_MINUTES,
@@ -58,27 +58,15 @@ const disableCapture = () => {
 };
 
 const captureTemporaryTranscript = async (
-  {
-    transcript,
-    languagePair,
-    correlationId,
-    transcription,
-  } = {},
-  {
-    DiagnosticModel = VoicebridgeDiagnosticTranscript,
-    now = () => new Date(),
-  } = {}
+  { transcript, languagePair, correlationId, transcription } = {},
+  { DiagnosticModel = VoicebridgeDiagnosticTranscript, now = () => new Date() } = {}
 ) => {
   const nowDate = now();
-  if (!getCaptureStatus({ nowMs: nowDate.getTime() }).active) {
-    return null;
-  }
+  if (!getCaptureStatus({ nowMs: nowDate.getTime() }).active) return null;
 
   const safeTranscript = toText(transcript);
   const safeCorrelationId = toText(correlationId);
-  if (!safeTranscript || !safeCorrelationId) {
-    return null;
-  }
+  if (!safeTranscript || !safeCorrelationId) return null;
 
   const expiresAt = new Date(
     nowDate.getTime() + TRANSCRIPT_RETENTION_MINUTES * 60 * 1000
@@ -103,19 +91,11 @@ const captureTemporaryTranscript = async (
         expiresAt,
       },
     },
-    {
-      upsert: true,
-      returnDocument: "after",
-      setDefaultsOnInsert: true,
-    }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   ).lean();
 
   return document
-    ? {
-        id: String(document._id || ""),
-        correlationId: document.correlationId,
-        expiresAt: document.expiresAt,
-      }
+    ? { id: String(document._id || ""), correlationId: document.correlationId, expiresAt: document.expiresAt }
     : null;
 };
 
@@ -124,10 +104,7 @@ const completeTemporaryTranscript = async (
   { DiagnosticModel = VoicebridgeDiagnosticTranscript } = {}
 ) => {
   const safeCorrelationId = toText(correlationId);
-  if (!safeCorrelationId) {
-    return null;
-  }
-
+  if (!safeCorrelationId) return null;
   const action = orchestration?.action || {};
   return DiagnosticModel.findOneAndUpdate(
     { correlationId: safeCorrelationId },
@@ -145,46 +122,75 @@ const completeTemporaryTranscript = async (
   ).lean();
 };
 
+const toMetadata = (document) => ({
+  id: String(document._id || ""),
+  channel: document.channel,
+  languagePair: document.languagePair,
+  provider: document.provider,
+  model: document.model,
+  processedAudioDurationSeconds: document.processedAudioDurationSeconds ?? null,
+  actionCompleted: document.actionCompleted === true,
+  intent: document.intent || null,
+  requestedAction: document.requestedAction || null,
+  executedAction: document.executedAction || null,
+  caseId: document.caseId || null,
+  moneyMovementPerformed: false,
+  createdAt: document.createdAt,
+  expiresAt: document.expiresAt,
+});
+
+const toDetail = (document) => ({
+  ...toMetadata(document),
+  transcript: document.transcript,
+});
+
+const listTemporaryTranscripts = async (
+  { limit = 50 } = {},
+  { DiagnosticModel = VoicebridgeDiagnosticTranscript, now = () => new Date() } = {}
+) => {
+  const documents = await DiagnosticModel.find({ expiresAt: { $gt: now() } })
+    .sort({ createdAt: -1 })
+    .limit(clampLimit(limit))
+    .select("-transcript -correlationId")
+    .lean();
+  return documents.map(toMetadata);
+};
+
+const getTemporaryTranscriptById = async (
+  id,
+  { DiagnosticModel = VoicebridgeDiagnosticTranscript, now = () => new Date() } = {}
+) => {
+  if (!mongoose.Types.ObjectId.isValid(String(id || ""))) return null;
+  const document = await DiagnosticModel.findOne({
+    _id: id,
+    expiresAt: { $gt: now() },
+  }).lean();
+  return document ? toDetail(document) : null;
+};
+
 const getLatestTemporaryTranscript = async (
   { DiagnosticModel = VoicebridgeDiagnosticTranscript, now = () => new Date() } = {}
 ) => {
-  const document = await DiagnosticModel.findOne({
-    expiresAt: { $gt: now() },
-  })
+  const document = await DiagnosticModel.findOne({ expiresAt: { $gt: now() } })
     .sort({ createdAt: -1 })
     .lean();
+  return document ? toDetail(document) : null;
+};
 
-  if (!document) {
-    return null;
-  }
-
-  return {
-    id: String(document._id || ""),
-    channel: document.channel,
-    languagePair: document.languagePair,
-    transcript: document.transcript,
-    provider: document.provider,
-    model: document.model,
-    processedAudioDurationSeconds:
-      document.processedAudioDurationSeconds ?? null,
-    actionCompleted: document.actionCompleted === true,
-    intent: document.intent || null,
-    requestedAction: document.requestedAction || null,
-    executedAction: document.executedAction || null,
-    caseId: document.caseId || null,
-    moneyMovementPerformed: false,
-    createdAt: document.createdAt,
-    expiresAt: document.expiresAt,
-  };
+const deleteTemporaryTranscript = async (
+  id,
+  { DiagnosticModel = VoicebridgeDiagnosticTranscript } = {}
+) => {
+  if (!mongoose.Types.ObjectId.isValid(String(id || ""))) return { deletedCount: 0 };
+  const result = await DiagnosticModel.deleteOne({ _id: id });
+  return { deletedCount: Number(result?.deletedCount || 0) };
 };
 
 const clearTemporaryTranscripts = async (
   { DiagnosticModel = VoicebridgeDiagnosticTranscript } = {}
 ) => {
   const result = await DiagnosticModel.deleteMany({});
-  return {
-    deletedCount: Number(result?.deletedCount || 0),
-  };
+  return { deletedCount: Number(result?.deletedCount || 0) };
 };
 
 module.exports = {
@@ -196,6 +202,9 @@ module.exports = {
   disableCapture,
   captureTemporaryTranscript,
   completeTemporaryTranscript,
+  listTemporaryTranscripts,
+  getTemporaryTranscriptById,
   getLatestTemporaryTranscript,
+  deleteTemporaryTranscript,
   clearTemporaryTranscripts,
 };

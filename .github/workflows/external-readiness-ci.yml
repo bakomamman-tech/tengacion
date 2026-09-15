@@ -1,0 +1,69 @@
+name: External Readiness CI
+
+on:
+  pull_request:
+    paths:
+      - "backend/config/externalReadiness*.js"
+      - "backend/config/externalReadiness*.json"
+      - "backend/services/externalReadinessService.js"
+      - "backend/models/ExternalReadiness*.js"
+      - "backend/routes/externalReadiness.js"
+      - "backend/tests/externalReadiness.test.js"
+      - "backend/tests/capital011CapitalPathDecision.test.js"
+      - "backend/tests/next50CommercialReadiness.test.js"
+      - "docs/tengacion-*-roadmap.md"
+      - "docs/tengacion-next-fifty-commercial-readiness-controls.md"
+      - ".github/workflows/external-readiness-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/config/externalReadiness*.js"
+      - "backend/config/externalReadiness*.json"
+      - "backend/services/externalReadinessService.js"
+      - "backend/models/ExternalReadiness*.js"
+      - "backend/routes/externalReadiness.js"
+      - "backend/tests/externalReadiness.test.js"
+      - "backend/tests/capital011CapitalPathDecision.test.js"
+      - "backend/tests/next50CommercialReadiness.test.js"
+      - "docs/tengacion-*-roadmap.md"
+      - "docs/tengacion-next-fifty-commercial-readiness-controls.md"
+      - ".github/workflows/external-readiness-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Syntax check readiness registry
+        run: |
+          node --check config/externalReadinessCatalog.js
+          node --check config/externalReadinessNext50.js
+
+      - name: Run external readiness regression suite
+        run: >-
+          npx jest
+          tests/next50CommercialReadiness.test.js
+          tests/externalReadiness.test.js
+          tests/capital011CapitalPathDecision.test.js
+          --runInBand

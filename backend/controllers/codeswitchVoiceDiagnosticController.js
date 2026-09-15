@@ -50,10 +50,12 @@ const latest = async (_req, res) => {
 
 const clear = async (_req, res) => {
   setNoStore(res);
+  const diagnostics = disableCapture();
   const result = await clearTemporaryTranscripts();
   return res.json({
     ok: true,
     ...result,
+    diagnostics,
   });
 };
 

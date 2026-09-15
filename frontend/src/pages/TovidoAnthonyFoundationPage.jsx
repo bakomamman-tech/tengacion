@@ -17,10 +17,14 @@ const HERO_IMAGE = `${ASSET_ROOT}/community-learning-hero.jpg`;
 
 const FOUNDATION = {
   address: "Kaduna, Nigeria",
+  bankAccountName: "Tovido Anthony Humanitarian Foundation",
+  bankAccountNumber: "4092442033",
+  bankName: "Polaris Bank",
   cacNumber: "9649700",
   email: "tovidoanthonyfoundation@gmail.com",
   handle: "@tovidoanthonyfoundation",
   incorporated: "2 July 2026",
+  motto: "No Widow Is Left Behind",
   phoneDisplay: "0904 242 0446",
   phoneInternational: "+2349042420446",
   trustee: "Anthony Unah",
@@ -381,8 +385,8 @@ export default function TovidoAnthonyFoundationPage() {
             <strong>{FOUNDATION.address}</strong>
           </div>
           <div>
-            <span>Our promise</span>
-            <strong>Compassion in action</strong>
+            <span>Our motto</span>
+            <strong>{FOUNDATION.motto}</strong>
           </div>
         </div>
       </section>
@@ -582,6 +586,15 @@ export default function TovidoAnthonyFoundationPage() {
               <p>
                 Individuals, organizations, volunteers, and community partners are welcome
                 to join us in supporting widows and vulnerable families with compassion and care.
+              </p>
+              <p>
+                <strong>Official donation account</strong>
+                <br />
+                Account Name: {FOUNDATION.bankAccountName}
+                <br />
+                Account Number: {FOUNDATION.bankAccountNumber}
+                <br />
+                Bank Name: {FOUNDATION.bankName}
               </p>
             </div>
             <a className="tovido-button tovido-button--primary" href={partnershipMailto}>

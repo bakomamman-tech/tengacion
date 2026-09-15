@@ -1,4 +1,4 @@
-﻿const crypto =
+const crypto =
   require("node:crypto");
 
 const {
@@ -17,6 +17,13 @@ const {
   runVoicebridgeChannelOrchestration,
 } = require(
   "./africasTalkingVoicebridgeOrchestrator"
+);
+
+const {
+  captureTemporaryTranscript,
+  completeTemporaryTranscript,
+} = require(
+  "./voicebridgeTranscriptDiagnosticService"
 );
 
 
@@ -298,6 +305,12 @@ const processAfricasTalkingVoiceRecording =
 
       orchestrate =
         runVoicebridgeChannelOrchestration,
+
+      captureDiagnostic =
+        captureTemporaryTranscript,
+
+      completeDiagnostic =
+        completeTemporaryTranscript,
     } = {}
   ) => {
 
@@ -363,6 +376,50 @@ const processAfricasTalkingVoiceRecording =
 
 
     /*
+     * Optional admin-enabled diagnostic capture.
+     * This is OFF by default, stores no raw caller
+     * number/session/recording URL/audio, never
+     * logs the transcript, and expires via MongoDB
+     * TTL after a short verification window.
+     *
+     * Diagnostic failures must never break the
+     * primary VoiceBridge call flow.
+     */
+    let temporaryDiagnosticCaptured =
+      false;
+
+    try {
+
+      const diagnostic =
+        await captureDiagnostic({
+          transcript,
+
+          languagePair:
+            language.languagePair,
+
+          correlationId:
+            requestId,
+
+          transcription,
+        });
+
+      temporaryDiagnosticCaptured =
+        Boolean(diagnostic);
+
+    } catch (error) {
+
+      console.warn(
+        "[voicebridge:diagnostic] temporary transcript capture failed",
+        {
+          code:
+            error?.code ||
+            "DIAGNOSTIC_CAPTURE_FAILED",
+        }
+      );
+    }
+
+
+    /*
      * STEP 3
      *
      * Delegate all intent/entity/policy/action
@@ -406,6 +463,31 @@ const processAfricasTalkingVoiceRecording =
             500,
         }
       );
+    }
+
+
+    if (temporaryDiagnosticCaptured) {
+
+      try {
+
+        await completeDiagnostic({
+          correlationId:
+            requestId,
+
+          orchestration,
+        });
+
+      } catch (error) {
+
+        console.warn(
+          "[voicebridge:diagnostic] temporary action summary update failed",
+          {
+            code:
+              error?.code ||
+              "DIAGNOSTIC_UPDATE_FAILED",
+          }
+        );
+      }
     }
 
 
@@ -498,6 +580,8 @@ const processAfricasTalkingVoiceRecording =
 
         transcriptReturned:
           false,
+
+        temporaryDiagnosticCaptured,
       },
 
       action:
@@ -513,6 +597,8 @@ const processAfricasTalkingVoiceRecording =
 
       transcriptStoredByProcessor:
         false,
+
+      temporaryDiagnosticCaptured,
 
       audioReturned:
         false,

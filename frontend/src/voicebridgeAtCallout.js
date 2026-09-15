@@ -1,4 +1,5 @@
 import "./voicebridgeAtCallout.css";
+import { createVoicebridgeDiagnosticControls } from "./voicebridgeTranscriptDiagnosticControls";
 
 const CALLOUT_ID = "voicebridge-africastalking-callout";
 const VOICE_NUMBER = "+2342017000692";
@@ -39,6 +40,12 @@ const createCallout = () => {
     "Call the dedicated Nigeria number to enter the VoiceBridge phone flow. Africa's Talking provides telephony access; Sahara remains the speech-intelligence layer.";
 
   callout.append(kicker, title, phoneLink, note);
+
+  const diagnostics = createVoicebridgeDiagnosticControls();
+  if (diagnostics) {
+    callout.appendChild(diagnostics);
+  }
+
   return callout;
 };
 

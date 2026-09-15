@@ -2,9 +2,13 @@ const express = require("express");
 
 const codeswitchController = require("../controllers/codeswitchController");
 const codeswitchAfricasTalkingController = require("../controllers/codeswitchAfricasTalkingController");
+const codeswitchVoiceDiagnosticController = require("../controllers/codeswitchVoiceDiagnosticController");
 const { codeswitchAudioUpload } = require("../middleware/codeswitchAudioUpload");
+const auth = require("../middleware/auth");
+const requireRole = require("../middleware/requireRole");
 
 const router = express.Router();
+const requireAdmin = requireRole(["admin", "super_admin"]);
 
 router.get("/health", codeswitchController.health);
 
@@ -21,6 +25,41 @@ router.post(
 router.post(
   "/africastalking/voice/recording",
   codeswitchAfricasTalkingController.voiceRecording
+);
+
+router.get(
+  "/africastalking/voice/diagnostics/status",
+  auth,
+  requireAdmin,
+  codeswitchVoiceDiagnosticController.status
+);
+
+router.post(
+  "/africastalking/voice/diagnostics/enable",
+  auth,
+  requireAdmin,
+  codeswitchVoiceDiagnosticController.enable
+);
+
+router.post(
+  "/africastalking/voice/diagnostics/disable",
+  auth,
+  requireAdmin,
+  codeswitchVoiceDiagnosticController.disable
+);
+
+router.get(
+  "/africastalking/voice/diagnostics/latest",
+  auth,
+  requireAdmin,
+  codeswitchVoiceDiagnosticController.latest
+);
+
+router.delete(
+  "/africastalking/voice/diagnostics",
+  auth,
+  requireAdmin,
+  codeswitchVoiceDiagnosticController.clear
 );
 
 router.post("/normalize", codeswitchController.normalize);

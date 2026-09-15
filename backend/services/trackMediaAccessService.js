@@ -108,7 +108,8 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
         creatorId: item.creatorId || track.creatorId,
       })
     : false;
-  const isFree = Number(item.price || 0) <= 0;
+  const numericPrice = Number(track.price);
+  const isFree = Number.isFinite(numericPrice) && numericPrice === 0;
 
   if (accessType === TRACK_MEDIA_ACCESS_TYPES.DOWNLOAD) {
     if (!payload.dl || (!ownerAccess && !paidAccess)) {

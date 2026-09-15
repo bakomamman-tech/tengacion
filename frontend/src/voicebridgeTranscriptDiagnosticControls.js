@@ -1,22 +1,14 @@
 import API_BASE from "./config/apiBase";
 import { getSessionAccessToken } from "./authSession";
 
-const ADMIN_ROLES = new Set(["admin", "super_admin"]);
-
-const readStoredRole = () => {
-  try {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    return String(user?.role || "").trim().toLowerCase();
-  } catch {
-    return "";
-  }
-};
+const STATUS_RETRY_DELAYS_MS = [800, 1800];
 
 const requestDiagnostic = async (path, options = {}) => {
   const token = getSessionAccessToken();
   if (!token) {
-    const error = new Error("Admin sign-in is required.");
+    const error = new Error("Admin session is still loading. Please try again in a moment.");
     error.status = 401;
+    error.sessionPending = true;
     throw error;
   }
 
@@ -46,10 +38,6 @@ const formatTimestamp = (value) => {
 };
 
 export const createVoicebridgeDiagnosticControls = () => {
-  if (!ADMIN_ROLES.has(readStoredRole())) {
-    return null;
-  }
-
   const details = document.createElement("details");
   details.className = "vb-at-diagnostics";
 
@@ -59,7 +47,7 @@ export const createVoicebridgeDiagnosticControls = () => {
   const help = document.createElement("p");
   help.className = "vb-at-diagnostics__help";
   help.textContent =
-    "Capture is off by default. Enable it for 30 minutes before a demo call. Each Sahara transcript is automatically deleted after 30 minutes.";
+    "Capture is off by default. Admin authentication is required. Enable it for 30 minutes before a demo call. Each Sahara transcript is automatically deleted after 30 minutes.";
 
   const actions = document.createElement("div");
   actions.className = "vb-at-diagnostics__actions";
@@ -78,7 +66,7 @@ export const createVoicebridgeDiagnosticControls = () => {
 
   const status = document.createElement("p");
   status.className = "vb-at-diagnostics__status";
-  status.textContent = "Checking diagnostic status…";
+  status.textContent = "Checking admin diagnostic status…";
 
   const transcript = document.createElement("pre");
   transcript.className = "vb-at-diagnostics__transcript";
@@ -97,6 +85,36 @@ export const createVoicebridgeDiagnosticControls = () => {
     }
   };
 
+  const loadStatus = async (retryIndex = 0) => {
+    try {
+      const payload = await requestDiagnostic(
+        "/codeswitch/africastalking/voice/diagnostics/status"
+      );
+      renderCaptureStatus(payload.diagnostics);
+    } catch (error) {
+      if (error?.sessionPending && retryIndex < STATUS_RETRY_DELAYS_MS.length) {
+        setStatus("Restoring admin session…");
+        window.setTimeout(
+          () => loadStatus(retryIndex + 1),
+          STATUS_RETRY_DELAYS_MS[retryIndex]
+        );
+        return;
+      }
+
+      if (error?.status === 401) {
+        setStatus("Admin sign-in is required to use transcript verification.", true);
+        return;
+      }
+
+      if (error?.status === 403) {
+        setStatus("This account does not have admin permission for transcript verification.", true);
+        return;
+      }
+
+      setStatus(error.message, true);
+    }
+  };
+
   enableButton.addEventListener("click", async () => {
     enableButton.disabled = true;
     try {
@@ -109,7 +127,11 @@ export const createVoicebridgeDiagnosticControls = () => {
       );
       renderCaptureStatus(payload.diagnostics);
     } catch (error) {
-      setStatus(error.message, true);
+      if (error?.status === 403) {
+        setStatus("This account does not have admin permission for transcript verification.", true);
+      } else {
+        setStatus(error.message, true);
+      }
     } finally {
       enableButton.disabled = false;
     }
@@ -143,7 +165,11 @@ export const createVoicebridgeDiagnosticControls = () => {
       transcript.hidden = false;
     } catch (error) {
       transcript.hidden = true;
-      setStatus(error.message, true);
+      if (error?.status === 403) {
+        setStatus("This account does not have admin permission for transcript verification.", true);
+      } else {
+        setStatus(error.message, true);
+      }
     } finally {
       latestButton.disabled = false;
     }
@@ -157,17 +183,19 @@ export const createVoicebridgeDiagnosticControls = () => {
         { method: "DELETE" }
       );
       transcript.hidden = true;
-      setStatus(`Temporary diagnostics deleted (${payload.deletedCount || 0}).`);
+      setStatus(`Temporary diagnostics deleted (${payload.deletedCount || 0}). Capture is OFF.`);
     } catch (error) {
-      setStatus(error.message, true);
+      if (error?.status === 403) {
+        setStatus("This account does not have admin permission for transcript verification.", true);
+      } else {
+        setStatus(error.message, true);
+      }
     } finally {
       clearButton.disabled = false;
     }
   });
 
-  requestDiagnostic("/codeswitch/africastalking/voice/diagnostics/status")
-    .then((payload) => renderCaptureStatus(payload.diagnostics))
-    .catch((error) => setStatus(error.message, true));
+  loadStatus();
 
   actions.append(enableButton, latestButton, clearButton);
   details.append(summary, help, actions, status, transcript);

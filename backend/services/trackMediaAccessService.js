@@ -7,14 +7,11 @@ const TRACK_MEDIA_ACCESS_TYPES = Object.freeze({
   PREVIEW: "preview",
   STREAM: "stream",
 });
+const MAX_PAID_PREVIEW_SECONDS = 30;
 
 const toText = (value = "") => String(value || "").trim();
-
-const mediaAssetUrl = (asset = null) =>
-  toText(asset?.secureUrl || asset?.secure_url || asset?.url || "");
-
-const uniqueUrls = (...values) =>
-  new Set(values.flat().map(toText).filter(Boolean));
+const mediaAssetUrl = (asset = null) => toText(asset?.secureUrl || asset?.secure_url || asset?.url || "");
+const uniqueUrls = (...values) => new Set(values.flat().map(toText).filter(Boolean));
 
 const resolveTrackSources = (track = {}) => ({
   full: uniqueUrls(
@@ -42,6 +39,113 @@ const deny = (message) => {
   throw error;
 };
 
+const safeNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const formatTransformNumber = (value = 0) => {
+  const normalized = Math.max(0, safeNumber(value, 0));
+  return Number.isInteger(normalized)
+    ? String(normalized)
+    : normalized.toFixed(3).replace(/0+$/g, "").replace(/\.$/g, "");
+};
+
+const isCloudinaryMediaUrl = (value = "") =>
+  /^https?:\/\/res\.cloudinary\.com\//i.test(toText(value));
+
+const buildCloudinaryBoundedPreviewUrl = ({
+  sourceUrl,
+  startSec = 0,
+  limitSec = MAX_PAID_PREVIEW_SECONDS,
+} = {}) => {
+  const raw = toText(sourceUrl);
+  if (!isCloudinaryMediaUrl(raw)) {
+    return "";
+  }
+
+  const start = Math.max(0, safeNumber(startSec, 0));
+  const duration = Math.max(
+    1,
+    Math.min(MAX_PAID_PREVIEW_SECONDS, safeNumber(limitSec, MAX_PAID_PREVIEW_SECONDS))
+  );
+
+  try {
+    const parsed = new URL(raw);
+    const marker = "/video/upload/";
+    const markerIndex = parsed.pathname.indexOf(marker);
+    if (markerIndex < 0) {
+      return "";
+    }
+
+    const prefix = parsed.pathname.slice(0, markerIndex + marker.length);
+    const suffix = parsed.pathname.slice(markerIndex + marker.length);
+    if (!suffix) {
+      return "";
+    }
+
+    parsed.pathname = `${prefix}so_${formatTransformNumber(start)},du_${formatTransformNumber(duration)}/${suffix}`;
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+};
+
+const resolveFullTrackSource = (track = {}) =>
+  toText(
+    mediaAssetUrl(track.audioMedia)
+      || track.audioUrl
+      || track.fullAudioUrl
+      || mediaAssetUrl(track.videoMedia)
+      || track.videoUrl
+  );
+
+const resolveDedicatedPreviewSource = (track = {}) =>
+  toText(
+    mediaAssetUrl(track.previewMedia)
+      || track.previewUrl
+      || track.previewSampleUrl
+      || mediaAssetUrl(track.previewClipMedia)
+      || track.previewClipUrl
+  );
+
+const resolveProtectedTrackPreviewSource = (track = {}, { price = 0 } = {}) => {
+  const fullSource = resolveFullTrackSource(track);
+  const dedicatedPreview = resolveDedicatedPreviewSource(track);
+  const isPaid = Number(price ?? track.price ?? 0) > 0;
+
+  if (!isPaid) {
+    return dedicatedPreview || fullSource;
+  }
+
+  const previewStartSec = Math.max(0, safeNumber(track.previewStartSec, 0));
+  const previewLimitSec = Math.max(
+    1,
+    Math.min(
+      MAX_PAID_PREVIEW_SECONDS,
+      safeNumber(track.previewLimitSec, MAX_PAID_PREVIEW_SECONDS)
+    )
+  );
+
+  if (dedicatedPreview && dedicatedPreview !== fullSource) {
+    return buildCloudinaryBoundedPreviewUrl({
+      sourceUrl: dedicatedPreview,
+      startSec: previewStartSec,
+      limitSec: previewLimitSec,
+    }) || dedicatedPreview;
+  }
+
+  if (fullSource) {
+    return buildCloudinaryBoundedPreviewUrl({
+      sourceUrl: fullSource,
+      startSec: previewStartSec,
+      limitSec: previewLimitSec,
+    });
+  }
+
+  return "";
+};
+
 const hasOwnerAccess = async ({ userId, creatorId }) => {
   if (!userId || !creatorId) {
     return false;
@@ -49,6 +153,14 @@ const hasOwnerAccess = async ({ userId, creatorId }) => {
 
   const creator = await CreatorProfile.findById(creatorId).select("userId").lean();
   return String(creator?.userId || "") === String(userId);
+};
+
+const resolveFullSourceForDelivery = (item = {}) => {
+  const sourceUrl = resolveFullTrackSource(item.payload || {});
+  if (!sourceUrl) {
+    deny("Full-song media is unavailable");
+  }
+  return sourceUrl;
 };
 
 const authorizeTrackMediaDelivery = async (payload = {}) => {
@@ -66,24 +178,35 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
     deny("Track is unavailable");
   }
 
-  const sourceUrl = toText(payload.src);
-  const sources = resolveTrackSources(item.payload);
-  const isFullSource = sources.full.has(sourceUrl);
-  const isPreviewSource = sources.preview.has(sourceUrl);
   const isFree = Number(item.price || 0) <= 0;
 
   if (accessType === TRACK_MEDIA_ACCESS_TYPES.PREVIEW) {
-    if (!isPreviewSource && !(isFree && isFullSource)) {
-      deny("This preview link cannot access the full song");
-    }
     if (payload.dl) {
       deny("Preview links cannot be used for downloads");
     }
-    return { protected: true, accessType, item };
+
+    const sourceUrl = resolveProtectedTrackPreviewSource(item.payload, { price: item.price });
+    if (!sourceUrl) {
+      deny(
+        isFree
+          ? "Track preview is unavailable"
+          : "This paid song does not yet have a protected 30-second preview"
+      );
+    }
+
+    payload.src = sourceUrl;
+    payload.disposition = "inline";
+    payload.dl = false;
+
+    return { protected: true, accessType, item, sourceUrl, previewOnly: !isFree };
   }
 
-  if (!isFullSource) {
-    deny("Full-song access requires the original track source");
+  const sourceUrl = resolveFullSourceForDelivery(item);
+  const sources = resolveTrackSources(item.payload);
+  const legacySourceUrl = toText(payload.src);
+
+  if (legacySourceUrl && !sources.full.has(legacySourceUrl)) {
+    deny("Full-song access requires the current original track source");
   }
 
   const userId = toText(payload.uid);
@@ -104,7 +227,10 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
     if (!payload.dl || (!ownerAccess && !paidAccess)) {
       deny("A verified purchase is required to download this song");
     }
-    return { protected: true, accessType, item, ownerAccess, paidAccess };
+
+    payload.src = sourceUrl;
+    payload.disposition = "attachment";
+    return { protected: true, accessType, item, ownerAccess, paidAccess, sourceUrl };
   }
 
   if (payload.dl) {
@@ -114,11 +240,17 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
     deny("A verified purchase is required to play the full song");
   }
 
-  return { protected: true, accessType, item, ownerAccess, paidAccess };
+  payload.src = sourceUrl;
+  payload.disposition = "inline";
+  payload.dl = false;
+  return { protected: true, accessType, item, ownerAccess, paidAccess, sourceUrl };
 };
 
 module.exports = {
+  MAX_PAID_PREVIEW_SECONDS,
   TRACK_MEDIA_ACCESS_TYPES,
   authorizeTrackMediaDelivery,
+  buildCloudinaryBoundedPreviewUrl,
+  resolveProtectedTrackPreviewSource,
   resolveTrackSources,
 };

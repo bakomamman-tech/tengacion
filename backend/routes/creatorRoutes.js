@@ -36,6 +36,20 @@ const { createCreatorVideo } = require("../controllers/videosController");
 
 const router = express.Router();
 
+const requirePaidMusicPreview = (req, res, next) => {
+  const price = Number(req.body?.price || 0);
+  const publishStatus = String(req.body?.publishedStatus || "published").trim().toLowerCase();
+  const isDraft = publishStatus === "draft";
+  const hasPreview = Boolean(req.files?.preview?.[0]);
+
+  if (Number.isFinite(price) && price > 0 && !isDraft && !hasPreview) {
+    return res.status(400).json({
+      error: "A separate 30-second preview sample is required before publishing a paid song",
+    });
+  }
+  return next();
+};
+
 router.get("/access", auth, getCreatorAccess);
 router.get("/profile", auth, getCreatorProfile);
 router.post("/register", auth, registerCreator);
@@ -68,6 +82,7 @@ router.post(
     { name: "preview", maxCount: 1 },
     { name: "cover", maxCount: 1 },
   ]),
+  requirePaidMusicPreview,
   moderateUpload({
     sourceType: "creator_music_upload",
     titleFields: ["title"],
@@ -86,6 +101,7 @@ router.post(
     { name: "preview", maxCount: 1 },
     { name: "cover", maxCount: 1 },
   ]),
+  requirePaidMusicPreview,
   moderateUpload({
     sourceType: "creator_music_upload",
     titleFields: ["title"],

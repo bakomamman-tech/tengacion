@@ -1515,4 +1515,38 @@ describe("creator profile routes", () => {
       .set("Authorization", `Bearer ${viewerToken}`)
       .expect(402);
   });
+  test.each([[2500, true], [2500, false], [0, false]])("feed audio protects legacy posts at price %s with preview %s", async (price, hasPreview) => {
+    const {user, profile} = await createUserAndProfile({creatorTypes: ["music"]});
+    const full = toDataUrl("audio/mpeg", "PRIVATE full song");
+    const preview = hasPreview ? toDataUrl("audio/mpeg", "public sample") : "";
+    const track = await Track.create({creatorId: profile._id, title: "Feed protection", price,
+      audioUrl: full, previewUrl: preview, publishedStatus: "published", isPublished: true});
+    // Insert the historical unsafe representation without going through new writers.
+    const inserted = await Post.collection.insertOne({author: user._id, text: "New song", privacy: "public", visibility: "public", moderationStatus: "approved", createdAt: new Date(),
+      audio: {trackId: track._id, url: full, previewUrl: preview}});
+    for (const post of [await Post.findById(inserted.insertedId).lean(), await Post.findById(inserted.insertedId)]) {
+      expect(post.audio.url).toBe(price === 0 ? full : preview);
+      if (price > 0) expect(JSON.stringify(post)).not.toContain(full);
+    }
+    const publicResponse = await request(app).get('/api/posts/' + inserted.insertedId).expect(200);
+    if (price > 0) expect(JSON.stringify(publicResponse.body)).not.toContain(full);
+    const rows = await Post.find({_id: inserted.insertedId}).lean();
+    expect(rows[0].audio.url).toBe(price === 0 ? full : preview);
+    if (price > 0 && !hasPreview) {
+      const {user: buyer, token: buyerToken} = await createViewer();
+      await request(app).get('/api/tracks/' + track._id + '/stream').expect(404);
+      await Purchase.create({userId: buyer._id, creatorId: profile._id, itemType: "track", itemId: track._id,
+        amount: price, currency: "NGN", status: "paid", provider: "paystack", providerRef: "feed-stream-buyer", paidAt: new Date()});
+      const unlocked = await request(app).get('/api/tracks/' + track._id + '/stream')
+        .set("Authorization", 'Bearer ' + buyerToken).expect(200);
+      expect(unlocked.body.allowedFullAccess).toBe(true);
+      expect(unlocked.body.previewOnly).toBe(false);
+      expect(unlocked.body.streamUrl).toContain('/api/media/delivery/');
+    }
+    if (price === 0) {
+      await Track.updateOne({_id: track._id}, {$set: {price: 2500}});
+      expect((await Post.findById(inserted.insertedId).lean()).audio.url).toBe("");
+    }
+  });
+
 });

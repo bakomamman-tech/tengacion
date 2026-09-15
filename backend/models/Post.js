@@ -357,6 +357,7 @@ const PostSchema = new mongoose.Schema(
       default: null,
     },
     audio: {
+      price: { type: Number, default: null },
       trackId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Track",
@@ -533,6 +534,11 @@ PostSchema.index({ author: 1, createdAt: -1 });
 PostSchema.index({ privacy: 1, createdAt: -1 });
 PostSchema.index({ hashtags: 1, createdAt: -1 });
 PostSchema.index({ audience: 1, createdAt: -1 });
+
+// Protect lean and document reads, including legacy posts and repriced tracks.
+PostSchema.post(["find", "findOne", "findOneAndUpdate", "aggregate"], async function (result) {
+  await require("../services/publicTrackAudioService").sanitizePublicPostAudio(result);
+});
 
 /* ================= CLEAN JSON ================= */
 PostSchema.methods.toJSON = function () {

@@ -1251,6 +1251,7 @@ const toPostPayload = (post, viewerId) => {
     media: normalizedMedia,
     type: postType,
     video: videoPayload,
+    audio: post.audio || null,
     name: author.name || "",
     username: author.username || "",
     avatar: avatarToUrl(author.avatar),

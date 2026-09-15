@@ -301,6 +301,12 @@ describe("admin book review", () => {
     });
 
     const refreshed = await Track.findById(track._id).lean();
+    const feedPost = await require("../models/Post").collection.findOne({"audio.trackId": track._id});
+    expect(feedPost).toBeTruthy();
+    expect(feedPost.audio.url).toBe("");
+    expect(feedPost.audio.previewUrl).toBe("");
+    expect(JSON.stringify(feedPost)).not.toContain(track.audioUrl);
+
     expect(refreshed.isPublished).toBe(true);
     expect(refreshed.publishedStatus).toBe("published");
 

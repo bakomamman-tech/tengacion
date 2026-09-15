@@ -1,3 +1,4 @@
+const { buildPublicTrackAudio } = require("../services/publicTrackAudioService");
 const asyncHandler = require("../middleware/asyncHandler");
 const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
@@ -176,28 +177,12 @@ const inferUploadedFormat = (file) => {
 
 const sendBadRequest = (res, error) => res.status(400).json({ error });
 
-const maybeCreateAudioPost = async ({
-  authorId,
-  tags,
-  trackId = null,
-  title,
-  audioUrl,
-  previewUrl,
-  durationSec,
-  coverImageUrl,
-}) => {
+const maybeCreateAudioPost = async ({ authorId, tags, track }) => {
   await Post.create({
     author: authorId,
-    text: `${title} is now available.`,
+    text: `${track.title} is now available.`,
     tags,
-    audio: {
-      ...(trackId ? { trackId } : {}),
-      url: audioUrl,
-      previewUrl,
-      title,
-      durationSec: Number.isFinite(durationSec) ? durationSec : 0,
-      coverImageUrl,
-    },
+    audio: buildPublicTrackAudio(track),
     privacy: "public",
   });
 };
@@ -333,12 +318,7 @@ exports.createMusicUpload = asyncHandler(async (req, res) => {
       await maybeCreateAudioPost({
         authorId: req.user.id,
         tags: ["track", "music"],
-        trackId: track._id,
-        title: track.title,
-        audioUrl: track.audioUrl,
-        previewUrl: track.previewUrl,
-        durationSec: track.durationSec,
-        coverImageUrl: track.coverImageUrl,
+        track,
       });
     } catch (err) {
       console.error("Failed to create feed post for music upload:", err);
@@ -565,12 +545,7 @@ exports.createPodcastUpload = asyncHandler(async (req, res) => {
       await maybeCreateAudioPost({
         authorId: req.user.id,
         tags: ["podcast"],
-        trackId: track._id,
-        title: track.title,
-        audioUrl: track.audioUrl,
-        previewUrl: track.previewUrl,
-        durationSec: track.durationSec,
-        coverImageUrl: track.coverImageUrl,
+        track,
       });
     } catch (err) {
       console.error("Failed to create feed post for podcast upload:", err);

@@ -396,4 +396,18 @@ describe("PostCard comment toggle", () => {
       screen.getByText(/gallery post with photo and video attachments/i)
     ).toBeInTheDocument();
   });
+  it.each([
+    [2500, "/preview.mp3", "/preview.mp3"],
+    [2500, "", null],
+    [0, "", "/full.mp3"],
+    [undefined, "", null],
+  ])("renders safe feed audio at price %s with preview %s", (price, previewUrl, expected) => {
+    const {container} = renderPostCard({post: {_id: "audio-post", text: "New song", comments: [],
+      audio: {trackId: "track-1", price, url: "/full.mp3", previewUrl}}});
+    const audio = container.querySelector("audio");
+    if (expected) { expect(audio).toHaveAttribute("src", expected); }
+    else { expect(audio).toBeNull(); }
+    expect(screen.getByRole("link", {name: "View track"})).toHaveAttribute("href", "/tracks/track-1");
+  });
+
 });

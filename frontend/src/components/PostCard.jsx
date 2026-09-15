@@ -683,7 +683,7 @@ export default function PostCard({
     Boolean(callValue);
 
   const audioTrack = post?.audio;
-  const audioPreviewUrl = audioTrack?.previewUrl || audioTrack?.url;
+  const audioPreviewUrl = audioTrack?.previewUrl || (audioTrack?.price === 0 ? audioTrack?.url : "");
   const hasAudioPreview = Boolean(audioPreviewUrl);
   const hasSharedPost = Boolean(
     post?.sharedPost &&
@@ -1602,21 +1602,26 @@ export default function PostCard({
               Call {callValue}
             </a>
           )}
-          {hasAudioPreview && (
+          {(hasAudioPreview || audioTrack?.trackId) && (
             <div className="post-audio">
               {audioTrack?.coverImageUrl ? (
                 <div className="post-audio-cover">
                   <img src={audioTrack.coverImageUrl} alt="Track cover" />
                 </div>
               ) : null}
-              <ProtectedAudioPlayer
+              {hasAudioPreview && <ProtectedAudioPlayer
                 controls
                 controlsList="nodownload noplaybackrate"
                 disablePictureInPicture
                 src={audioPreviewUrl}
                 className="post-audio-player"
                 preload="metadata"
-              />
+              />}
+              {audioTrack?.trackId && (
+                <Link className="post-audio-cta" to={`/tracks/${encodeURIComponent(String(audioTrack.trackId))}`}>
+                  View track
+                </Link>
+              )}
               {audioTrack?.trackId && !isMobileStoreBuild() && (
                 <button
                   type="button"

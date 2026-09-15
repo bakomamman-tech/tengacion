@@ -1,3 +1,4 @@
+const { buildPublicTrackAudio } = require("../services/publicTrackAudioService");
 const express = require("express");
 const fs = require("fs");
 const mongoose = require("mongoose");
@@ -1964,14 +1965,7 @@ router.post("/tracks/:trackId/publish", adminMutationLimiter, async (req, res) =
           author: creatorUserId,
           text: `${track.title || "New audio"} is now available.`,
           tags: isPodcast ? ["podcast"] : ["track", "music"],
-          audio: {
-            trackId: track._id,
-            url: audioUrl,
-            previewUrl,
-            title: track.title,
-            durationSec: Number.isFinite(track.durationSec) ? track.durationSec : 0,
-            coverImageUrl: resolveTrackCoverUrl(track),
-          },
+          audio: buildPublicTrackAudio(track),
           privacy: "public",
         }).catch((err) => {
           console.error("Failed to create feed post for admin-published track:", err);

@@ -972,4 +972,35 @@ describe("creator upload routes", () => {
       expect.objectContaining({ resource_type: "image", invalidate: true })
     );
   });
+  test.each([[2500, true], [2500, false], [0, false]])("music publication stores only public audio at price %s preview %s", async (price, hasPreview) => {
+    const {token} = await createUserAndProfile();
+    let upload = request(app).post("/api/creator/music").set("Authorization", 'Bearer ' + token)
+      .field("title", "Feed source regression").field("artistName", "Creator Example")
+      .field("genre", "Afrobeats").field("description", "A single").field("releaseType", "single")
+      .field("price", String(price)).field("publishedStatus", "published")
+      .attach("audio", Buffer.from("full song bytes"), {filename: "full-song.mp3", contentType: "audio/mpeg"});
+    if (hasPreview) upload = upload.attach("preview", Buffer.from("sample bytes"), {filename: "sample.mp3", contentType: "audio/mpeg"});
+    const response = await upload.expect(201);
+    expect(response.body.publishedStatus).toBe("published");
+    const track = await Track.findById(response.body._id).lean();
+    const post = await require("../models/Post").collection.findOne({"audio.trackId": track._id});
+    expect(post).toBeTruthy();
+    expect(post.audio.url).toBe(price === 0 ? track.audioUrl : track.previewUrl);
+    if (price > 0) expect(JSON.stringify(post)).not.toContain(track.audioUrl);
+  });
+
+  test.each([[2500, true], [2500, false], [0, false]])("track publication stores only public audio at price %s preview %s", async (price, hasPreview) => {
+    const {token} = await createUserAndProfile();
+    const full = "https://cdn.example/full-song.mp3";
+    const preview = hasPreview ? "https://cdn.example/sample.mp3" : "";
+    const response = await request(app).post("/api/tracks").set("Authorization", 'Bearer ' + token)
+      .send({title: "Track feed regression", price, audioUrl: full, previewUrl: preview, publishedStatus: "published"}).expect(201);
+    expect(response.body.publishedStatus).toBe("published");
+    const track = await Track.findById(response.body._id).lean();
+    const post = await require("../models/Post").collection.findOne({"audio.trackId": track._id});
+    expect(post).toBeTruthy();
+    expect(post.audio.url).toBe(price === 0 ? full : preview);
+    if (price > 0) expect(JSON.stringify(post)).not.toContain(full);
+  });
+
 });

@@ -1,3 +1,4 @@
+const { buildPublicTrackAudio } = require("../services/publicTrackAudioService");
 const mongoose = require("mongoose");
 const asyncHandler = require("../middleware/asyncHandler");
 const Track = require("../models/Track");
@@ -304,14 +305,7 @@ exports.createTrack = asyncHandler(async (req, res) => {
         author: req.user.id,
         text: `${track.title} is now available.`,
         tags: ["track"],
-        audio: {
-          trackId: track._id,
-          url: track.audioUrl,
-          previewUrl: track.previewUrl,
-          title: track.title,
-          durationSec: Number.isFinite(track.durationSec) ? track.durationSec : 0,
-          coverImageUrl: track.coverImageUrl,
-        },
+        audio: buildPublicTrackAudio(track),
         privacy: "public",
         moderationStatus: "approved",
         storageStage: "permanent",

@@ -1,2 +1,8 @@
 // Package contracts are populated from the checked-in execution roadmaps.
-module.exports = require("./externalReadinessPackages.json");
+const established = require("./externalReadinessPackages.json");
+const nextFifty = require("./externalReadinessNext50");
+
+module.exports = [
+  ...established,
+  ...nextFifty,
+];

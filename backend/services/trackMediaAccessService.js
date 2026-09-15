@@ -1,6 +1,10 @@
 const CreatorProfile = require("../models/CreatorProfile");
 const { hasEntitlement } = require("./entitlementService");
 const { resolvePurchasableItem } = require("./catalogService");
+const {
+  resolveFullTrackSource,
+  resolveProtectedTrackPreviewSource,
+} = require("./trackPreviewSourceService");
 
 const TRACK_MEDIA_ACCESS_TYPES = Object.freeze({
   DOWNLOAD: "download",
@@ -51,6 +55,14 @@ const hasOwnerAccess = async ({ userId, creatorId }) => {
   return String(creator?.userId || "") === String(userId);
 };
 
+const resolveFullSourceForDelivery = (item = {}) => {
+  const sourceUrl = resolveFullTrackSource(item.payload || {});
+  if (!sourceUrl) {
+    deny("Full-song media is unavailable");
+  }
+  return sourceUrl;
+};
+
 const authorizeTrackMediaDelivery = async (payload = {}) => {
   if (!isTrackItemType(payload.itemType)) {
     return { protected: false };
@@ -66,24 +78,49 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
     deny("Track is unavailable");
   }
 
-  const sourceUrl = toText(payload.src);
-  const sources = resolveTrackSources(item.payload);
-  const isFullSource = sources.full.has(sourceUrl);
-  const isPreviewSource = sources.preview.has(sourceUrl);
   const isFree = Number(item.price || 0) <= 0;
 
   if (accessType === TRACK_MEDIA_ACCESS_TYPES.PREVIEW) {
-    if (!isPreviewSource && !(isFree && isFullSource)) {
-      deny("This preview link cannot access the full song");
-    }
     if (payload.dl) {
       deny("Preview links cannot be used for downloads");
     }
-    return { protected: true, accessType, item };
+
+    const sourceUrl = resolveProtectedTrackPreviewSource(item.payload, {
+      price: item.price,
+    });
+
+    if (!sourceUrl) {
+      deny(
+        isFree
+          ? "Track preview is unavailable"
+          : "This paid song does not yet have a protected 30-second preview"
+      );
+    }
+
+    // The raw storage URL is intentionally absent from the signed token. Resolve it
+    // only after the server has checked the current track and preview policy.
+    payload.src = sourceUrl;
+    payload.disposition = "inline";
+    payload.dl = false;
+
+    return {
+      protected: true,
+      accessType,
+      item,
+      sourceUrl,
+      previewOnly: !isFree,
+    };
   }
 
-  if (!isFullSource) {
-    deny("Full-song access requires the original track source");
+  const sourceUrl = resolveFullSourceForDelivery(item);
+  const sources = resolveTrackSources(item.payload);
+  const legacySourceUrl = toText(payload.src);
+
+  // Legacy signed tokens may still contain the old storage URL. If present, it
+  // must still refer to the current full source; the delivery route will then
+  // replace it with the server-resolved source below.
+  if (legacySourceUrl && !sources.full.has(legacySourceUrl)) {
+    deny("Full-song access requires the current original track source");
   }
 
   const userId = toText(payload.uid);
@@ -104,7 +141,18 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
     if (!payload.dl || (!ownerAccess && !paidAccess)) {
       deny("A verified purchase is required to download this song");
     }
-    return { protected: true, accessType, item, ownerAccess, paidAccess };
+
+    payload.src = sourceUrl;
+    payload.disposition = "attachment";
+
+    return {
+      protected: true,
+      accessType,
+      item,
+      ownerAccess,
+      paidAccess,
+      sourceUrl,
+    };
   }
 
   if (payload.dl) {
@@ -114,7 +162,18 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
     deny("A verified purchase is required to play the full song");
   }
 
-  return { protected: true, accessType, item, ownerAccess, paidAccess };
+  payload.src = sourceUrl;
+  payload.disposition = "inline";
+  payload.dl = false;
+
+  return {
+    protected: true,
+    accessType,
+    item,
+    ownerAccess,
+    paidAccess,
+    sourceUrl,
+  };
 };
 
 module.exports = {

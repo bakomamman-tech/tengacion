@@ -6,11 +6,13 @@ on:
       - "backend/services/mediaSigner.js"
       - "backend/services/trackMediaAccessService.js"
       - "backend/routes/media.js"
+      - "backend/routes/tracks.js"
       - "backend/controllers/tracksController.js"
       - "backend/services/publicCreatorProfileService.js"
       - "backend/services/creatorDiscoveryService.js"
       - "backend/services/storyMusicService.js"
       - "backend/tests/paidTrackMediaDeliveryProtection.test.js"
+      - "backend/tests/trackPublicMetadataProtection.test.js"
       - "backend/tests/paystackPayments.test.js"
       - "backend/tests/creatorDiscoveryRoutes.test.js"
       - "backend/tests/storyMusicAttachment.test.js"
@@ -22,11 +24,13 @@ on:
       - "backend/services/mediaSigner.js"
       - "backend/services/trackMediaAccessService.js"
       - "backend/routes/media.js"
+      - "backend/routes/tracks.js"
       - "backend/controllers/tracksController.js"
       - "backend/services/publicCreatorProfileService.js"
       - "backend/services/creatorDiscoveryService.js"
       - "backend/services/storyMusicService.js"
       - "backend/tests/paidTrackMediaDeliveryProtection.test.js"
+      - "backend/tests/trackPublicMetadataProtection.test.js"
       - "backend/tests/paystackPayments.test.js"
       - "backend/tests/creatorDiscoveryRoutes.test.js"
       - "backend/tests/storyMusicAttachment.test.js"
@@ -68,11 +72,13 @@ jobs:
           node --check services/mediaSigner.js
           node --check services/trackMediaAccessService.js
           node --check routes/media.js
+          node --check routes/tracks.js
 
       - name: Run paid-track protection regression suite
         run: >-
           npx jest
           tests/paidTrackMediaDeliveryProtection.test.js
+          tests/trackPublicMetadataProtection.test.js
           tests/paystackPayments.test.js
           tests/creatorDiscoveryRoutes.test.js
           tests/storyMusicAttachment.test.js

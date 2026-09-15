@@ -1,6 +1,10 @@
 const CreatorProfile = require("../models/CreatorProfile");
 const { hasEntitlement } = require("./entitlementService");
 const { resolvePurchasableItem } = require("./catalogService");
+const {
+  resolveFullTrackSource,
+  resolveSafeTrackPreview,
+} = require("./trackPreviewPolicyService");
 
 const TRACK_MEDIA_ACCESS_TYPES = Object.freeze({
   DOWNLOAD: "download",
@@ -10,35 +14,12 @@ const TRACK_MEDIA_ACCESS_TYPES = Object.freeze({
 
 const toText = (value = "") => String(value || "").trim();
 
-const mediaAssetUrl = (asset = null) =>
-  toText(asset?.secureUrl || asset?.secure_url || asset?.url || "");
-
-const uniqueUrls = (...values) =>
-  new Set(values.flat().map(toText).filter(Boolean));
-
-const resolveTrackSources = (track = {}) => ({
-  full: uniqueUrls(
-    mediaAssetUrl(track.audioMedia),
-    track.audioUrl,
-    track.fullAudioUrl,
-    mediaAssetUrl(track.videoMedia),
-    track.videoUrl
-  ),
-  preview: uniqueUrls(
-    mediaAssetUrl(track.previewMedia),
-    track.previewUrl,
-    track.previewSampleUrl,
-    mediaAssetUrl(track.previewClipMedia),
-    track.previewClipUrl
-  ),
-});
-
 const isTrackItemType = (value = "") =>
   ["track", "song", "podcast"].includes(toText(value).toLowerCase());
 
-const deny = (message) => {
+const deny = (message, status = 403) => {
   const error = new Error(message);
-  error.status = 403;
+  error.status = status;
   throw error;
 };
 
@@ -53,7 +34,10 @@ const hasOwnerAccess = async ({ userId, creatorId }) => {
 
 const authorizeTrackMediaDelivery = async (payload = {}) => {
   if (!isTrackItemType(payload.itemType)) {
-    return { protected: false };
+    return {
+      protected: false,
+      sourceUrl: toText(payload.src),
+    };
   }
 
   const accessType = toText(payload.accessType).toLowerCase();
@@ -63,48 +47,72 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
 
   const item = await resolvePurchasableItem("track", payload.itemId);
   if (!item) {
-    deny("Track is unavailable");
+    deny("Track is unavailable", 404);
   }
 
-  const sourceUrl = toText(payload.src);
-  const sources = resolveTrackSources(item.payload);
-  const isFullSource = sources.full.has(sourceUrl);
-  const isPreviewSource = sources.preview.has(sourceUrl);
-  const isFree = Number(item.price || 0) <= 0;
+  const track = item.payload || {};
+  const unavailable =
+    track.isPublished === false ||
+    Boolean(track.archivedAt) ||
+    ["draft", "under_review", "blocked"].includes(
+      toText(track.publishedStatus).toLowerCase()
+    );
+  if (unavailable) {
+    deny("Track is unavailable", 404);
+  }
 
   if (accessType === TRACK_MEDIA_ACCESS_TYPES.PREVIEW) {
-    if (!isPreviewSource && !(isFree && isFullSource)) {
-      deny("This preview link cannot access the full song");
-    }
     if (payload.dl) {
       deny("Preview links cannot be used for downloads");
     }
-    return { protected: true, accessType, item };
+
+    const preview = resolveSafeTrackPreview(track);
+    if (!preview.ok || !preview.sourceUrl) {
+      deny(preview.reason || "Track preview is unavailable", 404);
+    }
+
+    return {
+      protected: true,
+      accessType,
+      item,
+      sourceUrl: preview.sourceUrl,
+      previewDurationSec: preview.durationSec,
+      previewLimitSec: preview.maxDurationSec,
+    };
   }
 
-  if (!isFullSource) {
-    deny("Full-song access requires the original track source");
+  const fullSourceUrl = resolveFullTrackSource(track);
+  if (!fullSourceUrl) {
+    deny("Full track media is unavailable", 404);
   }
 
   const userId = toText(payload.uid);
   const ownerAccess = await hasOwnerAccess({
     userId,
-    creatorId: item.creatorId || item.payload?.creatorId,
+    creatorId: item.creatorId || track.creatorId,
   });
   const paidAccess = userId
     ? await hasEntitlement({
         userId,
         itemType: "track",
         itemId: item.itemId,
-        creatorId: item.creatorId || item.payload?.creatorId,
+        creatorId: item.creatorId || track.creatorId,
       })
     : false;
+  const isFree = Number(item.price || 0) <= 0;
 
   if (accessType === TRACK_MEDIA_ACCESS_TYPES.DOWNLOAD) {
-    if (!payload.dl || (!ownerAccess && !paidAccess)) {
+    if (!payload.dl || (!ownerAccess && !paidAccess && !isFree)) {
       deny("A verified purchase is required to download this song");
     }
-    return { protected: true, accessType, item, ownerAccess, paidAccess };
+    return {
+      protected: true,
+      accessType,
+      item,
+      ownerAccess,
+      paidAccess,
+      sourceUrl: fullSourceUrl,
+    };
   }
 
   if (payload.dl) {
@@ -114,11 +122,17 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
     deny("A verified purchase is required to play the full song");
   }
 
-  return { protected: true, accessType, item, ownerAccess, paidAccess };
+  return {
+    protected: true,
+    accessType,
+    item,
+    ownerAccess,
+    paidAccess,
+    sourceUrl: fullSourceUrl,
+  };
 };
 
 module.exports = {
   TRACK_MEDIA_ACCESS_TYPES,
   authorizeTrackMediaDelivery,
-  resolveTrackSources,
 };

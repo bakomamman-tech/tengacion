@@ -8,6 +8,7 @@ const TRACK_MEDIA_ACCESS_TYPES = Object.freeze({
   STREAM: "stream",
 });
 const MAX_PAID_PREVIEW_SECONDS = 30;
+const PREVIEW_DURATION_TOLERANCE_SECONDS = 0.5;
 
 const toText = (value = "") => String(value || "").trim();
 const mediaAssetUrl = (asset = null) => toText(asset?.secureUrl || asset?.secure_url || asset?.url || "");
@@ -100,22 +101,49 @@ const resolveFullTrackSource = (track = {}) =>
       || track.videoUrl
   );
 
-const resolveDedicatedPreviewSource = (track = {}) =>
-  toText(
-    mediaAssetUrl(track.previewMedia)
-      || track.previewUrl
-      || track.previewSampleUrl
-      || mediaAssetUrl(track.previewClipMedia)
-      || track.previewClipUrl
-  );
+const resolveDedicatedPreview = (track = {}) => {
+  const previewMediaUrl = mediaAssetUrl(track.previewMedia);
+  if (previewMediaUrl) {
+    return {
+      sourceUrl: previewMediaUrl,
+      durationSec: safeNumber(track.previewMedia?.duration, 0),
+    };
+  }
+
+  const previewUrl = toText(track.previewUrl || track.previewSampleUrl);
+  if (previewUrl) {
+    return { sourceUrl: previewUrl, durationSec: 0 };
+  }
+
+  const previewClipMediaUrl = mediaAssetUrl(track.previewClipMedia);
+  if (previewClipMediaUrl) {
+    return {
+      sourceUrl: previewClipMediaUrl,
+      durationSec: safeNumber(track.previewClipMedia?.duration, 0),
+    };
+  }
+
+  const previewClipUrl = toText(track.previewClipUrl);
+  return previewClipUrl
+    ? { sourceUrl: previewClipUrl, durationSec: 0 }
+    : { sourceUrl: "", durationSec: 0 };
+};
+
+const resolveDedicatedPreviewSource = (track = {}) => resolveDedicatedPreview(track).sourceUrl;
+
+const isVerifiedShortPreview = ({ durationSec = 0 } = {}) => {
+  const duration = safeNumber(durationSec, 0);
+  return duration > 0 && duration <= MAX_PAID_PREVIEW_SECONDS + PREVIEW_DURATION_TOLERANCE_SECONDS;
+};
 
 const resolveProtectedTrackPreviewSource = (track = {}, { price = 0 } = {}) => {
   const fullSource = resolveFullTrackSource(track);
-  const dedicatedPreview = resolveDedicatedPreviewSource(track);
+  const dedicatedPreview = resolveDedicatedPreview(track);
+  const dedicatedPreviewSource = dedicatedPreview.sourceUrl;
   const isPaid = Number(price ?? track.price ?? 0) > 0;
 
   if (!isPaid) {
-    return dedicatedPreview || fullSource;
+    return dedicatedPreviewSource || fullSource;
   }
 
   const previewStartSec = Math.max(0, safeNumber(track.previewStartSec, 0));
@@ -127,15 +155,25 @@ const resolveProtectedTrackPreviewSource = (track = {}, { price = 0 } = {}) => {
     )
   );
 
-  if (dedicatedPreview && dedicatedPreview !== fullSource) {
-    return buildCloudinaryBoundedPreviewUrl({
-      sourceUrl: dedicatedPreview,
+  if (dedicatedPreviewSource && dedicatedPreviewSource !== fullSource) {
+    const boundedCloudinaryPreview = buildCloudinaryBoundedPreviewUrl({
+      sourceUrl: dedicatedPreviewSource,
       startSec: previewStartSec,
       limitSec: previewLimitSec,
-    }) || dedicatedPreview;
+    });
+    if (boundedCloudinaryPreview) {
+      return boundedCloudinaryPreview;
+    }
+
+    // Non-Cloudinary paid previews cannot be time-bounded by Tengacion's
+    // delivery proxy. Only permit them when storage metadata independently
+    // proves the preview asset itself is 30 seconds or shorter.
+    return isVerifiedShortPreview(dedicatedPreview) ? dedicatedPreviewSource : "";
   }
 
   if (fullSource) {
+    // The paid master may only double as a preview when Cloudinary can create a
+    // server-bounded derivative. Never send an unbounded master to an unpaid user.
     return buildCloudinaryBoundedPreviewUrl({
       sourceUrl: fullSource,
       startSec: previewStartSec,
@@ -251,6 +289,7 @@ module.exports = {
   TRACK_MEDIA_ACCESS_TYPES,
   authorizeTrackMediaDelivery,
   buildCloudinaryBoundedPreviewUrl,
+  resolveDedicatedPreviewSource,
   resolveProtectedTrackPreviewSource,
   resolveTrackSources,
 };

@@ -32,6 +32,14 @@ const hasOwnerAccess = async ({ userId, creatorId }) => {
   return String(creator?.userId || "") === String(userId);
 };
 
+const attachAuthorizedSource = (payload, sourceUrl) => {
+  // This mutation happens only after signature verification and entitlement
+  // checks. It keeps the physical storage URL off the client-visible token while
+  // preserving compatibility with the existing media delivery route.
+  payload.src = sourceUrl;
+  return sourceUrl;
+};
+
 const authorizeTrackMediaDelivery = async (payload = {}) => {
   if (!isTrackItemType(payload.itemType)) {
     return {
@@ -71,6 +79,7 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
       deny(preview.reason || "Track preview is unavailable", 404);
     }
 
+    attachAuthorizedSource(payload, preview.sourceUrl);
     return {
       protected: true,
       accessType,
@@ -105,6 +114,7 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
     if (!payload.dl || (!ownerAccess && !paidAccess && !isFree)) {
       deny("A verified purchase is required to download this song");
     }
+    attachAuthorizedSource(payload, fullSourceUrl);
     return {
       protected: true,
       accessType,
@@ -122,6 +132,7 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
     deny("A verified purchase is required to play the full song");
   }
 
+  attachAuthorizedSource(payload, fullSourceUrl);
   return {
     protected: true,
     accessType,

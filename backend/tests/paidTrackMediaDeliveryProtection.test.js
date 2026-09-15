@@ -143,7 +143,58 @@ test("paid non-Cloudinary media never falls back to the full master as its previ
   ).toBe("");
 });
 
-test("a paid track with a distinct preview source never authorizes the full master for preview", async () => {
+test("a paid non-Cloudinary preview is allowed only when its own duration is verified at 30 seconds or less", () => {
+  const fullSource = "https://media.example.com/tengacion/master/song.mp3";
+  const previewSource = "https://media.example.com/tengacion/previews/song-30s.mp3";
+
+  expect(
+    resolveProtectedTrackPreviewSource(
+      {
+        price: 2500,
+        audioUrl: fullSource,
+        previewMedia: {
+          secureUrl: previewSource,
+          duration: 30,
+        },
+        previewUrl: previewSource,
+      },
+      { price: 2500 }
+    )
+  ).toBe(previewSource);
+});
+
+test("a paid non-Cloudinary preview with unknown or excessive duration fails closed", () => {
+  const fullSource = "https://media.example.com/tengacion/master/song.mp3";
+  const previewSource = "https://media.example.com/tengacion/previews/untrusted.mp3";
+
+  expect(
+    resolveProtectedTrackPreviewSource(
+      {
+        price: 2500,
+        audioUrl: fullSource,
+        previewUrl: previewSource,
+      },
+      { price: 2500 }
+    )
+  ).toBe("");
+
+  expect(
+    resolveProtectedTrackPreviewSource(
+      {
+        price: 2500,
+        audioUrl: fullSource,
+        previewMedia: {
+          secureUrl: previewSource,
+          duration: 178,
+        },
+        previewUrl: previewSource,
+      },
+      { price: 2500 }
+    )
+  ).toBe("");
+});
+
+test("a paid track with a distinct verified preview never authorizes the full master for preview", async () => {
   const fullSource = "https://media.example.com/tengacion/master/song.mp3";
   const previewSource = "https://media.example.com/tengacion/previews/song-30s.mp3";
 
@@ -156,6 +207,10 @@ test("a paid track with a distinct preview source never authorizes the full mast
       price: 2500,
       audioUrl: fullSource,
       fullAudioUrl: fullSource,
+      previewMedia: {
+        secureUrl: previewSource,
+        duration: 30,
+      },
       previewUrl: previewSource,
       previewSampleUrl: previewSource,
       previewStartSec: 0,

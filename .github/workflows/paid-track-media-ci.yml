@@ -1,0 +1,76 @@
+name: Paid Track Media Protection CI
+
+on:
+  pull_request:
+    paths:
+      - "backend/services/mediaSigner.js"
+      - "backend/services/trackMediaAccessService.js"
+      - "backend/services/trackPreviewSourceService.js"
+      - "backend/routes/media.js"
+      - "backend/controllers/tracksController.js"
+      - "backend/services/publicCreatorProfileService.js"
+      - "backend/services/creatorDiscoveryService.js"
+      - "backend/services/storyMusicService.js"
+      - "backend/tests/paidTrackMediaDeliveryProtection.test.js"
+      - "backend/tests/paystackPayments.test.js"
+      - "backend/tests/creatorDiscoveryRoutes.test.js"
+      - "backend/tests/storyMusicAttachment.test.js"
+      - ".github/workflows/paid-track-media-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/services/mediaSigner.js"
+      - "backend/services/trackMediaAccessService.js"
+      - "backend/services/trackPreviewSourceService.js"
+      - "backend/routes/media.js"
+      - "backend/controllers/tracksController.js"
+      - "backend/services/publicCreatorProfileService.js"
+      - "backend/services/creatorDiscoveryService.js"
+      - "backend/services/storyMusicService.js"
+      - "backend/tests/paidTrackMediaDeliveryProtection.test.js"
+      - "backend/tests/paystackPayments.test.js"
+      - "backend/tests/creatorDiscoveryRoutes.test.js"
+      - "backend/tests/storyMusicAttachment.test.js"
+      - ".github/workflows/paid-track-media-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  paid-track-media:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Syntax check paid-track protection
+        run: |
+          node --check services/mediaSigner.js
+          node --check services/trackMediaAccessService.js
+          node --check services/trackPreviewSourceService.js
+          node --check routes/media.js
+
+      - name: Run paid-track protection regression suite
+        run: >-
+          npx jest
+          tests/paidTrackMediaDeliveryProtection.test.js
+          tests/paystackPayments.test.js
+          tests/creatorDiscoveryRoutes.test.js
+          tests/storyMusicAttachment.test.js
+          --runInBand

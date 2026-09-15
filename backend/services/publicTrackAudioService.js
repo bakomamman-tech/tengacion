@@ -1,15 +1,17 @@
 const { mediaDocumentToUrl } = require("../utils/cloudinaryMedia");
+const {
+  resolveFullTrackSource,
+  resolveSafeTrackPreview,
+} = require("./trackPreviewPolicyService");
 
 // Feed audio is public for every viewer, including creators and paying buyers.
+// Paid tracks must never place the master URL in a public post. Only a
+// separately verified <=30 second preview may be exposed.
 function buildPublicTrackAudio(track = {}) {
   const price = typeof track.price === "number" && Number.isFinite(track.price) ? track.price : null;
-  const fullSources = new Set([
-    mediaDocumentToUrl(track.audioMedia, track.audioUrl || track.fullAudioUrl || ""),
-    track.audioUrl, track.fullAudioUrl, track.videoUrl, mediaDocumentToUrl(track.videoMedia, ""),
-  ].filter(Boolean));
-  const fullUrl = [...fullSources][0] || "";
-  const previewCandidate = mediaDocumentToUrl(track.previewMedia, track.previewUrl || track.previewSampleUrl || "") || mediaDocumentToUrl(track.previewClipMedia, track.previewClipUrl || "");
-  const previewUrl = fullSources.has(previewCandidate) ? "" : previewCandidate;
+  const fullUrl = resolveFullTrackSource(track);
+  const preview = resolveSafeTrackPreview(track);
+  const previewUrl = preview.ok ? preview.sourceUrl : "";
   return {
     trackId: track._id || track.trackId,
     url: price === 0 ? fullUrl : previewUrl,

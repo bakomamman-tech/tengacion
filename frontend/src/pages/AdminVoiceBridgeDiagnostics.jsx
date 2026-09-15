@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AnimatePresence, m } from "framer-motion";
 
 import { apiRequest, API_BASE } from "../api";
-import AdminShell from "../components/AdminShell";
+import AdminHeader from "../components/adminDashboard/AdminHeader";
+import AdminSidebar from "../components/adminDashboard/AdminSidebar";
 
+import "./admin-dashboard.css";
 import "./admin-voicebridge.css";
+
+const MotionDiv = m.div;
 
 const formatDateTime = (value) => {
   if (!value) return "—";
@@ -27,6 +32,15 @@ export default function AdminVoiceBridgeDiagnostics({ user }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const adminName = user?.name || user?.displayName || user?.username || "Admin User";
+  const roleLabel = user?.role || "Admin";
+  const avatarSrc = useMemo(() => {
+    if (!user) return "";
+    if (typeof user.avatar === "string") return user.avatar;
+    return user.avatar?.url || user.avatar?.secureUrl || "";
+  }, [user]);
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -146,187 +160,244 @@ export default function AdminVoiceBridgeDiagnostics({ user }) {
     };
   }, [rows]);
 
-  const headerActions = (
-    <div className="vb-admin-actions">
-      <button
-        type="button"
-        className="adminx-btn"
-        onClick={() => load()}
-        disabled={loading || Boolean(busy)}
-      >
-        Refresh
-      </button>
-      {status?.active ? (
-        <button
-          type="button"
-          className="adminx-btn"
-          onClick={disableCapture}
-          disabled={Boolean(busy)}
-        >
-          {busy === "disable" ? "Disabling…" : "Disable capture"}
-        </button>
-      ) : (
-        <button
-          type="button"
-          className="adminx-btn adminx-btn--primary"
-          onClick={enableCapture}
-          disabled={Boolean(busy)}
-        >
-          {busy === "enable" ? "Enabling…" : "Enable 30 min capture"}
-        </button>
-      )}
-    </div>
+  const captureAction = status?.active ? (
+    <button
+      type="button"
+      className="adminx-btn"
+      onClick={disableCapture}
+      disabled={Boolean(busy)}
+    >
+      {busy === "disable" ? "Disabling…" : "Disable capture"}
+    </button>
+  ) : (
+    <button
+      type="button"
+      className="adminx-btn adminx-btn--primary"
+      onClick={enableCapture}
+      disabled={Boolean(busy)}
+    >
+      {busy === "enable" ? "Enabling…" : "Enable 30 min capture"}
+    </button>
   );
 
   return (
-    <AdminShell
-      title="VoiceBridge Diagnostics"
-      subtitle="Private, temporary Sahara transcript verification for Africa's Talking calls"
-      user={user}
-      actions={headerActions}
-    >
-      <div className="vb-admin-page">
-        {error ? <div className="vb-admin-error" role="alert">{error}</div> : null}
+    <div className="tdash-page">
+      <div className="tdash-shell">
+        <div className="tdash-shell__sidebar-desktop">
+          <AdminSidebar
+            activeKey="voicebridge"
+            adminName={adminName}
+            roleLabel={roleLabel}
+            avatarSrc={avatarSrc}
+          />
+        </div>
 
-        <section className="vb-admin-status-grid" aria-label="VoiceBridge diagnostic summary">
-          <article className="vb-admin-card vb-admin-card--capture">
-            <span className="vb-admin-card__label">Transcript capture</span>
-            <strong className={status?.active ? "is-on" : "is-off"}>
-              {status?.active ? "ON" : "OFF"}
-            </strong>
-            <p>
-              {status?.active
-                ? `Enabled until ${formatDateTime(status.enabledUntil)}`
-                : "No new call transcript will be retained until an admin enables capture."}
-            </p>
-          </article>
-          <article className="vb-admin-card">
-            <span className="vb-admin-card__label">Temporary calls</span>
-            <strong>{summary.calls}</strong>
-            <p>Unexpired diagnostic records currently available.</p>
-          </article>
-          <article className="vb-admin-card">
-            <span className="vb-admin-card__label">Actions completed</span>
-            <strong>{summary.completed}</strong>
-            <p>Calls that reached the safe VoiceBridge action layer.</p>
-          </article>
-          <article className="vb-admin-card">
-            <span className="vb-admin-card__label">Expiring soon</span>
-            <strong>{summary.expiringSoon}</strong>
-            <p>Records scheduled to disappear within 10 minutes.</p>
-          </article>
-        </section>
+        <AnimatePresence>
+          {sidebarOpen ? (
+            <MotionDiv
+              className="tdash-mobile-sidebar"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <button
+                type="button"
+                className="tdash-mobile-sidebar__backdrop"
+                onClick={() => setSidebarOpen(false)}
+                aria-label="Close navigation"
+              />
+              <MotionDiv
+                className="tdash-mobile-sidebar__panel"
+                initial={{ x: -24, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -24, opacity: 0 }}
+              >
+                <AdminSidebar
+                  activeKey="voicebridge"
+                  adminName={adminName}
+                  roleLabel={roleLabel}
+                  avatarSrc={avatarSrc}
+                  onClose={() => setSidebarOpen(false)}
+                />
+              </MotionDiv>
+            </MotionDiv>
+          ) : null}
+        </AnimatePresence>
 
-        <section className="vb-admin-privacy">
-          <div>
-            <span>Privacy boundary</span>
-            <h2>Transcript text stays behind the Admin Console</h2>
-            <p>
-              The public CodeSwitch demo contains no transcript controls. Diagnostic records contain no raw audio,
-              recording URL, caller number, or raw Africa's Talking session ID. Exact transcript text is hidden until
-              an administrator deliberately reveals it and is automatically removed after 30 minutes.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="adminx-btn adminx-btn--danger"
-            onClick={clearAll}
-            disabled={Boolean(busy) || rows.length === 0}
-          >
-            {busy === "clear" ? "Deleting…" : "Delete all temporary diagnostics"}
-          </button>
-        </section>
+        <main className="tdash-main">
+          <AdminHeader
+            title="VoiceBridge / CodeSwitch"
+            secondaryText="Private Sahara transcript verification for Africa's Talking calls"
+            notificationCount={0}
+            avatarSrc={avatarSrc}
+            adminName={adminName}
+            notifications={[]}
+            onToggleSidebar={() => setSidebarOpen(true)}
+          />
 
-        <section className="vb-admin-table-card">
-          <div className="vb-admin-section-head">
-            <div>
-              <span>Recent temporary calls</span>
-              <h2>VoiceBridge call diagnostics</h2>
+          <div className="tdash-content vb-admin-page">
+            <div className="vb-admin-toolbar">
+              <div>
+                <span className="vb-admin-toolbar__eyebrow">Protected admin workspace</span>
+                <h1>VoiceBridge Diagnostics</h1>
+                <p>Capture temporary Sahara transcripts for verification without exposing message content on the public CodeSwitch page.</p>
+              </div>
+              <div className="vb-admin-actions">
+                <button
+                  type="button"
+                  className="adminx-btn"
+                  onClick={() => load()}
+                  disabled={loading || Boolean(busy)}
+                >
+                  Refresh
+                </button>
+                {captureAction}
+              </div>
             </div>
-            <p>Auto-refreshes every 10 seconds</p>
-          </div>
 
-          {loading ? (
-            <div className="vb-admin-empty">Loading VoiceBridge diagnostics…</div>
-          ) : rows.length === 0 ? (
-            <div className="vb-admin-empty">
-              No temporary call diagnostics are available. Enable capture, then place a test call.
-            </div>
-          ) : (
-            <div className="vb-admin-table-wrap">
-              <table className="vb-admin-table">
-                <thead>
-                  <tr>
-                    <th>Captured</th>
-                    <th>Language</th>
-                    <th>Duration</th>
-                    <th>Intent</th>
-                    <th>Action</th>
-                    <th>Case</th>
-                    <th>Expires</th>
-                    <th>Transcript</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => {
-                    const detail = revealed[row.id];
-                    return (
-                      <tr key={row.id}>
-                        <td>{formatDateTime(row.createdAt)}</td>
-                        <td>{row.languagePair || "—"}</td>
-                        <td>{secondsLabel(row.processedAudioDurationSeconds)}</td>
-                        <td>{row.intent || "Pending"}</td>
-                        <td>{row.executedAction || row.requestedAction || "Pending"}</td>
-                        <td>{row.caseId || "—"}</td>
-                        <td>{formatDateTime(row.expiresAt)}</td>
-                        <td className="vb-admin-transcript-cell">
-                          {detail ? (
-                            <div className="vb-admin-reveal">
-                              <div className="vb-admin-reveal__text">{detail.transcript}</div>
-                              <div className="vb-admin-row-actions">
-                                <button type="button" className="adminx-btn" onClick={() => hideTranscript(row.id)}>
-                                  Hide
-                                </button>
-                                <button
-                                  type="button"
-                                  className="adminx-btn adminx-btn--danger"
-                                  onClick={() => deleteOne(row.id)}
-                                  disabled={busy === `delete:${row.id}`}
-                                >
-                                  {busy === `delete:${row.id}` ? "Deleting…" : "Delete now"}
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="vb-admin-row-actions">
-                              <button
-                                type="button"
-                                className="adminx-btn"
-                                onClick={() => revealTranscript(row.id)}
-                                disabled={busy === `reveal:${row.id}`}
-                              >
-                                {busy === `reveal:${row.id}` ? "Loading…" : "Reveal transcript"}
-                              </button>
-                              <button
-                                type="button"
-                                className="adminx-btn adminx-btn--danger"
-                                onClick={() => deleteOne(row.id)}
-                                disabled={busy === `delete:${row.id}`}
-                              >
-                                {busy === `delete:${row.id}` ? "Deleting…" : "Delete"}
-                              </button>
-                            </div>
-                          )}
-                        </td>
+            {error ? <div className="vb-admin-error" role="alert">{error}</div> : null}
+
+            <section className="vb-admin-status-grid" aria-label="VoiceBridge diagnostic summary">
+              <article className="vb-admin-card vb-admin-card--capture">
+                <span className="vb-admin-card__label">Transcript capture</span>
+                <strong className={status?.active ? "is-on" : "is-off"}>
+                  {status?.active ? "ON" : "OFF"}
+                </strong>
+                <p>
+                  {status?.active
+                    ? `Enabled until ${formatDateTime(status.enabledUntil)}`
+                    : "No new call transcript will be retained until an admin enables capture."}
+                </p>
+              </article>
+              <article className="vb-admin-card">
+                <span className="vb-admin-card__label">Temporary calls</span>
+                <strong>{summary.calls}</strong>
+                <p>Unexpired diagnostic records currently available.</p>
+              </article>
+              <article className="vb-admin-card">
+                <span className="vb-admin-card__label">Actions completed</span>
+                <strong>{summary.completed}</strong>
+                <p>Calls that reached the safe VoiceBridge action layer.</p>
+              </article>
+              <article className="vb-admin-card">
+                <span className="vb-admin-card__label">Expiring soon</span>
+                <strong>{summary.expiringSoon}</strong>
+                <p>Records scheduled to disappear within 10 minutes.</p>
+              </article>
+            </section>
+
+            <section className="vb-admin-privacy">
+              <div>
+                <span>Privacy boundary</span>
+                <h2>Transcript text stays behind the Admin Dashboard</h2>
+                <p>
+                  The public CodeSwitch demo contains no transcript controls. Diagnostic records contain no raw audio,
+                  recording URL, caller number, or raw Africa's Talking session ID. Exact transcript text is hidden until
+                  an administrator deliberately reveals it and is automatically removed after 30 minutes.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="adminx-btn adminx-btn--danger"
+                onClick={clearAll}
+                disabled={Boolean(busy) || rows.length === 0}
+              >
+                {busy === "clear" ? "Deleting…" : "Delete all temporary diagnostics"}
+              </button>
+            </section>
+
+            <section className="vb-admin-table-card">
+              <div className="vb-admin-section-head">
+                <div>
+                  <span>Recent temporary calls</span>
+                  <h2>VoiceBridge call diagnostics</h2>
+                </div>
+                <p>Auto-refreshes every 10 seconds</p>
+              </div>
+
+              {loading ? (
+                <div className="vb-admin-empty">Loading VoiceBridge diagnostics…</div>
+              ) : rows.length === 0 ? (
+                <div className="vb-admin-empty">
+                  No temporary call diagnostics are available. Enable capture, then place a test call.
+                </div>
+              ) : (
+                <div className="vb-admin-table-wrap">
+                  <table className="vb-admin-table">
+                    <thead>
+                      <tr>
+                        <th>Captured</th>
+                        <th>Language</th>
+                        <th>Duration</th>
+                        <th>Intent</th>
+                        <th>Action</th>
+                        <th>Case</th>
+                        <th>Expires</th>
+                        <th>Transcript</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+                    </thead>
+                    <tbody>
+                      {rows.map((row) => {
+                        const detail = revealed[row.id];
+                        return (
+                          <tr key={row.id}>
+                            <td>{formatDateTime(row.createdAt)}</td>
+                            <td>{row.languagePair || "—"}</td>
+                            <td>{secondsLabel(row.processedAudioDurationSeconds)}</td>
+                            <td>{row.intent || "Pending"}</td>
+                            <td>{row.executedAction || row.requestedAction || "Pending"}</td>
+                            <td>{row.caseId || "—"}</td>
+                            <td>{formatDateTime(row.expiresAt)}</td>
+                            <td className="vb-admin-transcript-cell">
+                              {detail ? (
+                                <div className="vb-admin-reveal">
+                                  <div className="vb-admin-reveal__text">{detail.transcript}</div>
+                                  <div className="vb-admin-row-actions">
+                                    <button type="button" className="adminx-btn" onClick={() => hideTranscript(row.id)}>
+                                      Hide
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="adminx-btn adminx-btn--danger"
+                                      onClick={() => deleteOne(row.id)}
+                                      disabled={busy === `delete:${row.id}`}
+                                    >
+                                      {busy === `delete:${row.id}` ? "Deleting…" : "Delete now"}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="vb-admin-row-actions">
+                                  <button
+                                    type="button"
+                                    className="adminx-btn"
+                                    onClick={() => revealTranscript(row.id)}
+                                    disabled={busy === `reveal:${row.id}`}
+                                  >
+                                    {busy === `reveal:${row.id}` ? "Loading…" : "Reveal transcript"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="adminx-btn adminx-btn--danger"
+                                    onClick={() => deleteOne(row.id)}
+                                    disabled={busy === `delete:${row.id}`}
+                                  >
+                                    {busy === `delete:${row.id}` ? "Deleting…" : "Delete"}
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </div>
+        </main>
       </div>
-    </AdminShell>
+    </div>
   );
 }

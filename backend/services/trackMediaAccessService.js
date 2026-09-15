@@ -111,7 +111,7 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
   const isFree = Number(item.price || 0) <= 0;
 
   if (accessType === TRACK_MEDIA_ACCESS_TYPES.DOWNLOAD) {
-    if (!payload.dl || (!ownerAccess && !paidAccess && !isFree)) {
+    if (!payload.dl || (!ownerAccess && !paidAccess)) {
       deny("A verified purchase is required to download this song");
     }
     attachAuthorizedSource(payload, fullSourceUrl);

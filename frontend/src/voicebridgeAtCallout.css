@@ -3,7 +3,9 @@
   right: 18px;
   bottom: 18px;
   z-index: 1200;
-  width: min(370px, calc(100vw - 36px));
+  width: min(390px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  overflow: auto;
   padding: 15px 16px;
   border: 1px solid rgba(131, 212, 167, 0.42);
   border-radius: 18px;
@@ -60,11 +62,81 @@
   line-height: 1.45;
 }
 
+#voicebridge-africastalking-callout .vb-at-diagnostics {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(131, 212, 167, 0.24);
+}
+
+#voicebridge-africastalking-callout .vb-at-diagnostics summary {
+  cursor: pointer;
+  color: #d9ffea;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#voicebridge-africastalking-callout .vb-at-diagnostics__help,
+#voicebridge-africastalking-callout .vb-at-diagnostics__status {
+  margin: 8px 0 0;
+  color: rgba(246, 255, 249, 0.76);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+#voicebridge-africastalking-callout .vb-at-diagnostics__status[data-error="true"] {
+  color: #ffd3d3;
+}
+
+#voicebridge-africastalking-callout .vb-at-diagnostics__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+#voicebridge-africastalking-callout .vb-at-diagnostics__actions button {
+  appearance: none;
+  border: 1px solid rgba(237, 189, 99, 0.5);
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: rgba(237, 189, 99, 0.1);
+  color: #fff3d8;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+#voicebridge-africastalking-callout .vb-at-diagnostics__actions button:hover,
+#voicebridge-africastalking-callout .vb-at-diagnostics__actions button:focus-visible {
+  background: rgba(237, 189, 99, 0.18);
+}
+
+#voicebridge-africastalking-callout .vb-at-diagnostics__actions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+#voicebridge-africastalking-callout .vb-at-diagnostics__transcript {
+  margin: 9px 0 0;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid rgba(131, 212, 167, 0.22);
+  border-radius: 10px;
+  padding: 9px;
+  background: rgba(0, 0, 0, 0.18);
+  color: #f6fff9;
+  font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 @media (max-width: 640px) {
   #voicebridge-africastalking-callout {
     right: 12px;
     bottom: 12px;
     width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
     border-radius: 15px;
   }
 }

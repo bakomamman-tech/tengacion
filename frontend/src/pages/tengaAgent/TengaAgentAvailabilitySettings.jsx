@@ -9,6 +9,7 @@ import {
   saveTengaAgentOwnerAvailability,
 } from "../../services/tengaAgentApi";
 
+import TengaAgentCalendarConnections from "./TengaAgentCalendarConnections";
 import "./tengaagent-availability.css";
 
 const DAYS = [
@@ -215,7 +216,7 @@ export default function TengaAgentAvailabilitySettings() {
       );
       setNotice(
         response?.schedule?.enabled
-          ? "Booking availability is active. Public visitors will see free TengaAgent slots."
+          ? "Booking availability is active. Public visitors will see free TengaAgent slots after internal and connected external calendars are checked."
           : "Booking availability is off. Visitors will continue to request preferred times manually."
       );
     } catch (requestError) {
@@ -253,8 +254,9 @@ export default function TengaAgentAvailabilitySettings() {
           </h3>
           <p>
             Define when your team can accept meetings.
-            Confirmed TengaAgent appointments block
-            overlapping slots automatically.
+            Confirmed TengaAgent appointments and connected
+            external calendar events block overlapping slots
+            automatically.
           </p>
         </div>
 
@@ -268,14 +270,18 @@ export default function TengaAgentAvailabilitySettings() {
       </div>
 
       <div className="tengaagent-availability__scope">
-        <strong>Current integration scope</strong>
+        <strong>Availability sources</strong>
         <span>
-          These are internal TengaAgent availability
-          rules. Google Calendar and Outlook are not
-          connected yet, so external calendar events are
-          not read or blocked by this version.
+          Internal weekly rules remain the base schedule.
+          Connected Google or Outlook calendars add read-only
+          busy periods. If a connected provider cannot be
+          verified, public booking falls back to a manual
+          preferred-time request instead of claiming a slot is
+          free.
         </span>
       </div>
+
+      <TengaAgentCalendarConnections />
 
       <form onSubmit={handleSave}>
         <label className="tengaagent-availability__toggle">

@@ -13,6 +13,10 @@ const {
   respondToCustomerZero,
 } = require("../services/tengaAgent/agentRuntimeService");
 
+const {
+  captureLead,
+} = require("../services/tengaAgent/leadCaptureService");
+
 const router = express.Router();
 
 const MAX_MESSAGE_LENGTH = 2000;
@@ -22,6 +26,24 @@ const cleanText = (value, max) =>
   String(value || "")
     .trim()
     .slice(0, max);
+
+const resolveCustomerZeroAgent = async (
+  agentId
+) => {
+  const agentKey = cleanText(
+    agentId,
+    120
+  ).toLowerCase();
+
+  if (
+    agentKey !==
+    CUSTOMER_ZERO_AGENT_KEY
+  ) {
+    return null;
+  }
+
+  return ensureCustomerZeroAgent();
+};
 
 router.get("/health", (_req, res) => {
   res.set("Cache-Control", "no-store");
@@ -37,14 +59,12 @@ router.post(
   "/chat/:agentId/message",
   async (req, res, next) => {
     try {
-      const agentKey = cleanText(
-        req.params.agentId,
-        120
-      ).toLowerCase();
+      const customerZero =
+        await resolveCustomerZeroAgent(
+          req.params.agentId
+        );
 
-      if (
-        agentKey !== CUSTOMER_ZERO_AGENT_KEY
-      ) {
+      if (!customerZero) {
         return res.status(404).json({
           message: "TengaAgent not found.",
         });
@@ -85,8 +105,7 @@ router.post(
       const {
         organization,
         agent,
-      } =
-        await ensureCustomerZeroAgent();
+      } = customerZero;
 
       let conversation =
         await Conversation.findOne({
@@ -176,22 +195,118 @@ router.post(
 
       return res.json({
         ok: true,
-
         conversationId:
           conversation._id,
-
         sessionId,
-
         reply: result.reply,
-
         actions:
           result.actions || [],
-
         agent: {
           key: agent.key,
           name: agent.name,
           role: agent.role,
         },
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  "/chat/:agentId/lead",
+  async (req, res, next) => {
+    try {
+      const customerZero =
+        await resolveCustomerZeroAgent(
+          req.params.agentId
+        );
+
+      if (!customerZero) {
+        return res.status(404).json({
+          message: "TengaAgent not found.",
+        });
+      }
+
+      const sessionId =
+        cleanText(
+          req.body?.sessionId,
+          MAX_SESSION_LENGTH
+        );
+
+      if (!sessionId) {
+        return res.status(400).json({
+          message:
+            "Session is required before lead capture.",
+        });
+      }
+
+      const {
+        organization,
+        agent,
+      } = customerZero;
+
+      const conversation =
+        await Conversation.findOne({
+          organizationId:
+            organization._id,
+          agentId: agent._id,
+          sessionKey: sessionId,
+        });
+
+      if (!conversation) {
+        return res.status(404).json({
+          message:
+            "Conversation not found for this session.",
+        });
+      }
+
+      const lead =
+        await captureLead({
+          organizationId:
+            organization._id,
+          agentId: agent._id,
+          conversationId:
+            conversation._id,
+          sessionKey: sessionId,
+          name: req.body?.name,
+          email: req.body?.email,
+          phone: req.body?.phone,
+          company:
+            req.body?.company,
+          projectSummary:
+            req.body?.projectSummary,
+          source: "web",
+          consentToContact:
+            req.body?.consentToContact ===
+            true,
+        });
+
+      conversation.contactId =
+        lead._id;
+      conversation.status =
+        "handoff_requested";
+
+      await conversation.save();
+
+      res.set(
+        "Cache-Control",
+        "no-store"
+      );
+
+      return res.status(201).json({
+        ok: true,
+        lead: {
+          id: lead._id,
+          status: lead.status,
+        },
+        conversation: {
+          id: conversation._id,
+          status:
+            conversation.status,
+        },
+        message:
+          "Thanks. Your details were saved and the Tengacion team can follow up on this enquiry.",
       });
     } catch (error) {
       return next(error);

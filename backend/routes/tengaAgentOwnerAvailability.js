@@ -95,4 +95,9 @@ router.use(
   require("./tengaAgentOwnerOutcomes")
 );
 
+router.use(
+  "/",
+  require("./tengaAgentOwnerFollowUps")
+);
+
 module.exports = router;

@@ -22,9 +22,7 @@ const assertOk = (
 ) => {
   if (!response.ok) {
     const error = new Error(
-      data?.message ||
-        data?.error ||
-        fallbackMessage
+      data?.message || data?.error || fallbackMessage
     );
 
     error.status = response.status;
@@ -36,10 +34,7 @@ const assertOk = (
 
 const ownerRequest = async (
   path,
-  {
-    method = "GET",
-    body,
-  } = {}
+  { method = "GET", body } = {}
 ) => {
   const token = getSessionAccessToken();
 
@@ -58,16 +53,11 @@ const ownerRequest = async (
       headers: {
         Authorization: `Bearer ${token}`,
         ...(body !== undefined
-          ? {
-              "Content-Type":
-                "application/json",
-            }
+          ? { "Content-Type": "application/json" }
           : {}),
       },
       ...(body !== undefined
-        ? {
-            body: JSON.stringify(body),
-          }
+        ? { body: JSON.stringify(body) }
         : {}),
     }
   );
@@ -173,4 +163,16 @@ export const getTengaAgentOwnerLeads = ({
 } = {}) =>
   ownerRequest(
     `/leads?limit=${encodeURIComponent(limit)}`
+  );
+
+export const updateTengaAgentOwnerLeadStatus = ({
+  leadId,
+  status,
+}) =>
+  ownerRequest(
+    `/leads/${encodeURIComponent(leadId)}/status`,
+    {
+      method: "PATCH",
+      body: { status },
+    }
   );

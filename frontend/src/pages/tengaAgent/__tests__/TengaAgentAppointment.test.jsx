@@ -1,5 +1,9 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   beforeEach,
@@ -91,10 +95,11 @@ describe("TengaAgent appointment request UI", () => {
 
     expect(dateInput).toBeTruthy();
 
-    await user.type(
-      dateInput,
-      "2030-01-10T11:00"
-    );
+    fireEvent.change(dateInput, {
+      target: {
+        value: "2030-01-10T11:00",
+      },
+    });
 
     await user.type(
       screen.getByPlaceholderText(

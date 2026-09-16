@@ -4,8 +4,13 @@ const {
   listOwnerAppointmentOutcomes,
   updateOwnerAppointmentOutcome,
 } = require("../services/tengaAgent/appointmentOutcomeService");
+const {
+  startFollowUpReminderScheduler,
+} = require("../services/tengaAgent/followUpReminderService");
 
 const router = express.Router();
+
+startFollowUpReminderScheduler();
 
 router.get("/appointment-outcomes", async (req, res, next) => {
   try {

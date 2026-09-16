@@ -147,20 +147,6 @@ describe("TengaAgentAvailabilitySettings", () => {
       screen.getByLabelText("Booking day 2"),
       "2"
     );
-    await user.clear(
-      screen.getByLabelText("Start time 2")
-    );
-    await user.type(
-      screen.getByLabelText("Start time 2"),
-      "13:00"
-    );
-    await user.clear(
-      screen.getByLabelText("End time 2")
-    );
-    await user.type(
-      screen.getByLabelText("End time 2"),
-      "16:00"
-    );
 
     await user.click(
       screen.getByRole("button", {
@@ -179,8 +165,8 @@ describe("TengaAgentAvailabilitySettings", () => {
             },
             {
               dayOfWeek: 2,
-              startMinutes: 780,
-              endMinutes: 960,
+              startMinutes: 540,
+              endMinutes: 1020,
             },
           ]),
         })

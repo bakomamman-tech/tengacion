@@ -1,0 +1,201 @@
+.tengaagent-availability {
+  margin-top: 28px;
+  padding: 22px;
+  border: 1px solid rgba(98, 230, 189, 0.16);
+  border-radius: 18px;
+  background: rgba(8, 22, 38, 0.76);
+}
+
+.tengaagent-availability__header,
+.tengaagent-availability__hours-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.tengaagent-availability__header > div > span {
+  display: block;
+  color: #62e6bd;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.tengaagent-availability h3 {
+  margin: 6px 0 8px;
+}
+
+.tengaagent-availability p,
+.tengaagent-availability__hours-header span,
+.tengaagent-availability__scope span {
+  color: #9eb0c6;
+  line-height: 1.55;
+}
+
+.tengaagent-availability__header button,
+.tengaagent-availability__hours-header button,
+.tengaagent-availability__window button {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  cursor: pointer;
+}
+
+.tengaagent-availability__scope {
+  display: grid;
+  gap: 5px;
+  margin: 18px 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 196, 84, 0.08);
+  border: 1px solid rgba(255, 196, 84, 0.16);
+}
+
+.tengaagent-availability__toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+  font-weight: 800;
+}
+
+.tengaagent-availability__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tengaagent-availability__grid label {
+  display: grid;
+  gap: 7px;
+}
+
+.tengaagent-availability__grid label > span {
+  color: #9eb0c6;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.tengaagent-availability input,
+.tengaagent-availability select {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 10px;
+  background: #081626;
+  color: #f7fbff;
+}
+
+.tengaagent-availability__toggle input {
+  width: auto;
+}
+
+.tengaagent-availability__hours {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tengaagent-availability__hours-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.tengaagent-availability__window {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(110px, 0.7fr) auto minmax(110px, 0.7fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.tengaagent-availability__empty {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #9eb0c6;
+}
+
+.tengaagent-availability__notice {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(98, 230, 189, 0.09);
+  border: 1px solid rgba(98, 230, 189, 0.2);
+}
+
+.tengaagent-availability__notice--error {
+  background: rgba(255, 99, 132, 0.08);
+  border-color: rgba(255, 99, 132, 0.22);
+}
+
+.tengaagent-availability__save {
+  margin-top: 18px;
+  border: 0;
+  border-radius: 11px;
+  padding: 11px 16px;
+  background: #62e6bd;
+  color: #061019;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.tengaagent-availability__save:disabled,
+.tengaagent-availability button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.tengaagent-appointment-availability-state {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #9eb0c6;
+}
+
+.tengaagent-appointment-availability-state button {
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: #62e6bd;
+  color: #061019;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tengaagent-appointment-availability-state--error {
+  border-color: rgba(255, 99, 132, 0.25);
+}
+
+@media (max-width: 760px) {
+  .tengaagent-availability__header,
+  .tengaagent-availability__hours-header {
+    flex-direction: column;
+  }
+
+  .tengaagent-availability__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tengaagent-availability__window {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tengaagent-availability__window > span {
+    display: none;
+  }
+
+  .tengaagent-availability__window button {
+    grid-column: 1 / -1;
+  }
+}

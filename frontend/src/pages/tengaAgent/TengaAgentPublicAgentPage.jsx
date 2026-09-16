@@ -71,6 +71,15 @@ const senderLabel = (sender) => {
   return "You";
 };
 
+const shouldPreserveTransient = (message) => {
+  const id = String(message?.id || "");
+  return [
+    "local-error",
+    "local-lead",
+    "local-appointment",
+  ].some((prefix) => id.startsWith(prefix));
+};
+
 function PublicMessage({ sender, content }) {
   return (
     <div
@@ -129,8 +138,8 @@ export default function TengaAgentPublicAgentPage() {
       }
 
       setMessages((current) => {
-        const transient = current.filter((message) =>
-          String(message.id || "").startsWith("local-")
+        const transient = current.filter(
+          shouldPreserveTransient
         );
         const persisted = Array.isArray(response?.messages)
           ? response.messages.map((message) => ({

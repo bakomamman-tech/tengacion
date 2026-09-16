@@ -86,6 +86,35 @@ const ensureOwnerAgent = async (organization) =>
     }
   );
 
+const getOwnerAgent = async (workspace) =>
+  workspace.agent || ensureOwnerAgent(workspace.organization);
+
+const setOwnerAgentPublicationPreservingTools = async ({
+  userId,
+  published,
+}) => {
+  const workspace = await findOwnerWorkspace(userId);
+
+  if (!workspace) {
+    return null;
+  }
+
+  const agent = await getOwnerAgent(workspace);
+
+  agent.status = published
+    ? "active"
+    : agent.status === "draft"
+      ? "draft"
+      : "paused";
+
+  await agent.save();
+
+  return {
+    organization: workspace.organization,
+    agent,
+  };
+};
+
 const updateOwnerAgentConfiguration = async ({
   userId,
   name,
@@ -102,12 +131,7 @@ const updateOwnerAgentConfiguration = async ({
     return null;
   }
 
-  let agent = workspace.agent;
-
-  if (!agent) {
-    agent = await ensureOwnerAgent(workspace.organization);
-  }
-
+  const agent = await getOwnerAgent(workspace);
   const wasPublished = agent.status === "active";
 
   if (typeof name === "string") {
@@ -174,5 +198,6 @@ module.exports = {
   SUPPORTED_OWNER_TOOLS,
   normalizeLanguages,
   normalizeTools,
+  setOwnerAgentPublicationPreservingTools,
   updateOwnerAgentConfiguration,
 };

@@ -182,14 +182,16 @@ export default function App() {
   usePageTracking();
   const isBrightFutureRoute = pathname.toLowerCase().startsWith("/bright-future-academy");
   const isCodeSwitchRoute = pathname === "/codeswitch";
+  const isTengaAgentRoute = pathname === "/tengaagent";
   const isFocusedExperienceRoute =
-    pathname === "/millionaire" || isBrightFutureRoute || isCodeSwitchRoute;
+    pathname === "/millionaire" || isBrightFutureRoute || isCodeSwitchRoute || isTengaAgentRoute;
   const isCygroEnterpriseRoute = pathname === "/cygro-enterprise";
   const isAuthOptionalRoute =
     pathname === "/" ||
     isCygroEnterpriseRoute ||
     isBrightFutureRoute ||
-    isCodeSwitchRoute;
+    isCodeSwitchRoute ||
+    isTengaAgentRoute;
 
   // The public landing page must remain useful while a slow mobile connection
   // checks for an existing session. Authenticated visitors are redirected as

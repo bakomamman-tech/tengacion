@@ -1,0 +1,252 @@
+.tengaagent-public {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(98, 230, 189, 0.12), transparent 32%),
+    #07111e;
+  color: #f7fbff;
+  padding: 28px 20px 48px;
+}
+
+.tengaagent-public--centered {
+  display: grid;
+  place-items: center;
+}
+
+.tengaagent-public__header,
+.tengaagent-public__shell,
+.tengaagent-public__footer {
+  width: min(920px, 100%);
+  margin: 0 auto;
+}
+
+.tengaagent-public__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.tengaagent-public__brand {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.tengaagent-public__brand > span {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #62e6bd;
+  color: #07111e;
+  font-weight: 900;
+}
+
+.tengaagent-public__brand strong,
+.tengaagent-public__brand small,
+.tengaagent-public__business strong,
+.tengaagent-public__business span {
+  display: block;
+}
+
+.tengaagent-public__brand small,
+.tengaagent-public__business span,
+.tengaagent-public__intro p,
+.tengaagent-public__footer,
+.tengaagent-public__typing {
+  color: #9eb0c6;
+}
+
+.tengaagent-public__business {
+  text-align: right;
+}
+
+.tengaagent-public__shell {
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 24px;
+  overflow: hidden;
+  background: rgba(13, 28, 48, 0.92);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.3);
+}
+
+.tengaagent-public__intro {
+  padding: 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tengaagent-public__intro > span {
+  color: #62e6bd;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.tengaagent-public__intro h1 {
+  margin: 8px 0;
+  font-size: clamp(1.65rem, 4vw, 2.55rem);
+}
+
+.tengaagent-public__intro p {
+  max-width: 720px;
+  margin: 0;
+  line-height: 1.65;
+}
+
+.tengaagent-public__chat {
+  min-height: 330px;
+  max-height: 56vh;
+  overflow-y: auto;
+  padding: 24px;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.tengaagent-public__message {
+  display: grid;
+  gap: 6px;
+  max-width: 78%;
+}
+
+.tengaagent-public__message strong {
+  font-size: 0.72rem;
+  color: #8ca0b7;
+}
+
+.tengaagent-public__message > div {
+  padding: 12px 14px;
+  border-radius: 15px;
+  line-height: 1.55;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.tengaagent-public__message--customer {
+  justify-self: end;
+}
+
+.tengaagent-public__message--customer > div {
+  background: #62e6bd;
+  color: #061019;
+}
+
+.tengaagent-public__typing {
+  font-size: 0.8rem;
+}
+
+.tengaagent-public__composer {
+  padding: 18px 24px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tengaagent-public__composer > label {
+  display: block;
+  margin-bottom: 7px;
+  color: #9eb0c6;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.tengaagent-public__composer > div {
+  display: flex;
+  gap: 10px;
+}
+
+.tengaagent-public__composer input {
+  flex: 1;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 12px;
+  background: #081626;
+  color: #f7fbff;
+  outline: none;
+}
+
+.tengaagent-public__composer input:focus {
+  border-color: #62e6bd;
+}
+
+.tengaagent-public__composer button,
+.tengaagent-public__state a {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 18px;
+  background: #62e6bd;
+  color: #061019;
+  font-weight: 850;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tengaagent-public__composer button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.tengaagent-public__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 18px;
+  font-size: 0.78rem;
+}
+
+.tengaagent-public__footer a {
+  color: #62e6bd;
+}
+
+.tengaagent-public__state {
+  width: min(520px, 100%);
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  background: rgba(13, 28, 48, 0.92);
+  text-align: center;
+}
+
+.tengaagent-public__state strong {
+  display: block;
+  font-size: 1.25rem;
+}
+
+.tengaagent-public__state p {
+  color: #9eb0c6;
+  line-height: 1.6;
+  margin-bottom: 22px;
+}
+
+@media (max-width: 680px) {
+  .tengaagent-public {
+    padding: 18px 12px 32px;
+  }
+
+  .tengaagent-public__header,
+  .tengaagent-public__footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tengaagent-public__business {
+    text-align: left;
+  }
+
+  .tengaagent-public__intro,
+  .tengaagent-public__chat,
+  .tengaagent-public__composer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .tengaagent-public__message {
+    max-width: 92%;
+  }
+
+  .tengaagent-public__composer > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

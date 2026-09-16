@@ -16,6 +16,9 @@ const { REQUEST_ID_HEADER, requestId } = require("./middleware/requestId");
 const { requestLogger } = require("./middleware/requestLogger");
 const User = require("./models/User");
 const { normalizeUserMediaDocument } = require("./utils/userMedia");
+const {
+  startAppointmentNotificationScheduler,
+} = require("./services/tengaAgent/appointmentNotificationService");
 
 const app = express();
 const isProduction = config.isProduction;
@@ -261,6 +264,8 @@ app.use("/api/tengaharvest", require("./routes/tengaharvest"));
 app.use("/api/tengaagent/owner", require("./routes/tengaAgentOwner"));
 app.use("/api/tengaagent/public", require("./routes/tengaAgentPublic"));
 app.use("/api/tengaagent", require("./routes/tengaAgent"));
+
+startAppointmentNotificationScheduler({ logger: console });
 
 app.get(
   [

@@ -35,6 +35,24 @@ jest.mock(
     }
 );
 
+jest.mock(
+  "../services/tengaAgent/calendarConnectionService",
+  () => {
+    const actual = jest.requireActual(
+      "../services/tengaAgent/calendarConnectionService"
+    );
+
+    return {
+      ...actual,
+      getExternalCalendarBusyContext: jest.fn(async () => ({
+        busyIntervals: [],
+        connectedProviders: [],
+        unavailableProviders: [],
+      })),
+    };
+  }
+);
+
 require("../../apps/api/config/env");
 
 const ownerRoutes = require("../routes/tengaAgentOwner");
@@ -49,6 +67,14 @@ const Agent = require(
 );
 const Appointment = require(
   "../models/tengaAgent/Appointment"
+);
+const AvailabilitySchedule = require(
+  "../models/tengaAgent/AvailabilitySchedule"
+);
+const {
+  getExternalCalendarBusyContext,
+} = require(
+  "../services/tengaAgent/calendarConnectionService"
 );
 
 let mongod;
@@ -77,6 +103,12 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await mongoose.connection.db.dropDatabase();
+  getExternalCalendarBusyContext.mockReset();
+  getExternalCalendarBusyContext.mockResolvedValue({
+    busyIntervals: [],
+    connectedProviders: [],
+    unavailableProviders: [],
+  });
 });
 
 afterAll(async () => {
@@ -136,6 +168,28 @@ const createAppointment = async ({
           availabilityState: "confirmed_free",
         }
       : {}),
+  });
+
+const enableAvailabilityFor = async ({ owner, startAt }) =>
+  AvailabilitySchedule.create({
+    organizationId: owner.organization._id,
+    enabled: true,
+    timezone: "UTC",
+    source: "internal_schedule",
+    minimumNoticeMinutes: 0,
+    bookingHorizonDays: 365,
+    slotStepMinutes: 30,
+    defaultDurationMinutes: 30,
+    bufferBeforeMinutes: 0,
+    bufferAfterMinutes: 0,
+    weeklyHours: [
+      {
+        dayOfWeek: startAt.getUTCDay(),
+        startMinutes: 0,
+        endMinutes: 1440,
+      },
+    ],
+    blockedIntervals: [],
   });
 
 describe("TengaAgent owner appointment rescheduling", () => {
@@ -260,6 +314,154 @@ describe("TengaAgent owner appointment rescheduling", () => {
     ).lean();
     expect(unchanged.preferredStartAt.getTime()).toBe(
       futureAt(7, 10).getTime()
+    );
+    expect(unchanged.rescheduleCount).toBe(0);
+  });
+
+  it("serializes simultaneous confirmation and rescheduling into the same slot", async () => {
+    const owner = await createOwner("reschedule-confirm-race");
+    const sharedStart = futureAt(12, 10);
+    const requested = await createAppointment({
+      owner,
+      startAt: sharedStart,
+      status: "requested",
+    });
+    const confirmed = await createAppointment({
+      owner,
+      startAt: futureAt(13, 10),
+      status: "confirmed",
+    });
+
+    const [confirmation, reschedule] = await Promise.all([
+      request(app)
+        .patch(
+          `/api/tengaagent/owner/appointments/${requested._id}/status`
+        )
+        .set("x-test-user-id", String(owner.userId))
+        .send({ status: "confirmed" }),
+      request(app)
+        .patch(
+          `/api/tengaagent/owner/appointments/${confirmed._id}/reschedule`
+        )
+        .set("x-test-user-id", String(owner.userId))
+        .send({
+          preferredStartAt: sharedStart.toISOString(),
+          durationMinutes: 30,
+        }),
+    ]);
+
+    expect(
+      [confirmation.status, reschedule.status].sort()
+    ).toEqual([200, 400]);
+
+    const atSharedStart = await Appointment.find({
+      organizationId: owner.organization._id,
+      agentId: owner.agent._id,
+      status: "confirmed",
+      preferredStartAt: sharedStart,
+    }).lean();
+
+    expect(atSharedStart).toHaveLength(1);
+  });
+
+  it("allows only one of two competing confirmed reschedules to claim a shared slot", async () => {
+    const owner = await createOwner("reschedule-race");
+    const first = await createAppointment({
+      owner,
+      startAt: futureAt(14, 9),
+      status: "confirmed",
+    });
+    const second = await createAppointment({
+      owner,
+      startAt: futureAt(14, 12),
+      status: "confirmed",
+    });
+    const sharedStart = futureAt(15, 10);
+
+    const responses = await Promise.all([
+      request(app)
+        .patch(
+          `/api/tengaagent/owner/appointments/${first._id}/reschedule`
+        )
+        .set("x-test-user-id", String(owner.userId))
+        .send({
+          preferredStartAt: sharedStart.toISOString(),
+          durationMinutes: 30,
+        }),
+      request(app)
+        .patch(
+          `/api/tengaagent/owner/appointments/${second._id}/reschedule`
+        )
+        .set("x-test-user-id", String(owner.userId))
+        .send({
+          preferredStartAt: sharedStart.toISOString(),
+          durationMinutes: 30,
+        }),
+    ]);
+
+    expect(
+      responses.map((response) => response.status).sort()
+    ).toEqual([200, 400]);
+
+    const saved = await Appointment.find({
+      _id: { $in: [first._id, second._id] },
+    }).lean();
+    expect(
+      saved.filter(
+        (entry) =>
+          entry.preferredStartAt.getTime() ===
+          sharedStart.getTime()
+      )
+    ).toHaveLength(1);
+    expect(
+      saved.reduce(
+        (total, entry) =>
+          total + Number(entry.rescheduleCount || 0),
+        0
+      )
+    ).toBe(1);
+  });
+
+  it("fails closed when a connected calendar cannot be verified during a confirmed reschedule", async () => {
+    const owner = await createOwner("reschedule-calendar-fail");
+    const appointment = await createAppointment({
+      owner,
+      startAt: futureAt(16, 10),
+      status: "confirmed",
+    });
+    const nextStart = futureAt(17, 11);
+
+    await enableAvailabilityFor({
+      owner,
+      startAt: nextStart,
+    });
+
+    getExternalCalendarBusyContext.mockResolvedValue({
+      busyIntervals: [],
+      connectedProviders: ["google"],
+      unavailableProviders: ["google"],
+    });
+
+    const response = await request(app)
+      .patch(
+        `/api/tengaagent/owner/appointments/${appointment._id}/reschedule`
+      )
+      .set("x-test-user-id", String(owner.userId))
+      .send({
+        preferredStartAt: nextStart.toISOString(),
+        durationMinutes: 30,
+      })
+      .expect(400);
+
+    expect(response.body.message).toMatch(
+      /calendar availability could not be verified/i
+    );
+
+    const unchanged = await Appointment.findById(
+      appointment._id
+    ).lean();
+    expect(unchanged.preferredStartAt.getTime()).toBe(
+      futureAt(16, 10).getTime()
     );
     expect(unchanged.rescheduleCount).toBe(0);
   });

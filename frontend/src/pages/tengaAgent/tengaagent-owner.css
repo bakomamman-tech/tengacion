@@ -226,6 +226,46 @@
   line-height: 1.6;
 }
 
+.tengaagent-owner__workflow {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+}
+
+.tengaagent-owner__workflow label {
+  color: var(--muted, #a4b4c8);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.tengaagent-owner__workflow select {
+  min-width: 150px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  outline: none;
+  background: #0b1728;
+  color: #f6f9fc;
+  text-transform: capitalize;
+}
+
+.tengaagent-owner__workflow select:focus {
+  border-color: var(--accent, #62e6bd);
+}
+
+.tengaagent-owner__workflow select:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.tengaagent-owner__workflow-saving {
+  color: var(--accent, #62e6bd);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
 .tengaagent-owner__lead-meta {
   margin-top: 14px;
   display: flex;

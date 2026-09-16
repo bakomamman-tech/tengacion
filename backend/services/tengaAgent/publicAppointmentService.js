@@ -287,6 +287,8 @@ const cancelPublicSessionAppointment = async ({
       }
 
       appointment.status = "cancelled";
+      appointment.cancelledAt = new Date();
+      appointment.cancelledBy = "visitor";
       await appointment.save();
       return {
         appointment,

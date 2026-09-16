@@ -49,6 +49,23 @@ const TengaAgentConversationSchema = new mongoose.Schema(
       index: true,
     },
 
+    assignedToUser: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+
+    claimedAt: {
+      type: Date,
+      default: null,
+    },
+
+    closedAt: {
+      type: Date,
+      default: null,
+    },
+
     lastMessageAt: {
       type: Date,
       default: Date.now,
@@ -74,6 +91,12 @@ TengaAgentConversationSchema.index(
 TengaAgentConversationSchema.index({
   organizationId: 1,
   status: 1,
+  lastMessageAt: -1,
+});
+
+TengaAgentConversationSchema.index({
+  organizationId: 1,
+  assignedToUser: 1,
   lastMessageAt: -1,
 });
 

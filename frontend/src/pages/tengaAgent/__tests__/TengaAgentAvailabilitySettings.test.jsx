@@ -16,9 +16,17 @@ import {
 const {
   getAvailabilityMock,
   saveAvailabilityMock,
+  getCalendarConnectionsMock,
+  startCalendarConnectionMock,
+  completeCalendarConnectionMock,
+  disconnectCalendarConnectionMock,
 } = vi.hoisted(() => ({
   getAvailabilityMock: vi.fn(),
   saveAvailabilityMock: vi.fn(),
+  getCalendarConnectionsMock: vi.fn(),
+  startCalendarConnectionMock: vi.fn(),
+  completeCalendarConnectionMock: vi.fn(),
+  disconnectCalendarConnectionMock: vi.fn(),
 }));
 
 vi.mock(
@@ -28,6 +36,20 @@ vi.mock(
       getAvailabilityMock(...args),
     saveTengaAgentOwnerAvailability: (...args) =>
       saveAvailabilityMock(...args),
+  })
+);
+
+vi.mock(
+  "../../../services/tengaAgentCalendarApi",
+  () => ({
+    getTengaAgentCalendarConnections: (...args) =>
+      getCalendarConnectionsMock(...args),
+    startTengaAgentCalendarConnection: (...args) =>
+      startCalendarConnectionMock(...args),
+    completeTengaAgentCalendarConnection: (...args) =>
+      completeCalendarConnectionMock(...args),
+    disconnectTengaAgentCalendarConnection: (...args) =>
+      disconnectCalendarConnectionMock(...args),
   })
 );
 
@@ -53,12 +75,33 @@ const SCHEDULE = {
   blockedIntervals: [],
 };
 
+const PROVIDERS = [
+  {
+    provider: "google",
+    label: "Google Calendar",
+    configured: false,
+    connected: false,
+    connection: null,
+  },
+  {
+    provider: "microsoft",
+    label: "Microsoft Outlook",
+    configured: false,
+    connected: false,
+    connection: null,
+  },
+];
+
 describe("TengaAgentAvailabilitySettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getAvailabilityMock.mockResolvedValue({
       ok: true,
       schedule: SCHEDULE,
+    });
+    getCalendarConnectionsMock.mockResolvedValue({
+      ok: true,
+      providers: PROVIDERS,
     });
     saveAvailabilityMock.mockImplementation(
       async (payload) => ({
@@ -71,7 +114,7 @@ describe("TengaAgentAvailabilitySettings", () => {
     );
   });
 
-  it("loads internal scheduling scope and saves weekly availability", async () => {
+  it("loads calendar-aware scheduling scope and saves weekly availability", async () => {
     const user = userEvent.setup();
 
     render(<TengaAgentAvailabilitySettings />);
@@ -80,7 +123,13 @@ describe("TengaAgentAvailabilitySettings", () => {
       await screen.findByText(/real tengaagent meeting slots/i)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/google calendar and outlook are not connected yet/i)
+      screen.getByText(/internal weekly rules remain the base schedule/i)
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/google calendar/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/microsoft outlook/i)
     ).toBeInTheDocument();
 
     await user.click(

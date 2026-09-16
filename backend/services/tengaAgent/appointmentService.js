@@ -354,6 +354,22 @@ const confirmOwnerAppointment = async ({
             appointment._id,
         });
 
+      if (
+        availability.externalCalendarState ===
+        "unavailable"
+      ) {
+        appointment.availabilitySource =
+          "request_only";
+        appointment.availabilityState =
+          "not_checked";
+        appointment.availabilityCheckedAt = null;
+        await appointment.save();
+
+        throw new Error(
+          "External calendar availability could not be verified. Retry before confirming, or disconnect the unavailable calendar connection."
+        );
+      }
+
       appointment.availabilitySource =
         availability.source;
       appointment.availabilityCheckedAt =

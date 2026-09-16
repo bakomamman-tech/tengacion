@@ -14,6 +14,7 @@ const {
 
 const {
   listOwnerAppointments,
+  rescheduleOwnerAppointment,
   updateOwnerAppointmentStatus,
 } = require("../services/tengaAgent/appointmentService");
 
@@ -97,6 +98,10 @@ const serializeAppointment = (appointment) => ({
     appointment.availabilityCheckedAt || null,
   confirmedAt:
     appointment.confirmedAt || null,
+  rescheduledAt:
+    appointment.rescheduledAt || null,
+  rescheduleCount:
+    Number(appointment.rescheduleCount || 0),
   consentToContact: appointment.consentToContact,
   requestedAt: appointment.requestedAt,
   createdAt: appointment.createdAt,
@@ -361,6 +366,62 @@ router.get("/appointments", async (req, res, next) => {
     return next(error);
   }
 });
+
+router.patch(
+  "/appointments/:appointmentId/reschedule",
+  async (req, res, next) => {
+    try {
+      const result =
+        await rescheduleOwnerAppointment({
+          userId: req.user._id,
+          appointmentId:
+            req.params.appointmentId,
+          preferredStartAt:
+            req.body?.preferredStartAt,
+          timezone: req.body?.timezone,
+          durationMinutes:
+            req.body?.durationMinutes,
+        });
+
+      if (!result.workspaceFound) {
+        return res.status(404).json({
+          ok: false,
+          message: "TengaAgent workspace not found.",
+        });
+      }
+
+      if (!result.appointment) {
+        return res.status(404).json({
+          ok: false,
+          message: "TengaAgent appointment not found.",
+        });
+      }
+
+      res.set("Cache-Control", "no-store");
+
+      return res.json({
+        ok: true,
+        appointment:
+          serializeAppointment(
+            result.appointment
+          ),
+      });
+    } catch (error) {
+      if (
+        /appointment|reschedul|future|duration|timezone|available|availability|calendar|booking/i.test(
+          error?.message || ""
+        )
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: error.message,
+        });
+      }
+
+      return next(error);
+    }
+  }
+);
 
 router.patch(
   "/appointments/:appointmentId/status",

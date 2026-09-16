@@ -6,8 +6,10 @@ import {
 
 import {
   sendTengaAgentMessage,
+  submitTengaAgentLead,
 } from "../../services/tengaAgentApi";
 
+import TengaAgentLeadCaptureForm from "./TengaAgentLeadCaptureForm";
 import "./tengaagent.css";
 
 const AGENT_ID = "tengacion-demo";
@@ -176,10 +178,7 @@ const getSessionId = () => {
   }
 };
 
-function ChatMessage({
-  sender,
-  content,
-}) {
+function ChatMessage({ sender, content }) {
   return (
     <div
       className={`tengaagent-message tengaagent-message--${sender}`}
@@ -195,9 +194,7 @@ function ChatMessage({
   );
 }
 
-function PricingCard({
-  plan,
-}) {
+function PricingCard({ plan }) {
   return (
     <article
       className={`tengaagent-pricing-card ${
@@ -222,16 +219,12 @@ function PricingCard({
       <p>{plan.description}</p>
 
       <ul>
-        {plan.features.map(
-          (feature) => (
-            <li key={feature}>
-              <span aria-hidden="true">
-                ✓
-              </span>
-              {feature}
-            </li>
-          )
-        )}
+        {plan.features.map((feature) => (
+          <li key={feature}>
+            <span aria-hidden="true">✓</span>
+            {feature}
+          </li>
+        ))}
       </ul>
 
       <a
@@ -245,25 +238,23 @@ function PricingCard({
 }
 
 export default function TengaAgentLandingPage() {
-  const [draft, setDraft] =
-    useState("");
-
-  const [messages, setMessages] =
-    useState([
-      INITIAL_MESSAGE,
-    ]);
-
+  const [draft, setDraft] = useState("");
+  const [messages, setMessages] = useState([
+    INITIAL_MESSAGE,
+  ]);
   const [isSending, setIsSending] =
     useState(false);
-
   const [market, setMarket] =
     useState("nigeria");
+  const [sessionId] = useState(getSessionId);
+  const [leadAction, setLeadAction] =
+    useState(null);
+  const [isSubmittingLead, setIsSubmittingLead] =
+    useState(false);
+  const [leadError, setLeadError] =
+    useState("");
 
-  const [sessionId] =
-    useState(getSessionId);
-
-  const chatEndRef =
-    useRef(null);
+  const chatEndRef = useRef(null);
 
   useEffect(() => {
     const chatEnd = chatEndRef.current;
@@ -280,35 +271,43 @@ export default function TengaAgentLandingPage() {
   }, [
     messages,
     isSending,
+    leadAction,
   ]);
 
-  const sendMessage = async (
-    rawMessage
+  const appendAgentMessage = (
+    content,
+    prefix = "agent"
   ) => {
-    const message =
-      String(rawMessage || "")
-        .trim();
+    setMessages((current) => [
+      ...current,
+      {
+        id: `${prefix}-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 7)}`,
+        sender: "agent",
+        content,
+      },
+    ]);
+  };
 
-    if (
-      !message ||
-      isSending
-    ) {
+  const sendMessage = async (rawMessage) => {
+    const message = String(rawMessage || "").trim();
+
+    if (!message || isSending) {
       return;
     }
 
     setDraft("");
+    setLeadError("");
 
-    setMessages(
-      (current) => [
-        ...current,
-        {
-          id:
-            `customer-${Date.now()}`,
-          sender: "customer",
-          content: message,
-        },
-      ]
-    );
+    setMessages((current) => [
+      ...current,
+      {
+        id: `customer-${Date.now()}`,
+        sender: "customer",
+        content: message,
+      },
+    ]);
 
     setIsSending(true);
 
@@ -320,40 +319,63 @@ export default function TengaAgentLandingPage() {
           sessionId,
         });
 
-      setMessages(
-        (current) => [
-          ...current,
-          {
-            id:
-              `agent-${Date.now()}`,
-            sender: "agent",
-            content:
-              response.reply,
-          },
-        ]
-      );
+      appendAgentMessage(response.reply);
+
+      const captureAction =
+        Array.isArray(response.actions)
+          ? response.actions.find(
+              (action) =>
+                action?.type ===
+                "capture_lead"
+            )
+          : null;
+
+      setLeadAction(captureAction || null);
     } catch (error) {
-      setMessages(
-        (current) => [
-          ...current,
-          {
-            id:
-              `error-${Date.now()}`,
-            sender: "agent",
-            content:
-              error?.message ||
-              "I couldn't complete that request. Please try again.",
-          },
-        ]
+      appendAgentMessage(
+        error?.message ||
+          "I couldn't complete that request. Please try again.",
+        "error"
       );
     } finally {
       setIsSending(false);
     }
   };
 
-  const handleSubmit = (
-    event
-  ) => {
+  const handleLeadSubmit = async (lead) => {
+    if (isSubmittingLead) {
+      return;
+    }
+
+    setIsSubmittingLead(true);
+    setLeadError("");
+
+    try {
+      const response =
+        await submitTengaAgentLead({
+          agentId: AGENT_ID,
+          sessionId,
+          ...lead,
+        });
+
+      setLeadAction(null);
+
+      appendAgentMessage(
+        response?.message ||
+          "Thanks. Your details have been saved for Tengacion follow-up.",
+        "lead-saved"
+      );
+    } catch (error) {
+      setLeadError(
+        error?.message ||
+          "I couldn't save your details. Please check them and try again."
+      );
+    } finally {
+      setIsSubmittingLead(false);
+    }
+  };
+
+  const handleSubmit = (event) => {
     event.preventDefault();
     sendMessage(draft);
   };
@@ -370,17 +392,10 @@ export default function TengaAgentLandingPage() {
           className="tengaagent-brand"
           href="/tengaagent"
         >
-          <span className="tengaagent-brand-mark">
-            T
-          </span>
-
+          <span className="tengaagent-brand-mark">T</span>
           <span>
-            <strong>
-              TengaAgent
-            </strong>
-            <small>
-              by Tengacion
-            </small>
+            <strong>TengaAgent</strong>
+            <small>by Tengacion</small>
           </span>
         </a>
 
@@ -388,14 +403,8 @@ export default function TengaAgentLandingPage() {
           className="tengaagent-nav-links"
           aria-label="TengaAgent navigation"
         >
-          <a href="#how-it-works">
-            How it works
-          </a>
-
-          <a href="#pricing">
-            Pricing
-          </a>
-
+          <a href="#how-it-works">How it works</a>
+          <a href="#pricing">Pricing</a>
           <a
             href="#live-demo"
             className="tengaagent-nav-cta"
@@ -413,17 +422,13 @@ export default function TengaAgentLandingPage() {
 
           <h1>
             Never miss another
-            <span>
-              {" "}customer.
-            </span>
+            <span>{" "}customer.</span>
           </h1>
 
           <p className="tengaagent-hero-lead">
-            TengaAgent answers
-            enquiries, qualifies
-            leads and helps businesses
-            turn conversations into
-            bookings — 24/7.
+            TengaAgent answers enquiries, qualifies
+            leads and helps businesses turn conversations
+            into bookings — 24/7.
           </p>
 
           <div className="tengaagent-hero-actions">
@@ -443,18 +448,10 @@ export default function TengaAgentLandingPage() {
           </div>
 
           <div className="tengaagent-proof-row">
-            <span>
-              ✓ Web chat
-            </span>
-            <span>
-              ✓ WhatsApp roadmap
-            </span>
-            <span>
-              ✓ Multilingual
-            </span>
-            <span>
-              ✓ Human handoff
-            </span>
+            <span>✓ Web chat</span>
+            <span>✓ Lead capture</span>
+            <span>✓ Multilingual</span>
+            <span>✓ Human handoff</span>
           </div>
         </div>
 
@@ -469,12 +466,8 @@ export default function TengaAgentLandingPage() {
               </div>
 
               <div>
-                <strong>
-                  TengaAgent
-                </strong>
-                <span>
-                  AI Receptionist
-                </span>
+                <strong>TengaAgent</strong>
+                <span>AI Receptionist</span>
               </div>
             </div>
 
@@ -488,21 +481,13 @@ export default function TengaAgentLandingPage() {
             className="tengaagent-chat"
             aria-live="polite"
           >
-            {messages.map(
-              (message) => (
-                <ChatMessage
-                  key={
-                    message.id
-                  }
-                  sender={
-                    message.sender
-                  }
-                  content={
-                    message.content
-                  }
-                />
-              )
-            )}
+            {messages.map((message) => (
+              <ChatMessage
+                key={message.id}
+                sender={message.sender}
+                content={message.content}
+              />
+            ))}
 
             {isSending ? (
               <div className="tengaagent-typing">
@@ -512,37 +497,39 @@ export default function TengaAgentLandingPage() {
               </div>
             ) : null}
 
-            <div
-              ref={chatEndRef}
-            />
+            <div ref={chatEndRef} />
           </div>
 
+          {leadAction ? (
+            <TengaAgentLeadCaptureForm
+              isSubmitting={isSubmittingLead}
+              error={leadError}
+              onSubmit={handleLeadSubmit}
+              onDismiss={() => {
+                if (!isSubmittingLead) {
+                  setLeadAction(null);
+                  setLeadError("");
+                }
+              }}
+            />
+          ) : null}
+
           <div className="tengaagent-suggestions">
-            {SUGGESTIONS.map(
-              (suggestion) => (
-                <button
-                  type="button"
-                  key={suggestion}
-                  disabled={
-                    isSending
-                  }
-                  onClick={() =>
-                    sendMessage(
-                      suggestion
-                    )
-                  }
-                >
-                  {suggestion}
-                </button>
-              )
-            )}
+            {SUGGESTIONS.map((suggestion) => (
+              <button
+                type="button"
+                key={suggestion}
+                disabled={isSending}
+                onClick={() => sendMessage(suggestion)}
+              >
+                {suggestion}
+              </button>
+            ))}
           </div>
 
           <form
             className="tengaagent-composer"
-            onSubmit={
-              handleSubmit
-            }
+            onSubmit={handleSubmit}
           >
             <label
               htmlFor="tengaagent-message"
@@ -558,17 +545,14 @@ export default function TengaAgentLandingPage() {
               disabled={isSending}
               placeholder="Ask TengaAgent anything..."
               onChange={(event) =>
-                setDraft(
-                  event.target.value
-                )
+                setDraft(event.target.value)
               }
             />
 
             <button
               type="submit"
               disabled={
-                isSending ||
-                !draft.trim()
+                isSending || !draft.trim()
               }
               aria-label="Send message"
             >
@@ -577,9 +561,8 @@ export default function TengaAgentLandingPage() {
           </form>
 
           <div className="tengaagent-demo-note">
-            Live MVP · conversations are
-            handled by the TengaAgent
-            backend
+            Live MVP · conversations and lead capture
+            are handled by the TengaAgent backend
           </div>
         </div>
       </section>
@@ -589,39 +572,20 @@ export default function TengaAgentLandingPage() {
         aria-label="TengaAgent capabilities"
       >
         <article>
-          <strong>
-            24/7
-          </strong>
-          <span>
-            Customer response
-          </span>
+          <strong>24/7</strong>
+          <span>Customer response</span>
         </article>
-
         <article>
-          <strong>
-            Leads
-          </strong>
-          <span>
-            Captured automatically
-          </span>
+          <strong>Leads</strong>
+          <span>Captured automatically</span>
         </article>
-
         <article>
-          <strong>
-            Bookings
-          </strong>
-          <span>
-            Coming in MVP
-          </span>
+          <strong>Bookings</strong>
+          <span>Coming in MVP</span>
         </article>
-
         <article>
-          <strong>
-            Voice
-          </strong>
-          <span>
-            Built for multilingual growth
-          </span>
+          <strong>Voice</strong>
+          <span>Built for multilingual growth</span>
         </article>
       </section>
 
@@ -630,62 +594,44 @@ export default function TengaAgentLandingPage() {
         id="how-it-works"
       >
         <div className="tengaagent-section-heading">
-          <span>
-            HOW IT WORKS
-          </span>
-
+          <span>HOW IT WORKS</span>
           <h2>
-            An AI front desk that
-            moves the conversation
-            forward.
+            An AI front desk that moves the
+            conversation forward.
           </h2>
-
           <p>
-            TengaAgent is being built
-            to do more than answer
-            FAQs. It understands the
-            customer, retrieves the
-            right business information,
-            and safely performs
-            approved actions.
+            TengaAgent is being built to do more than
+            answer FAQs. It understands the customer,
+            retrieves the right business information,
+            and safely performs approved actions.
           </p>
         </div>
 
         <div className="tengaagent-steps">
           <article>
             <span>01</span>
-            <h3>
-              Learn your business
-            </h3>
+            <h3>Learn your business</h3>
             <p>
-              Add your website,
-              services, FAQs and
+              Add your website, services, FAQs and
               documents.
             </p>
           </article>
 
           <article>
             <span>02</span>
-            <h3>
-              Talk to every customer
-            </h3>
+            <h3>Talk to every customer</h3>
             <p>
-              Start with web chat,
-              then WhatsApp, voice
-              notes and telephone.
+              Start with web chat, then WhatsApp,
+              voice notes and telephone.
             </p>
           </article>
 
           <article>
             <span>03</span>
-            <h3>
-              Turn intent into action
-            </h3>
+            <h3>Turn intent into action</h3>
             <p>
-              Capture leads, book
-              meetings and hand off
-              sensitive conversations
-              to humans.
+              Capture leads, book meetings and hand
+              off sensitive conversations to humans.
             </p>
           </article>
         </div>
@@ -696,19 +642,14 @@ export default function TengaAgentLandingPage() {
         id="pricing"
       >
         <div className="tengaagent-section-heading">
-          <span>
-            REGIONAL PRICING
-          </span>
-
+          <span>REGIONAL PRICING</span>
           <h2>
-            Built for businesses
-            where they actually operate.
+            Built for businesses where they actually
+            operate.
           </h2>
-
           <p>
-            Nigeria receives localized
-            NGN pricing. International
-            customers use global SaaS
+            Nigeria receives localized NGN pricing.
+            International customers use global SaaS
             pricing.
           </p>
         </div>
@@ -721,16 +662,9 @@ export default function TengaAgentLandingPage() {
           <button
             type="button"
             className={
-              market ===
-              "nigeria"
-                ? "active"
-                : ""
+              market === "nigeria" ? "active" : ""
             }
-            onClick={() =>
-              setMarket(
-                "nigeria"
-              )
-            }
+            onClick={() => setMarket("nigeria")}
           >
             🇳🇬 Nigeria
           </button>
@@ -738,16 +672,11 @@ export default function TengaAgentLandingPage() {
           <button
             type="button"
             className={
-              market ===
-              "international"
+              market === "international"
                 ? "active"
                 : ""
             }
-            onClick={() =>
-              setMarket(
-                "international"
-              )
-            }
+            onClick={() => setMarket("international")}
           >
             🌍 International
           </button>
@@ -756,43 +685,32 @@ export default function TengaAgentLandingPage() {
         <div
           className={`tengaagent-pricing-grid tengaagent-pricing-grid--${market}`}
         >
-          {pricing.map(
-            (plan) => (
-              <PricingCard
-                key={plan.name}
-                plan={plan}
-              />
-            )
-          )}
+          {pricing.map((plan) => (
+            <PricingCard
+              key={plan.name}
+              plan={plan}
+            />
+          ))}
         </div>
 
         <p className="tengaagent-pricing-footnote">
-          Usage limits protect service
-          quality and infrastructure
-          costs. Enterprise pricing and
-          additional usage will be
-          quoted separately.
+          Usage limits protect service quality and
+          infrastructure costs. Enterprise pricing and
+          additional usage will be quoted separately.
         </p>
       </section>
 
       <section className="tengaagent-final-cta">
-        <span>
-          TENGAAGENT
-        </span>
-
+        <span>TENGAAGENT</span>
         <h2>
-          Your next customer
-          should always get an answer.
+          Your next customer should always get an answer.
         </h2>
-
         <p>
-          Start with the live Tengacion
-          demo today. Business onboarding,
-          knowledge ingestion and lead
-          qualification are next in the
-          MVP.
+          Business onboarding, knowledge ingestion and
+          consent-based lead capture are now part of the
+          MVP. Lead qualification and appointment booking
+          are next.
         </p>
-
         <a
           href="#live-demo"
           className="tengaagent-primary-button"
@@ -802,13 +720,9 @@ export default function TengaAgentLandingPage() {
       </section>
 
       <footer className="tengaagent-footer">
-        <strong>
-          TengaAgent
-        </strong>
-
+        <strong>TengaAgent</strong>
         <span>
-          A product of Tengacion
-          Technologies Limited.
+          A product of Tengacion Technologies Limited.
         </span>
       </footer>
     </main>

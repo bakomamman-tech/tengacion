@@ -16,6 +16,84 @@ const {
 const MAX_WEBSITE_BYTES = 1500000;
 const DEFAULT_TIMEOUT_MS = 12000;
 
+const normalizeHost = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "");
+
+const isPrivateOrLocalHost = (value) => {
+  const host = normalizeHost(value);
+
+  if (
+    !host ||
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local")
+  ) {
+    return true;
+  }
+
+  if (host.includes(":")) {
+    if (
+      host === "::" ||
+      host === "::1" ||
+      host.startsWith("fc") ||
+      host.startsWith("fd") ||
+      /^fe[89ab]/.test(host)
+    ) {
+      return true;
+    }
+
+    if (host.startsWith("::ffff:")) {
+      return isPrivateOrLocalHost(
+        host.slice("::ffff:".length)
+      );
+    }
+
+    return false;
+  }
+
+  if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) {
+    return false;
+  }
+
+  const octets = host.split(".").map(Number);
+
+  if (
+    octets.some(
+      (valuePart) =>
+        !Number.isInteger(valuePart) ||
+        valuePart < 0 ||
+        valuePart > 255
+    )
+  ) {
+    return true;
+  }
+
+  const [a, b] = octets;
+
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    a >= 224
+  );
+};
+
+const assertPublicWebsiteHost = (hostname) => {
+  if (isPrivateOrLocalHost(hostname)) {
+    throw new Error(
+      "Website knowledge cannot target local or private network addresses."
+    );
+  }
+};
+
 const allowedOwnerHosts = (website) => {
   let parsed;
 
@@ -33,7 +111,9 @@ const allowedOwnerHosts = (website) => {
     );
   }
 
-  const host = parsed.hostname.toLowerCase();
+  const host = normalizeHost(parsed.hostname);
+  assertPublicWebsiteHost(host);
+
   const hosts = new Set([host]);
 
   if (host.startsWith("www.")) {
@@ -67,11 +147,10 @@ const validateOwnerWebsiteUrl = ({
     );
   }
 
-  if (
-    !allowedOwnerHosts(website).has(
-      parsed.hostname.toLowerCase()
-    )
-  ) {
+  const targetHost = normalizeHost(parsed.hostname);
+  assertPublicWebsiteHost(targetHost);
+
+  if (!allowedOwnerHosts(website).has(targetHost)) {
     throw new Error(
       "Website knowledge URL must match the business website hostname."
     );
@@ -263,6 +342,7 @@ const syncOwnerWebsiteKnowledge = async ({
 module.exports = {
   allowedOwnerHosts,
   fetchOwnerWebsiteText,
+  isPrivateOrLocalHost,
   syncOwnerWebsiteKnowledge,
   validateOwnerWebsiteUrl,
 };

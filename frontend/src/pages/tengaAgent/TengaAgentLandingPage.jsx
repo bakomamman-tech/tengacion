@@ -457,7 +457,10 @@ export default function TengaAgentLandingPage() {
           <a href="#how-it-works">How it works</a>
           <a href="#pricing">Pricing</a>
           {user ? (
-            <a href="#owner-dashboard">Owner inbox</a>
+            <>
+              <a href="#owner-dashboard">Owner inbox</a>
+              <a href="#owner-appointments">Appointments</a>
+            </>
           ) : null}
           <a
             href="#live-demo"

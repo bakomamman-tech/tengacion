@@ -96,6 +96,42 @@
   line-height: 1.65;
 }
 
+.tengaagent-public__handoff-status {
+  display: grid;
+  gap: 4px;
+  padding: 12px 24px;
+  border-bottom: 1px solid rgba(98, 230, 189, 0.22);
+  background: rgba(98, 230, 189, 0.09);
+}
+
+.tengaagent-public__handoff-status strong {
+  color: #9ff5d9;
+}
+
+.tengaagent-public__handoff-status span {
+  color: #c8d7e5;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.tengaagent-public__handoff-status--pending {
+  border-bottom-color: rgba(255, 211, 105, 0.22);
+  background: rgba(255, 211, 105, 0.07);
+}
+
+.tengaagent-public__handoff-status--pending strong {
+  color: #ffe19a;
+}
+
+.tengaagent-public__handoff-status--closed {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.tengaagent-public__handoff-status--closed strong {
+  color: #d9e2ec;
+}
+
 .tengaagent-public__chat {
   min-height: 330px;
   max-height: 56vh;
@@ -131,6 +167,21 @@
 .tengaagent-public__message--customer > div {
   background: #62e6bd;
   color: #061019;
+}
+
+.tengaagent-public__message--human > div {
+  border: 1px solid rgba(98, 230, 189, 0.28);
+  background: rgba(98, 230, 189, 0.1);
+}
+
+.tengaagent-public__message--human strong {
+  color: #9ff5d9;
+}
+
+.tengaagent-public__message--system > div {
+  background: rgba(255, 255, 255, 0.04);
+  color: #c3d0de;
+  font-size: 0.88rem;
 }
 
 .tengaagent-public__typing {
@@ -236,7 +287,8 @@
 
   .tengaagent-public__intro,
   .tengaagent-public__chat,
-  .tengaagent-public__composer {
+  .tengaagent-public__composer,
+  .tengaagent-public__handoff-status {
     padding-left: 16px;
     padding-right: 16px;
   }

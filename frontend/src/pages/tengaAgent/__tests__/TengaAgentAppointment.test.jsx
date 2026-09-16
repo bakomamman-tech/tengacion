@@ -27,6 +27,7 @@ vi.mock("../../../services/tengaAgentApi", () => ({
   getTengaAgentOwnerLeads: vi.fn(),
   getTengaAgentOwnerAppointments: vi.fn(),
   saveTengaAgentOwnerWorkspace: vi.fn(),
+  setTengaAgentOwnerPublication: vi.fn(),
   updateTengaAgentOwnerLeadStatus: vi.fn(),
   updateTengaAgentOwnerAppointmentStatus: vi.fn(),
 }));

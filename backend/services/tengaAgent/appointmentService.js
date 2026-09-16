@@ -11,6 +11,11 @@ const {
 } = require(
   "./availabilityService"
 );
+const {
+  withBookingConfirmationLock,
+} = require(
+  "./bookingConfirmationLockService"
+);
 
 const APPOINTMENT_STATUSES = [
   "requested",
@@ -305,6 +310,75 @@ const listOwnerAppointments = async ({
   };
 };
 
+const confirmOwnerAppointment = async ({
+  organization,
+  appointmentId,
+  agentId,
+}) =>
+  withBookingConfirmationLock({
+    organizationId: organization._id,
+    agentId,
+    task: async () => {
+      const appointment =
+        await Appointment.findOne({
+          _id: appointmentId,
+          organizationId:
+            organization._id,
+        });
+
+      if (!appointment) {
+        return null;
+      }
+
+      if (appointment.status === "confirmed") {
+        return appointment;
+      }
+
+      if (appointment.status !== "requested") {
+        throw new Error(
+          `Appointment cannot move from ${appointment.status} to confirmed.`
+        );
+      }
+
+      const availability =
+        await checkAppointmentAvailability({
+          organizationId:
+            organization._id,
+          agentId:
+            appointment.agentId,
+          startAt:
+            appointment.preferredStartAt,
+          durationMinutes:
+            appointment.durationMinutes,
+          excludeAppointmentId:
+            appointment._id,
+        });
+
+      appointment.availabilitySource =
+        availability.source;
+      appointment.availabilityCheckedAt =
+        new Date();
+
+      if (!availability.available) {
+        appointment.availabilityState =
+          "conflict_at_confirmation";
+        await appointment.save();
+
+        throw new Error(
+          "That appointment time is no longer available. Choose another slot before confirming."
+        );
+      }
+
+      appointment.status = "confirmed";
+      appointment.availabilityState =
+        "confirmed_free";
+      appointment.confirmedAt = new Date();
+      await appointment.save();
+
+      return appointment;
+    },
+  });
+
 const updateOwnerAppointmentStatus = async ({
   userId,
   appointmentId,
@@ -379,41 +453,22 @@ const updateOwnerAppointmentStatus = async ({
     appointment.status === "requested" &&
     normalizedStatus === "confirmed"
   ) {
-    const availability =
-      await checkAppointmentAvailability({
-        organizationId:
-          organization._id,
+    const confirmed =
+      await confirmOwnerAppointment({
+        organization,
+        appointmentId:
+          appointment._id,
         agentId:
           appointment.agentId,
-        startAt:
-          appointment.preferredStartAt,
-        durationMinutes:
-          appointment.durationMinutes,
-        excludeAppointmentId:
-          appointment._id,
       });
 
-    appointment.availabilitySource =
-      availability.source;
-    appointment.availabilityCheckedAt =
-      new Date();
+    return {
+      workspaceFound: true,
+      appointment: confirmed,
+    };
+  }
 
-    if (!availability.available) {
-      appointment.availabilityState =
-        "conflict_at_confirmation";
-      await appointment.save();
-
-      throw new Error(
-        "That appointment time is no longer available. Choose another slot before confirming."
-      );
-    }
-
-    appointment.status = "confirmed";
-    appointment.availabilityState =
-      "confirmed_free";
-    appointment.confirmedAt = new Date();
-    await appointment.save();
-  } else if (
+  if (
     appointment.status !==
     normalizedStatus
   ) {

@@ -31,6 +31,28 @@ const cleanText = (value, max) =>
     .trim()
     .slice(0, max);
 
+const wantsAppointmentRequest = (value) => {
+  const input = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  return [
+    "appointment",
+    "book a meeting",
+    "book meeting",
+    "book a call",
+    "schedule a call",
+    "schedule call",
+    "schedule a meeting",
+    "schedule meeting",
+    "set up a meeting",
+    "arrange a meeting",
+    "meeting time",
+  ].some((phrase) =>
+    input.includes(phrase)
+  );
+};
+
 const resolveCustomerZeroAgent = async (
   agentId
 ) => {
@@ -174,6 +196,21 @@ router.post(
             agent._id,
           conversationHistory,
         });
+
+      if (
+        wantsAppointmentRequest(
+          message
+        )
+      ) {
+        result.reply =
+          "I can help you request a meeting time with the Tengacion team. Choose a preferred date and time below; the appointment is not confirmed until the team approves it.";
+        result.actions = [
+          {
+            type: "book_appointment",
+            label: "Request a meeting time",
+          },
+        ];
+      }
 
       const agentMessage =
         await Message.create({

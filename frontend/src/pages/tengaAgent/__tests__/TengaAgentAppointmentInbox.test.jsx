@@ -60,6 +60,8 @@ const APPOINTMENT = {
   availabilitySource: "internal_schedule",
   rescheduleCount: 0,
   rescheduledAt: null,
+  completedAt: null,
+  completedBy: null,
 };
 
 const SECOND_APPOINTMENT = {
@@ -76,6 +78,8 @@ const SECOND_APPOINTMENT = {
   availabilitySource: "internal_schedule",
   rescheduleCount: 0,
   rescheduledAt: null,
+  completedAt: "2020-01-10T11:00:00.000Z",
+  completedBy: "owner",
 };
 
 describe("TengaAgentAppointmentInbox", () => {
@@ -170,6 +174,56 @@ describe("TengaAgentAppointmentInbox", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("lets the owner visibly close a confirmed meeting as completed", async () => {
+    const user = userEvent.setup();
+    updateStatusMock.mockResolvedValueOnce({
+      ok: true,
+      appointment: {
+        ...APPOINTMENT,
+        status: "completed",
+        completedAt: "2026-09-16T22:30:00.000Z",
+        completedBy: "owner",
+      },
+    });
+
+    render(
+      <TengaAgentAppointmentInbox
+        user={{ id: "owner-1" }}
+      />
+    );
+
+    expect(
+      await screen.findByRole("button", {
+        name: /mark completed/i,
+      })
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /mark completed/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(updateStatusMock).toHaveBeenCalledWith({
+        appointmentId: "appointment-1",
+        status: "completed",
+      });
+    });
+
+    expect(
+      await screen.findByText(/completed .* by owner/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: /mark completed/i,
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/appointment status/i)
+    ).toHaveValue("completed");
+  });
+
   it("filters appointments by search text, status and upcoming/past scope", async () => {
     const user = userEvent.setup();
     getAppointmentsMock.mockResolvedValue({
@@ -255,5 +309,8 @@ describe("TengaAgentAppointmentInbox", () => {
     expect(
       screen.queryByText("Reschedule Visitor")
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/completed .* by owner/i)
+    ).toBeInTheDocument();
   });
 });

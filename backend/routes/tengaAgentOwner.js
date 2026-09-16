@@ -7,6 +7,7 @@ const {
   findOwnerWorkspace,
   listOwnerKnowledge,
   listOwnerLeads,
+  setOwnerAgentPublication,
   syncOwnerKnowledge,
   updateOwnerLeadStatus,
 } = require("../services/tengaAgent/ownerWorkspaceService");
@@ -39,6 +40,10 @@ const serializeWorkspace = (workspace) => ({
         name: workspace.agent.name,
         role: workspace.agent.role,
         status: workspace.agent.status,
+        published:
+          workspace.agent.status === "active",
+        publicPath:
+          `/tengaagent/${workspace.organization.slug}/${workspace.agent.key}`,
       }
     : null,
 });
@@ -138,6 +143,42 @@ router.post("/workspace", async (req, res, next) => {
     return next(error);
   }
 });
+
+router.patch(
+  "/agent/publication",
+  async (req, res, next) => {
+    try {
+      if (typeof req.body?.published !== "boolean") {
+        return res.status(400).json({
+          ok: false,
+          message: "published must be true or false.",
+        });
+      }
+
+      const workspace =
+        await setOwnerAgentPublication({
+          userId: req.user._id,
+          published: req.body.published,
+        });
+
+      if (!workspace) {
+        return res.status(404).json({
+          ok: false,
+          message: "TengaAgent workspace not found.",
+        });
+      }
+
+      res.set("Cache-Control", "no-store");
+
+      return res.json({
+        ok: true,
+        ...serializeWorkspace(workspace),
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
 
 router.get("/knowledge", async (req, res, next) => {
   try {

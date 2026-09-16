@@ -98,8 +98,16 @@ const eventVersion = ({ appointment, eventType }) => {
     ).getTime();
   }
 
+  if (eventType === "completed") {
+    return new Date(
+      appointment.completedAt || appointment.updatedAt || Date.now()
+    ).getTime();
+  }
+
   if (eventType === "cancelled") {
-    return new Date(appointment.updatedAt || Date.now()).getTime();
+    return new Date(
+      appointment.cancelledAt || appointment.updatedAt || Date.now()
+    ).getTime();
   }
 
   return new Date(
@@ -192,6 +200,12 @@ const recipientsForEvent = ({
     return recipients;
   }
 
+  if (eventType === "completed") {
+    add("visitor", visitorEmail);
+    add("owner", ownerEmail);
+    return recipients;
+  }
+
   if (eventType === "cancelled") {
     if (actor === "visitor") {
       add("owner", ownerEmail);
@@ -278,6 +292,26 @@ const buildNotificationCopy = (notification) => {
       )} with ${escapeHtml(
         businessName
       )} has been moved.</p>${details}`,
+    };
+  }
+
+  if (notification.eventType === "completed") {
+    const subject = `Appointment completed — ${businessName}`;
+    const text =
+      notification.recipientKind === "owner"
+        ? `${visitorName}'s appointment for ${time} was marked completed.`
+        : `Your appointment with ${businessName} for ${time} was marked completed.`;
+    const message =
+      notification.recipientKind === "owner"
+        ? `${escapeHtml(visitorName)}'s appointment has been closed as completed.`
+        : `Your appointment with ${escapeHtml(
+            businessName
+          )} has been closed as completed.`;
+
+    return {
+      subject,
+      text,
+      html: `<h2>Appointment completed</h2><p>${message}</p>${details}`,
     };
   }
 
@@ -440,7 +474,9 @@ const queueAppointmentEventNotifications = async ({
 
   const { appointment, organization, owner } = context;
 
-  if (["rescheduled", "cancelled"].includes(eventType)) {
+  if (
+    ["rescheduled", "completed", "cancelled"].includes(eventType)
+  ) {
     await supersedeOldReminders(appointment._id);
   }
 

@@ -20,6 +20,7 @@ const {
 const router = express.Router();
 
 router.use(auth);
+router.use("/", require("./tengaAgentOwnerConfiguration"));
 
 const serializeWorkspace = (workspace) => ({
   organization: {
@@ -39,6 +40,12 @@ const serializeWorkspace = (workspace) => ({
         key: workspace.agent.key,
         name: workspace.agent.name,
         role: workspace.agent.role,
+        greeting: workspace.agent.greeting,
+        tone: workspace.agent.tone,
+        languages: workspace.agent.languages,
+        systemInstructions:
+          workspace.agent.systemInstructions,
+        enabledTools: workspace.agent.enabledTools,
         status: workspace.agent.status,
         published:
           workspace.agent.status === "active",
@@ -201,6 +208,7 @@ router.get("/knowledge", async (req, res, next) => {
         id: source._id,
         type: source.type,
         title: source.title,
+        sourceUrl: source.sourceUrl,
         status: source.status,
         chunkCount: source.chunkCount,
         updatedAt: source.updatedAt,
@@ -228,8 +236,10 @@ router.post("/knowledge", async (req, res, next) => {
         id: result.source._id,
         type: result.source.type,
         title: result.source.title,
+        sourceUrl: result.source.sourceUrl,
         status: result.source.status,
         chunkCount: result.source.chunkCount,
+        updatedAt: result.source.updatedAt,
       },
       chunksCreated: result.chunksCreated,
       unchanged: result.unchanged,

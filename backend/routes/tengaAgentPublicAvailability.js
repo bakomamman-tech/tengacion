@@ -12,6 +12,10 @@ const {
 );
 
 const router = express.Router();
+router.use(
+  "/",
+  require("./tengaAgentPublicAppointments")
+);
 
 router.get(
   "/:organizationSlug/:agentKey/availability",

@@ -1,10 +1,6 @@
-const express =
-  require("express");
+const express = require("express");
 
-const auth =
-  require(
-    "../middleware/auth"
-  );
+const auth = require("../middleware/auth");
 
 const {
   createOrUpdateOwnerWorkspace,
@@ -12,318 +8,238 @@ const {
   listOwnerKnowledge,
   listOwnerLeads,
   syncOwnerKnowledge,
-} = require(
-  "../services/tengaAgent/ownerWorkspaceService"
-);
+  updateOwnerLeadStatus,
+} = require("../services/tengaAgent/ownerWorkspaceService");
 
-const router =
-  express.Router();
+const router = express.Router();
 
 router.use(auth);
 
-const serializeWorkspace = (
-  workspace
-) => ({
+const serializeWorkspace = (workspace) => ({
   organization: {
-    id:
-      workspace.organization._id,
-
-    name:
-      workspace.organization.name,
-
-    slug:
-      workspace.organization.slug,
-
-    website:
-      workspace.organization.website,
-
-    industry:
-      workspace.organization.industry,
-
-    countryCode:
-      workspace.organization.countryCode,
-
-    timezone:
-      workspace.organization.timezone,
-
-    plan:
-      workspace.organization.plan,
-
-    status:
-      workspace.organization.status,
+    id: workspace.organization._id,
+    name: workspace.organization.name,
+    slug: workspace.organization.slug,
+    website: workspace.organization.website,
+    industry: workspace.organization.industry,
+    countryCode: workspace.organization.countryCode,
+    timezone: workspace.organization.timezone,
+    plan: workspace.organization.plan,
+    status: workspace.organization.status,
   },
-
-  agent:
-    workspace.agent
-      ? {
-          id:
-            workspace.agent._id,
-
-          key:
-            workspace.agent.key,
-
-          name:
-            workspace.agent.name,
-
-          role:
-            workspace.agent.role,
-
-          status:
-            workspace.agent.status,
-        }
-      : null,
+  agent: workspace.agent
+    ? {
+        id: workspace.agent._id,
+        key: workspace.agent.key,
+        name: workspace.agent.name,
+        role: workspace.agent.role,
+        status: workspace.agent.status,
+      }
+    : null,
 });
 
-router.get(
-  "/workspace",
-  async (
-    req,
-    res,
-    next
-  ) => {
-    try {
-      const workspace =
-        await findOwnerWorkspace(
-          req.user._id
-        );
+const serializeLead = (lead) => ({
+  id: lead._id,
+  agentId: lead.agentId,
+  conversationId: lead.conversationId,
+  name: lead.name,
+  email: lead.email,
+  phone: lead.phone,
+  company: lead.company,
+  projectSummary: lead.projectSummary,
+  source: lead.source,
+  status: lead.status,
+  consentToContact: lead.consentToContact,
+  createdAt: lead.createdAt,
+  lastCapturedAt: lead.lastCapturedAt,
+  updatedAt: lead.updatedAt,
+});
 
-      if (!workspace) {
-        return res
-          .status(404)
-          .json({
-            ok: false,
+router.get("/workspace", async (req, res, next) => {
+  try {
+    const workspace = await findOwnerWorkspace(
+      req.user._id
+    );
 
-            message:
-              "TengaAgent workspace not found.",
-          });
-      }
-
-      res.set(
-        "Cache-Control",
-        "no-store"
-      );
-
-      return res.json({
-        ok: true,
-
-        ...serializeWorkspace(
-          workspace
-        ),
+    if (!workspace) {
+      return res.status(404).json({
+        ok: false,
+        message: "TengaAgent workspace not found.",
       });
-    } catch (error) {
-      return next(error);
     }
+
+    res.set("Cache-Control", "no-store");
+
+    return res.json({
+      ok: true,
+      ...serializeWorkspace(workspace),
+    });
+  } catch (error) {
+    return next(error);
   }
-);
+});
 
-router.post(
-  "/workspace",
-  async (
-    req,
-    res,
-    next
-  ) => {
-    try {
-      const existing =
-        await findOwnerWorkspace(
-          req.user._id
-        );
+router.post("/workspace", async (req, res, next) => {
+  try {
+    const existing = await findOwnerWorkspace(
+      req.user._id
+    );
 
-      const workspace =
-        await createOrUpdateOwnerWorkspace({
-          userId:
-            req.user._id,
+    const workspace = await createOrUpdateOwnerWorkspace({
+      userId: req.user._id,
+      name: req.body?.name,
+      website: req.body?.website,
+      industry: req.body?.industry,
+      countryCode: req.body?.countryCode,
+      timezone: req.body?.timezone,
+    });
 
-          name:
-            req.body?.name,
+    res.set("Cache-Control", "no-store");
 
-          website:
-            req.body?.website,
-
-          industry:
-            req.body?.industry,
-
-          countryCode:
-            req.body?.countryCode,
-
-          timezone:
-            req.body?.timezone,
-        });
-
-      res.set(
-        "Cache-Control",
-        "no-store"
-      );
-
-      return res
-        .status(
-          existing
-            ? 200
-            : 201
-        )
-        .json({
-          ok: true,
-
-          created:
-            !existing,
-
-          ...serializeWorkspace(
-            workspace
-          ),
-        });
-    } catch (error) {
-      if (
-        /required|country code/i.test(
-          error?.message || ""
-        )
-      ) {
-        return res
-          .status(400)
-          .json({
-            ok: false,
-
-            message:
-              error.message,
-          });
-      }
-
-      return next(error);
+    return res.status(existing ? 200 : 201).json({
+      ok: true,
+      created: !existing,
+      ...serializeWorkspace(workspace),
+    });
+  } catch (error) {
+    if (/required|country code/i.test(error?.message || "")) {
+      return res.status(400).json({
+        ok: false,
+        message: error.message,
+      });
     }
-  }
-);
 
-router.get(
-  "/knowledge",
-  async (
-    req,
-    res,
-    next
-  ) => {
+    return next(error);
+  }
+});
+
+router.get("/knowledge", async (req, res, next) => {
+  try {
+    const result = await listOwnerKnowledge({
+      userId: req.user._id,
+    });
+
+    if (!result) {
+      return res.status(404).json({
+        ok: false,
+        message: "TengaAgent workspace not found.",
+      });
+    }
+
+    res.set("Cache-Control", "no-store");
+
+    return res.json({
+      ok: true,
+      sources: result.sources.map((source) => ({
+        id: source._id,
+        type: source.type,
+        title: source.title,
+        status: source.status,
+        chunkCount: source.chunkCount,
+        updatedAt: source.updatedAt,
+      })),
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/knowledge", async (req, res, next) => {
+  try {
+    const result = await syncOwnerKnowledge({
+      userId: req.user._id,
+      type: req.body?.type,
+      title: req.body?.title,
+      text: req.body?.text,
+    });
+
+    res.set("Cache-Control", "no-store");
+
+    return res.status(201).json({
+      ok: true,
+      source: {
+        id: result.source._id,
+        type: result.source.type,
+        title: result.source.title,
+        status: result.source.status,
+        chunkCount: result.source.chunkCount,
+      },
+      chunksCreated: result.chunksCreated,
+      unchanged: result.unchanged,
+    });
+  } catch (error) {
+    if (/workspace first|required|unsupported/i.test(error?.message || "")) {
+      return res.status(400).json({
+        ok: false,
+        message: error.message,
+      });
+    }
+
+    return next(error);
+  }
+});
+
+router.get("/leads", async (req, res, next) => {
+  try {
+    const result = await listOwnerLeads({
+      userId: req.user._id,
+      limit: req.query?.limit,
+    });
+
+    if (!result) {
+      return res.status(404).json({
+        ok: false,
+        message: "TengaAgent workspace not found.",
+      });
+    }
+
+    res.set("Cache-Control", "no-store");
+
+    return res.json({
+      ok: true,
+      leads: result.leads.map(serializeLead),
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.patch(
+  "/leads/:leadId/status",
+  async (req, res, next) => {
     try {
-      const result =
-        await listOwnerKnowledge({
-          userId:
-            req.user._id,
-        });
+      const result = await updateOwnerLeadStatus({
+        userId: req.user._id,
+        leadId: req.params.leadId,
+        status: req.body?.status,
+      });
 
       if (!result) {
-        return res
-          .status(404)
-          .json({
-            ok: false,
-
-            message:
-              "TengaAgent workspace not found.",
-          });
+        return res.status(404).json({
+          ok: false,
+          message: "TengaAgent workspace not found.",
+        });
       }
 
-      res.set(
-        "Cache-Control",
-        "no-store"
-      );
+      if (!result.lead) {
+        return res.status(404).json({
+          ok: false,
+          message: "TengaAgent lead not found.",
+        });
+      }
+
+      res.set("Cache-Control", "no-store");
 
       return res.json({
         ok: true,
-
-        sources:
-          result.sources.map(
-            (source) => ({
-              id:
-                source._id,
-
-              type:
-                source.type,
-
-              title:
-                source.title,
-
-              status:
-                source.status,
-
-              chunkCount:
-                source.chunkCount,
-
-              updatedAt:
-                source.updatedAt,
-            })
-          ),
+        lead: serializeLead(result.lead),
       });
     } catch (error) {
-      return next(error);
-    }
-  }
-);
-
-router.post(
-  "/knowledge",
-  async (
-    req,
-    res,
-    next
-  ) => {
-    try {
-      const result =
-        await syncOwnerKnowledge({
-          userId:
-            req.user._id,
-
-          type:
-            req.body?.type,
-
-          title:
-            req.body?.title,
-
-          text:
-            req.body?.text,
+      if (/lead status/i.test(error?.message || "")) {
+        return res.status(400).json({
+          ok: false,
+          message: error.message,
         });
-
-      res.set(
-        "Cache-Control",
-        "no-store"
-      );
-
-      return res
-        .status(201)
-        .json({
-          ok: true,
-
-          source: {
-            id:
-              result.source._id,
-
-            type:
-              result.source.type,
-
-            title:
-              result.source.title,
-
-            status:
-              result.source.status,
-
-            chunkCount:
-              result.source.chunkCount,
-          },
-
-          chunksCreated:
-            result.chunksCreated,
-
-          unchanged:
-            result.unchanged,
-        });
-    } catch (error) {
-      if (
-        /workspace first|required|unsupported/i.test(
-          error?.message || ""
-        )
-      ) {
-        return res
-          .status(400)
-          .json({
-            ok: false,
-
-            message:
-              error.message,
-          });
       }
 
       return next(error);
@@ -331,91 +247,4 @@ router.post(
   }
 );
 
-router.get(
-  "/leads",
-  async (
-    req,
-    res,
-    next
-  ) => {
-    try {
-      const result =
-        await listOwnerLeads({
-          userId:
-            req.user._id,
-
-          limit:
-            req.query?.limit,
-        });
-
-      if (!result) {
-        return res
-          .status(404)
-          .json({
-            ok: false,
-
-            message:
-              "TengaAgent workspace not found.",
-          });
-      }
-
-      res.set(
-        "Cache-Control",
-        "no-store"
-      );
-
-      return res.json({
-        ok: true,
-
-        leads:
-          result.leads.map(
-            (lead) => ({
-              id:
-                lead._id,
-
-              agentId:
-                lead.agentId,
-
-              conversationId:
-                lead.conversationId,
-
-              name:
-                lead.name,
-
-              email:
-                lead.email,
-
-              phone:
-                lead.phone,
-
-              company:
-                lead.company,
-
-              projectSummary:
-                lead.projectSummary,
-
-              source:
-                lead.source,
-
-              status:
-                lead.status,
-
-              consentToContact:
-                lead.consentToContact,
-
-              createdAt:
-                lead.createdAt,
-
-              lastCapturedAt:
-                lead.lastCapturedAt,
-            })
-          ),
-      });
-    } catch (error) {
-      return next(error);
-    }
-  }
-);
-
-module.exports =
-  router;
+module.exports = router;

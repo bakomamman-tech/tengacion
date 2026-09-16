@@ -7,9 +7,11 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import {
   sendTengaAgentMessage,
+  submitTengaAgentAppointment,
   submitTengaAgentLead,
 } from "../../services/tengaAgentApi";
 
+import TengaAgentAppointmentForm from "./TengaAgentAppointmentForm";
 import TengaAgentLeadCaptureForm from "./TengaAgentLeadCaptureForm";
 import TengaAgentOwnerDashboard from "./TengaAgentOwnerDashboard";
 import "./tengaagent.css";
@@ -22,7 +24,7 @@ const INITIAL_MESSAGE = {
   id: "welcome",
   sender: "agent",
   content:
-    "Hi! I'm TengaAgent, Tengacion's AI receptionist. Ask me about websites, mobile products, AI solutions, or starting a software project.",
+    "Hi! I'm TengaAgent, Tengacion's AI receptionist. Ask me about websites, mobile products, AI solutions, starting a software project, or requesting a meeting.",
 };
 
 const SUGGESTIONS = [
@@ -30,6 +32,7 @@ const SUGGESTIONS = [
   "Can Tengacion build an AI product?",
   "How much does a software project cost?",
   "I want to speak with someone.",
+  "Book a meeting with the team.",
 ];
 
 const NIGERIA_PRICING = [
@@ -248,6 +251,10 @@ export default function TengaAgentLandingPage() {
   const [isSubmittingLead, setIsSubmittingLead] =
     useState(false);
   const [leadError, setLeadError] = useState("");
+  const [bookingAction, setBookingAction] = useState(null);
+  const [isSubmittingBooking, setIsSubmittingBooking] =
+    useState(false);
+  const [bookingError, setBookingError] = useState("");
 
   const chatEndRef = useRef(null);
 
@@ -263,7 +270,12 @@ export default function TengaAgentLandingPage() {
         block: "nearest",
       });
     }
-  }, [messages, isSending, leadAction]);
+  }, [
+    messages,
+    isSending,
+    leadAction,
+    bookingAction,
+  ]);
 
   const appendAgentMessage = (
     content,
@@ -290,6 +302,7 @@ export default function TengaAgentLandingPage() {
 
     setDraft("");
     setLeadError("");
+    setBookingError("");
 
     setMessages((current) => [
       ...current,
@@ -311,16 +324,30 @@ export default function TengaAgentLandingPage() {
 
       appendAgentMessage(response.reply);
 
-      const captureAction = Array.isArray(
+      const actions = Array.isArray(
         response.actions
       )
-        ? response.actions.find(
-            (action) =>
-              action?.type === "capture_lead"
-          )
-        : null;
+        ? response.actions
+        : [];
 
-      setLeadAction(captureAction || null);
+      const captureAction = actions.find(
+        (action) =>
+          action?.type === "capture_lead"
+      );
+
+      const appointmentAction = actions.find(
+        (action) =>
+          action?.type === "book_appointment"
+      );
+
+      setBookingAction(
+        appointmentAction || null
+      );
+      setLeadAction(
+        appointmentAction
+          ? null
+          : captureAction || null
+      );
     } catch (error) {
       appendAgentMessage(
         error?.message ||
@@ -364,6 +391,41 @@ export default function TengaAgentLandingPage() {
     }
   };
 
+  const handleAppointmentSubmit = async (
+    appointment
+  ) => {
+    if (isSubmittingBooking) {
+      return;
+    }
+
+    setIsSubmittingBooking(true);
+    setBookingError("");
+
+    try {
+      const response =
+        await submitTengaAgentAppointment({
+          agentId: AGENT_ID,
+          sessionId,
+          ...appointment,
+        });
+
+      setBookingAction(null);
+
+      appendAgentMessage(
+        response?.message ||
+          "Your preferred meeting time was requested. The team still needs to confirm it.",
+        "appointment-requested"
+      );
+    } catch (error) {
+      setBookingError(
+        error?.message ||
+          "I couldn't save that appointment request. Please check the details and try again."
+      );
+    } finally {
+      setIsSubmittingBooking(false);
+    }
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
     sendMessage(draft);
@@ -395,7 +457,7 @@ export default function TengaAgentLandingPage() {
           <a href="#how-it-works">How it works</a>
           <a href="#pricing">Pricing</a>
           {user ? (
-            <a href="#owner-dashboard">Lead inbox</a>
+            <a href="#owner-dashboard">Owner inbox</a>
           ) : null}
           <a
             href="#live-demo"
@@ -418,7 +480,7 @@ export default function TengaAgentLandingPage() {
           <p className="tengaagent-hero-lead">
             TengaAgent answers enquiries, qualifies
             leads and helps businesses turn conversations
-            into bookings — 24/7.
+            into appointment requests — 24/7.
           </p>
 
           <div className="tengaagent-hero-actions">
@@ -433,7 +495,7 @@ export default function TengaAgentLandingPage() {
                 href="#owner-dashboard"
                 className="tengaagent-secondary-button"
               >
-                Open lead inbox
+                Open owner inbox
               </a>
             ) : (
               <a
@@ -448,7 +510,7 @@ export default function TengaAgentLandingPage() {
           <div className="tengaagent-proof-row">
             <span>✓ Web chat</span>
             <span>✓ Lead capture</span>
-            <span>✓ Multilingual</span>
+            <span>✓ Meeting requests</span>
             <span>✓ Human handoff</span>
           </div>
         </div>
@@ -510,6 +572,20 @@ export default function TengaAgentLandingPage() {
             />
           ) : null}
 
+          {bookingAction ? (
+            <TengaAgentAppointmentForm
+              isSubmitting={isSubmittingBooking}
+              error={bookingError}
+              onSubmit={handleAppointmentSubmit}
+              onDismiss={() => {
+                if (!isSubmittingBooking) {
+                  setBookingAction(null);
+                  setBookingError("");
+                }
+              }}
+            />
+          ) : null}
+
           <div className="tengaagent-suggestions">
             {SUGGESTIONS.map((suggestion) => (
               <button
@@ -553,8 +629,9 @@ export default function TengaAgentLandingPage() {
           </form>
 
           <div className="tengaagent-demo-note">
-            Live MVP · conversations and lead capture
-            are handled by the TengaAgent backend
+            Live MVP · conversations, lead capture and
+            appointment requests are handled by the
+            TengaAgent backend
           </div>
         </div>
       </section>
@@ -573,7 +650,7 @@ export default function TengaAgentLandingPage() {
         </article>
         <article>
           <strong>Bookings</strong>
-          <span>Coming in MVP</span>
+          <span>Appointment requests</span>
         </article>
         <article>
           <strong>Voice</strong>
@@ -624,9 +701,9 @@ export default function TengaAgentLandingPage() {
             <span>03</span>
             <h3>Turn intent into action</h3>
             <p>
-              Capture leads, review them in your owner
-              inbox, then progress into booking and
-              human follow-up.
+              Capture leads, request meeting times,
+              review them in the owner inbox, and hand
+              conversations to people when needed.
             </p>
           </article>
         </div>
@@ -701,9 +778,10 @@ export default function TengaAgentLandingPage() {
         </h2>
         <p>
           Business onboarding, knowledge ingestion,
-          consent-based lead capture and the owner lead
-          inbox are now part of the MVP. Lead workflow
-          actions and appointment booking are next.
+          consent-based lead capture, lead workflows,
+          appointment requests and the owner inbox are
+          now part of the MVP. Calendar availability
+          integrations are a later step.
         </p>
         <a
           href="#live-demo"

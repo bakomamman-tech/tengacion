@@ -13,6 +13,11 @@ const delay = (milliseconds) =>
     setTimeout(resolve, milliseconds);
   });
 
+const lockIdFor = ({
+  organizationId,
+  agentId,
+}) => `${String(organizationId)}:${String(agentId)}`;
+
 const acquireBookingConfirmationLock = async ({
   organizationId,
   agentId,
@@ -26,6 +31,10 @@ const acquireBookingConfirmationLock = async ({
   }
 
   const ownerToken = randomUUID();
+  const lockId = lockIdFor({
+    organizationId,
+    agentId,
+  });
   const deadline = Date.now() + waitMs;
 
   while (Date.now() <= deadline) {
@@ -38,8 +47,7 @@ const acquireBookingConfirmationLock = async ({
       const lock =
         await BookingConfirmationLock.findOneAndUpdate(
           {
-            organizationId,
-            agentId,
+            _id: lockId,
             $or: [
               {
                 lockedUntil: {
@@ -61,6 +69,10 @@ const acquireBookingConfirmationLock = async ({
               ownerToken,
               lockedUntil,
             },
+            $setOnInsert: {
+              organizationId,
+              agentId,
+            },
           },
           {
             upsert: true,
@@ -74,6 +86,7 @@ const acquireBookingConfirmationLock = async ({
         lock.ownerToken === ownerToken
       ) {
         return {
+          lockId,
           ownerToken,
           lockedUntil,
         };
@@ -103,10 +116,14 @@ const releaseBookingConfirmationLock = async ({
     return;
   }
 
+  const lockId = lockIdFor({
+    organizationId,
+    agentId,
+  });
+
   await BookingConfirmationLock.updateOne(
     {
-      organizationId,
-      agentId,
+      _id: lockId,
       ownerToken,
     },
     {
@@ -142,11 +159,18 @@ const withBookingConfirmationLock = async ({
   try {
     return await task();
   } finally {
-    await releaseBookingConfirmationLock({
-      organizationId,
-      agentId,
-      ownerToken: lock.ownerToken,
-    });
+    try {
+      await releaseBookingConfirmationLock({
+        organizationId,
+        agentId,
+        ownerToken: lock.ownerToken,
+      });
+    } catch (error) {
+      console.warn(
+        "TengaAgent booking confirmation lock release failed; lease expiry will recover it.",
+        error?.message || error
+      );
+    }
   }
 };
 

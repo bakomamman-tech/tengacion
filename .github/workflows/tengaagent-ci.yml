@@ -15,7 +15,7 @@ on:
       - ".github/workflows/tengaagent-ci.yml"
 
 concurrency:
-  group: tengaagent-ci-${{ github.workflow }}-${{ github.ref }}
+  group: tengaagent-ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:

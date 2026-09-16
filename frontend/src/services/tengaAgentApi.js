@@ -137,6 +137,52 @@ export async function submitTengaAgentLead({
   );
 }
 
+export async function submitTengaAgentAppointment({
+  agentId = "tengacion-demo",
+  sessionId,
+  name,
+  email,
+  phone,
+  company,
+  purpose,
+  notes,
+  preferredStartAt,
+  timezone,
+  durationMinutes,
+  consentToContact,
+}) {
+  const response = await fetch(
+    `${API_BASE}/tengaagent/chat/${encodeURIComponent(agentId)}/appointment`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        sessionId,
+        name,
+        email,
+        phone,
+        company,
+        purpose,
+        notes,
+        preferredStartAt,
+        timezone,
+        durationMinutes,
+        consentToContact,
+      }),
+    }
+  );
+
+  const data = await parseJson(response);
+
+  return assertOk(
+    response,
+    data,
+    "TengaAgent could not save your appointment request."
+  );
+}
+
 export const getTengaAgentOwnerWorkspace = () =>
   ownerRequest("/workspace");
 
@@ -171,6 +217,25 @@ export const updateTengaAgentOwnerLeadStatus = ({
 }) =>
   ownerRequest(
     `/leads/${encodeURIComponent(leadId)}/status`,
+    {
+      method: "PATCH",
+      body: { status },
+    }
+  );
+
+export const getTengaAgentOwnerAppointments = ({
+  limit = 50,
+} = {}) =>
+  ownerRequest(
+    `/appointments?limit=${encodeURIComponent(limit)}`
+  );
+
+export const updateTengaAgentOwnerAppointmentStatus = ({
+  appointmentId,
+  status,
+}) =>
+  ownerRequest(
+    `/appointments/${encodeURIComponent(appointmentId)}/status`,
     {
       method: "PATCH",
       body: { status },

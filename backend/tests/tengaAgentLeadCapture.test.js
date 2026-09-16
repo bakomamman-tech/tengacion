@@ -17,60 +17,40 @@ process.env.JWT_SECRET =
 
 require("../../apps/api/config/env");
 
-const routes =
-  require("../routes/tengaAgent");
+const routes = require("../routes/tengaAgent");
+const errorHandler = require("../../apps/api/middleware/errorHandler");
 
-const errorHandler =
-  require("../../apps/api/middleware/errorHandler");
-
-const Organization =
-  require("../models/tengaAgent/Organization");
-const Agent =
-  require("../models/tengaAgent/Agent");
-const Conversation =
-  require("../models/tengaAgent/Conversation");
-const Lead =
-  require("../models/tengaAgent/Lead");
+const Organization = require("../models/tengaAgent/Organization");
+const Agent = require("../models/tengaAgent/Agent");
+const Conversation = require("../models/tengaAgent/Conversation");
+const Lead = require("../models/tengaAgent/Lead");
 
 const {
   listOwnerLeads,
-} = require(
-  "../services/tengaAgent/ownerWorkspaceService"
-);
+  updateOwnerLeadStatus,
+} = require("../services/tengaAgent/ownerWorkspaceService");
 
 let mongod;
 let app;
 
 beforeAll(async () => {
-  mongod =
-    await MongoMemoryServer.create({
-      instance: {
-        launchTimeout: 60000,
-      },
-    });
+  mongod = await MongoMemoryServer.create({
+    instance: { launchTimeout: 60000 },
+  });
 
-  await mongoose.connect(
-    mongod.getUri(),
-    {
-      serverSelectionTimeoutMS:
-        60000,
-      socketTimeoutMS:
-        60000,
-    }
-  );
+  await mongoose.connect(mongod.getUri(), {
+    serverSelectionTimeoutMS: 60000,
+    socketTimeoutMS: 60000,
+  });
 
   app = express();
   app.use(express.json());
-  app.use(
-    "/api/tengaagent",
-    routes
-  );
+  app.use("/api/tengaagent", routes);
   app.use(errorHandler);
 });
 
 beforeEach(async () => {
-  await mongoose.connection.db
-    .dropDatabase();
+  await mongoose.connection.db.dropDatabase();
 });
 
 afterAll(async () => {
@@ -81,381 +61,278 @@ afterAll(async () => {
   }
 });
 
-describe(
-  "TengaAgent lead capture",
-  () => {
-    it(
-      "offers lead capture when a visitor asks for human follow-up",
-      async () => {
-        const response =
-          await request(app)
-            .post(
-              "/api/tengaagent/chat/tengacion-demo/message"
-            )
-            .send({
-              message:
-                "I want to speak with someone about my project.",
-              sessionId:
-                "lead-intent-001",
-            })
-            .expect(200);
+const createOwnerLeadFixture = async ({
+  ownerId,
+  slug,
+  sessionKey,
+  email,
+}) => {
+  const organization = await Organization.create({
+    name: `${slug} Business`,
+    slug,
+    ownerUser: ownerId,
+    plan: "starter",
+    status: "pilot",
+  });
 
-        expect(
-          response.body.actions
-        ).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({
-              type:
-                "capture_lead",
-            }),
-          ])
-        );
-      }
+  const agent = await Agent.create({
+    organizationId: organization._id,
+    key: "receptionist",
+    name: "TengaAgent",
+    status: "active",
+  });
+
+  const conversation = await Conversation.create({
+    organizationId: organization._id,
+    agentId: agent._id,
+    sessionKey,
+  });
+
+  const lead = await Lead.create({
+    organizationId: organization._id,
+    agentId: agent._id,
+    conversationId: conversation._id,
+    sessionKey,
+    email,
+    consentToContact: true,
+  });
+
+  return {
+    organization,
+    agent,
+    conversation,
+    lead,
+  };
+};
+
+describe("TengaAgent lead capture", () => {
+  it("offers lead capture when a visitor asks for human follow-up", async () => {
+    const response = await request(app)
+      .post("/api/tengaagent/chat/tengacion-demo/message")
+      .send({
+        message:
+          "I want to speak with someone about my project.",
+        sessionId: "lead-intent-001",
+      })
+      .expect(200);
+
+    expect(response.body.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "capture_lead",
+        }),
+      ])
+    );
+  });
+
+  it("persists a consented lead and links it to the conversation", async () => {
+    const sessionId = "lead-session-001";
+
+    await request(app)
+      .post("/api/tengaagent/chat/tengacion-demo/message")
+      .send({
+        message:
+          "I want to talk to the team about an AI product.",
+        sessionId,
+      })
+      .expect(200);
+
+    const response = await request(app)
+      .post("/api/tengaagent/chat/tengacion-demo/lead")
+      .send({
+        sessionId,
+        name: "Ada Customer",
+        email: "ADA@example.com",
+        company: "Northstar Labs",
+        projectSummary:
+          "We need an AI receptionist for our website.",
+        consentToContact: true,
+      })
+      .expect(201);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        lead: expect.objectContaining({
+          status: "new",
+        }),
+        conversation: expect.objectContaining({
+          status: "handoff_requested",
+        }),
+      })
     );
 
-    it(
-      "persists a consented lead and links it to the conversation",
-      async () => {
-        const sessionId =
-          "lead-session-001";
+    const leads = await Lead.find({}).lean();
 
-        await request(app)
-          .post(
-            "/api/tengaagent/chat/tengacion-demo/message"
-          )
-          .send({
-            message:
-              "I want to talk to the team about an AI product.",
-            sessionId,
-          })
-          .expect(200);
-
-        const response =
-          await request(app)
-            .post(
-              "/api/tengaagent/chat/tengacion-demo/lead"
-            )
-            .send({
-              sessionId,
-              name:
-                "Ada Customer",
-              email:
-                "ADA@example.com",
-              company:
-                "Northstar Labs",
-              projectSummary:
-                "We need an AI receptionist for our website.",
-              consentToContact:
-                true,
-            })
-            .expect(201);
-
-        expect(
-          response.body
-        ).toEqual(
-          expect.objectContaining({
-            ok: true,
-            lead:
-              expect.objectContaining({
-                status:
-                  "new",
-              }),
-            conversation:
-              expect.objectContaining({
-                status:
-                  "handoff_requested",
-              }),
-          })
-        );
-
-        const leads =
-          await Lead.find({}).lean();
-
-        expect(leads)
-          .toHaveLength(1);
-
-        expect(leads[0])
-          .toEqual(
-            expect.objectContaining({
-              name:
-                "Ada Customer",
-              email:
-                "ada@example.com",
-              company:
-                "Northstar Labs",
-              consentToContact:
-                true,
-              status:
-                "new",
-            })
-          );
-
-        const conversation =
-          await Conversation.findOne({
-            sessionKey:
-              sessionId,
-          }).lean();
-
-        expect(
-          String(
-            conversation.contactId
-          )
-        ).toBe(
-          String(leads[0]._id)
-        );
-
-        expect(
-          conversation.status
-        ).toBe(
-          "handoff_requested"
-        );
-      }
+    expect(leads).toHaveLength(1);
+    expect(leads[0]).toEqual(
+      expect.objectContaining({
+        name: "Ada Customer",
+        email: "ada@example.com",
+        company: "Northstar Labs",
+        consentToContact: true,
+        status: "new",
+      })
     );
 
-    it(
-      "updates the existing lead instead of creating duplicates",
-      async () => {
-        const sessionId =
-          "lead-session-002";
+    const conversation = await Conversation.findOne({
+      sessionKey: sessionId,
+    }).lean();
 
-        await request(app)
-          .post(
-            "/api/tengaagent/chat/tengacion-demo/message"
-          )
-          .send({
-            message:
-              "Please contact me.",
-            sessionId,
-          })
-          .expect(200);
-
-        await request(app)
-          .post(
-            "/api/tengaagent/chat/tengacion-demo/lead"
-          )
-          .send({
-            sessionId,
-            email:
-              "first@example.com",
-            consentToContact:
-              true,
-          })
-          .expect(201);
-
-        await request(app)
-          .post(
-            "/api/tengaagent/chat/tengacion-demo/lead"
-          )
-          .send({
-            sessionId,
-            email:
-              "updated@example.com",
-            phone:
-              "+2348012345678",
-            consentToContact:
-              true,
-          })
-          .expect(201);
-
-        const leads =
-          await Lead.find({}).lean();
-
-        expect(leads)
-          .toHaveLength(1);
-        expect(leads[0].email)
-          .toBe(
-            "updated@example.com"
-          );
-        expect(leads[0].phone)
-          .toBe(
-            "+2348012345678"
-          );
-      }
+    expect(String(conversation.contactId)).toBe(
+      String(leads[0]._id)
     );
+    expect(conversation.status).toBe("handoff_requested");
+  });
 
-    it(
-      "rejects missing consent, invalid email, and unknown sessions",
-      async () => {
-        const sessionId =
-          "lead-session-003";
+  it("updates the existing lead instead of creating duplicates", async () => {
+    const sessionId = "lead-session-002";
 
-        await request(app)
-          .post(
-            "/api/tengaagent/chat/tengacion-demo/message"
-          )
-          .send({
-            message:
-              "I need a human.",
-            sessionId,
-          })
-          .expect(200);
+    await request(app)
+      .post("/api/tengaagent/chat/tengacion-demo/message")
+      .send({
+        message: "Please contact me.",
+        sessionId,
+      })
+      .expect(200);
 
-        await request(app)
-          .post(
-            "/api/tengaagent/chat/tengacion-demo/lead"
-          )
-          .send({
-            sessionId,
-            email:
-              "visitor@example.com",
-            consentToContact:
-              false,
-          })
-          .expect(400);
+    await request(app)
+      .post("/api/tengaagent/chat/tengacion-demo/lead")
+      .send({
+        sessionId,
+        email: "first@example.com",
+        consentToContact: true,
+      })
+      .expect(201);
 
-        await request(app)
-          .post(
-            "/api/tengaagent/chat/tengacion-demo/lead"
-          )
-          .send({
-            sessionId,
-            email:
-              "not-an-email",
-            consentToContact:
-              true,
-          })
-          .expect(400);
+    await request(app)
+      .post("/api/tengaagent/chat/tengacion-demo/lead")
+      .send({
+        sessionId,
+        email: "updated@example.com",
+        phone: "+2348012345678",
+        consentToContact: true,
+      })
+      .expect(201);
 
-        await request(app)
-          .post(
-            "/api/tengaagent/chat/tengacion-demo/lead"
-          )
-          .send({
-            sessionId:
-              "does-not-exist",
-            email:
-              "visitor@example.com",
-            consentToContact:
-              true,
-          })
-          .expect(404);
-      }
-    );
+    const leads = await Lead.find({}).lean();
 
-    it(
-      "returns only leads that belong to the authenticated owner's organization",
-      async () => {
-        const ownerOne =
-          new mongoose.Types.ObjectId();
-        const ownerTwo =
-          new mongoose.Types.ObjectId();
+    expect(leads).toHaveLength(1);
+    expect(leads[0].email).toBe("updated@example.com");
+    expect(leads[0].phone).toBe("+2348012345678");
+  });
 
-        const orgOne =
-          await Organization.create({
-            name:
-              "Owner One Business",
-            slug:
-              "owner-one-business",
-            ownerUser:
-              ownerOne,
-            plan:
-              "starter",
-            status:
-              "pilot",
-          });
+  it("rejects missing consent, invalid email, and unknown sessions", async () => {
+    const sessionId = "lead-session-003";
 
-        const orgTwo =
-          await Organization.create({
-            name:
-              "Owner Two Business",
-            slug:
-              "owner-two-business",
-            ownerUser:
-              ownerTwo,
-            plan:
-              "starter",
-            status:
-              "pilot",
-          });
+    await request(app)
+      .post("/api/tengaagent/chat/tengacion-demo/message")
+      .send({
+        message: "I need a human.",
+        sessionId,
+      })
+      .expect(200);
 
-        const agentOne =
-          await Agent.create({
-            organizationId:
-              orgOne._id,
-            key:
-              "receptionist",
-            name:
-              "TengaAgent",
-            status:
-              "active",
-          });
+    await request(app)
+      .post("/api/tengaagent/chat/tengacion-demo/lead")
+      .send({
+        sessionId,
+        email: "visitor@example.com",
+        consentToContact: false,
+      })
+      .expect(400);
 
-        const agentTwo =
-          await Agent.create({
-            organizationId:
-              orgTwo._id,
-            key:
-              "receptionist",
-            name:
-              "TengaAgent",
-            status:
-              "active",
-          });
+    await request(app)
+      .post("/api/tengaagent/chat/tengacion-demo/lead")
+      .send({
+        sessionId,
+        email: "not-an-email",
+        consentToContact: true,
+      })
+      .expect(400);
 
-        const conversationOne =
-          await Conversation.create({
-            organizationId:
-              orgOne._id,
-            agentId:
-              agentOne._id,
-            sessionKey:
-              "owner-one-session",
-          });
+    await request(app)
+      .post("/api/tengaagent/chat/tengacion-demo/lead")
+      .send({
+        sessionId: "does-not-exist",
+        email: "visitor@example.com",
+        consentToContact: true,
+      })
+      .expect(404);
+  });
 
-        const conversationTwo =
-          await Conversation.create({
-            organizationId:
-              orgTwo._id,
-            agentId:
-              agentTwo._id,
-            sessionKey:
-              "owner-two-session",
-          });
+  it("returns only leads that belong to the authenticated owner's organization", async () => {
+    const ownerOne = new mongoose.Types.ObjectId();
+    const ownerTwo = new mongoose.Types.ObjectId();
 
-        await Lead.create({
-          organizationId:
-            orgOne._id,
-          agentId:
-            agentOne._id,
-          conversationId:
-            conversationOne._id,
-          sessionKey:
-            "owner-one-session",
-          email:
-            "one@example.com",
-          consentToContact:
-            true,
-        });
+    await createOwnerLeadFixture({
+      ownerId: ownerOne,
+      slug: "owner-one-business",
+      sessionKey: "owner-one-session",
+      email: "one@example.com",
+    });
 
-        await Lead.create({
-          organizationId:
-            orgTwo._id,
-          agentId:
-            agentTwo._id,
-          conversationId:
-            conversationTwo._id,
-          sessionKey:
-            "owner-two-session",
-          email:
-            "two@example.com",
-          consentToContact:
-            true,
-        });
+    await createOwnerLeadFixture({
+      ownerId: ownerTwo,
+      slug: "owner-two-business",
+      sessionKey: "owner-two-session",
+      email: "two@example.com",
+    });
 
-        const result =
-          await listOwnerLeads({
-            userId:
-              ownerOne,
-          });
+    const result = await listOwnerLeads({
+      userId: ownerOne,
+    });
 
-        expect(result.leads)
-          .toHaveLength(1);
-        expect(
-          result.leads[0].email
-        ).toBe(
-          "one@example.com"
-        );
-      }
-    );
-  }
-);
+    expect(result.leads).toHaveLength(1);
+    expect(result.leads[0].email).toBe("one@example.com");
+  });
+
+  it("updates lead status only inside the authenticated owner's organization", async () => {
+    const ownerOne = new mongoose.Types.ObjectId();
+    const ownerTwo = new mongoose.Types.ObjectId();
+
+    const fixtureOne = await createOwnerLeadFixture({
+      ownerId: ownerOne,
+      slug: "workflow-owner-one",
+      sessionKey: "workflow-owner-one-session",
+      email: "workflow-one@example.com",
+    });
+
+    const fixtureTwo = await createOwnerLeadFixture({
+      ownerId: ownerTwo,
+      slug: "workflow-owner-two",
+      sessionKey: "workflow-owner-two-session",
+      email: "workflow-two@example.com",
+    });
+
+    const updated = await updateOwnerLeadStatus({
+      userId: ownerOne,
+      leadId: fixtureOne.lead._id,
+      status: "qualified",
+    });
+
+    expect(updated.lead.status).toBe("qualified");
+
+    const blocked = await updateOwnerLeadStatus({
+      userId: ownerOne,
+      leadId: fixtureTwo.lead._id,
+      status: "contacted",
+    });
+
+    expect(blocked.lead).toBeNull();
+
+    const untouched = await Lead.findById(
+      fixtureTwo.lead._id
+    ).lean();
+
+    expect(untouched.status).toBe("new");
+
+    await expect(
+      updateOwnerLeadStatus({
+        userId: ownerOne,
+        leadId: fixtureOne.lead._id,
+        status: "archived",
+      })
+    ).rejects.toThrow(/lead status/i);
+  });
+});

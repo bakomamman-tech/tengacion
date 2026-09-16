@@ -72,6 +72,14 @@ export const saveTengaAgentOwnerKnowledge = ({
     body: { type, title, text },
   });
 
+export const archiveTengaAgentOwnerKnowledgeSource = ({
+  sourceId,
+}) =>
+  request(
+    `/knowledge/${encodeURIComponent(sourceId)}`,
+    { method: "DELETE" }
+  );
+
 export const importTengaAgentOwnerWebsite = ({
   url,
   title,
@@ -79,6 +87,24 @@ export const importTengaAgentOwnerWebsite = ({
   request("/knowledge/website", {
     method: "POST",
     body: { url, title },
+  });
+
+export const updateTengaAgentOwnerBusinessProfile = ({
+  name,
+  website,
+  industry,
+  countryCode,
+  timezone,
+}) =>
+  request("/profile", {
+    method: "PATCH",
+    body: {
+      name,
+      website,
+      industry,
+      countryCode,
+      timezone,
+    },
   });
 
 export const updateTengaAgentOwnerConfiguration = ({

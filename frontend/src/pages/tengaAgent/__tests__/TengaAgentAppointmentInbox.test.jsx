@@ -62,6 +62,8 @@ const APPOINTMENT = {
   rescheduledAt: null,
   completedAt: null,
   completedBy: null,
+  noShowAt: null,
+  noShowBy: null,
 };
 
 const SECOND_APPOINTMENT = {
@@ -80,6 +82,8 @@ const SECOND_APPOINTMENT = {
   rescheduledAt: null,
   completedAt: "2020-01-10T11:00:00.000Z",
   completedBy: "owner",
+  noShowAt: null,
+  noShowBy: null,
 };
 
 describe("TengaAgentAppointmentInbox", () => {
@@ -224,6 +228,63 @@ describe("TengaAgentAppointmentInbox", () => {
         name: /^appointment status$/i,
       })
     ).toHaveValue("completed");
+  });
+
+  it("lets the owner mark a confirmed meeting as a no-show", async () => {
+    const user = userEvent.setup();
+    updateStatusMock.mockResolvedValueOnce({
+      ok: true,
+      appointment: {
+        ...APPOINTMENT,
+        status: "no_show",
+        noShowAt: "2026-09-16T22:45:00.000Z",
+        noShowBy: "owner",
+      },
+    });
+
+    render(
+      <TengaAgentAppointmentInbox
+        user={{ id: "owner-1" }}
+      />
+    );
+
+    expect(
+      await screen.findByRole("button", {
+        name: /mark no-show/i,
+      })
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /mark no-show/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(updateStatusMock).toHaveBeenCalledWith({
+        appointmentId: "appointment-1",
+        status: "no_show",
+      });
+    });
+
+    expect(
+      await screen.findByText(/no-show .* by owner/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: /mark no-show/i,
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: /mark completed/i,
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", {
+        name: /^appointment status$/i,
+      })
+    ).toHaveValue("no_show");
   });
 
   it("filters appointments by search text, status and upcoming/past scope", async () => {

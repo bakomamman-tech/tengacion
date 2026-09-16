@@ -197,6 +197,10 @@
   color: var(--accent, #62e6bd);
 }
 
+.tengaagent-owner-appointments__status--no_show {
+  color: #ffd27a;
+}
+
 .tengaagent-owner-appointments__time {
   margin-top: 12px;
   display: grid;
@@ -210,6 +214,11 @@
 
 .tengaagent-owner-appointments__time .tengaagent-owner-appointments__completion-audit {
   color: var(--accent, #62e6bd);
+  font-weight: 800;
+}
+
+.tengaagent-owner-appointments__time .tengaagent-owner-appointments__no-show-audit {
+  color: #ffd27a;
   font-weight: 800;
 }
 
@@ -255,6 +264,7 @@
 }
 
 .tengaagent-owner-appointments__complete-button,
+.tengaagent-owner-appointments__no-show-button,
 .tengaagent-owner-appointments__reschedule-button,
 .tengaagent-owner-appointments__reschedule-actions button {
   border: 1px solid rgba(98, 230, 189, 0.35);
@@ -271,7 +281,14 @@
   color: #061019;
 }
 
+.tengaagent-owner-appointments__no-show-button {
+  border-color: rgba(255, 210, 122, 0.45);
+  background: rgba(255, 210, 122, 0.1);
+  color: #ffd27a;
+}
+
 .tengaagent-owner-appointments__complete-button:disabled,
+.tengaagent-owner-appointments__no-show-button:disabled,
 .tengaagent-owner-appointments__reschedule-button:disabled,
 .tengaagent-owner-appointments__reschedule-actions button:disabled {
   opacity: 0.55;

@@ -20,6 +20,7 @@ const FILTERS = [
   "requested",
   "confirmed",
   "completed",
+  "no_show",
   "cancelled",
 ];
 
@@ -34,11 +35,16 @@ const STATUS_OPTIONS = {
   confirmed: [
     "confirmed",
     "completed",
+    "no_show",
     "cancelled",
   ],
   completed: ["completed"],
+  no_show: ["no_show"],
   cancelled: ["cancelled"],
 };
+
+const statusLabel = (status) =>
+  String(status || "").replaceAll("_", " ");
 
 const formatDate = (value) => {
   if (!value) {
@@ -190,6 +196,7 @@ export default function TengaAgentAppointmentInbox({
       requested: 0,
       confirmed: 0,
       completed: 0,
+      no_show: 0,
       cancelled: 0,
     };
 
@@ -433,7 +440,7 @@ export default function TengaAgentAppointmentInbox({
               }
               onClick={() => setFilter(status)}
             >
-              {status}
+              {statusLabel(status)}
               <span>{counts[status]}</span>
             </button>
           ))}
@@ -502,6 +509,8 @@ export default function TengaAgentAppointmentInbox({
                 );
               const canComplete =
                 appointment.status === "confirmed";
+              const canMarkNoShow =
+                appointment.status === "confirmed";
               const isRescheduling =
                 rescheduleDraft?.appointmentId ===
                 appointment.id;
@@ -524,7 +533,7 @@ export default function TengaAgentAppointmentInbox({
                     <span
                       className={`tengaagent-owner-appointments__status tengaagent-owner-appointments__status--${appointment.status}`}
                     >
-                      {appointment.status}
+                      {statusLabel(appointment.status)}
                     </span>
                   </div>
 
@@ -563,6 +572,14 @@ export default function TengaAgentAppointmentInbox({
                         Completed {formatDate(appointment.completedAt)}
                         {appointment.completedBy
                           ? ` · by ${appointment.completedBy}`
+                          : ""}
+                      </span>
+                    ) : null}
+                    {appointment.noShowAt ? (
+                      <span className="tengaagent-owner-appointments__no-show-audit">
+                        No-show {formatDate(appointment.noShowAt)}
+                        {appointment.noShowBy
+                          ? ` · by ${appointment.noShowBy}`
                           : ""}
                       </span>
                     ) : null}
@@ -607,7 +624,7 @@ export default function TengaAgentAppointmentInbox({
                           key={status}
                           value={status}
                         >
-                          {status}
+                          {statusLabel(status)}
                         </option>
                       ))}
                     </select>
@@ -624,6 +641,21 @@ export default function TengaAgentAppointmentInbox({
                         }
                       >
                         Mark completed
+                      </button>
+                    ) : null}
+                    {canMarkNoShow ? (
+                      <button
+                        type="button"
+                        className="tengaagent-owner-appointments__no-show-button"
+                        disabled={Boolean(updatingId)}
+                        onClick={() =>
+                          handleStatusChange(
+                            appointment,
+                            "no_show"
+                          )
+                        }
+                      >
+                        Mark no-show
                       </button>
                     ) : null}
                     {canReschedule ? (

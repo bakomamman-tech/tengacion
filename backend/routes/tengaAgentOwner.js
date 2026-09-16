@@ -109,6 +109,10 @@ const serializeAppointment = (appointment) => ({
     appointment.completedAt || null,
   completedBy:
     appointment.completedBy || null,
+  noShowAt:
+    appointment.noShowAt || null,
+  noShowBy:
+    appointment.noShowBy || null,
   cancelledAt:
     appointment.cancelledAt || null,
   cancelledBy:

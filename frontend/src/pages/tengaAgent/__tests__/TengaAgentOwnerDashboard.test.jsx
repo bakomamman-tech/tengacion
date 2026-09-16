@@ -152,9 +152,13 @@ describe("TengaAgentOwnerDashboard", () => {
       screen.getByText("Tobi Buyer")
     ).toBeInTheDocument();
 
-    const newFilter = screen.getByRole(
-      "button",
-      { name: /new/i }
+    const leadFilters = screen.getByRole(
+      "group",
+      { name: /lead status filter/i }
+    );
+
+    const newFilter = leadFilters.querySelector(
+      "button:nth-of-type(2)"
     );
 
     await userEvent.click(newFilter);
@@ -266,9 +270,14 @@ describe("TengaAgentOwnerDashboard", () => {
 
     expect(statusSelect).toHaveValue("contacted");
 
-    const contactedFilter = screen.getByRole(
-      "button",
-      { name: /contacted/i }
+    const leadFilters = screen.getByRole(
+      "group",
+      { name: /lead status filter/i }
+    );
+    const contactedFilter = Array.from(
+      leadFilters.querySelectorAll("button")
+    ).find((button) =>
+      /contacted/i.test(button.textContent)
     );
 
     expect(contactedFilter).toHaveTextContent("1");

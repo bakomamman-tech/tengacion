@@ -14,26 +14,34 @@ import {
 } from "vitest";
 
 const {
+  archiveKnowledgeMock,
   getKnowledgeMock,
   saveKnowledgeMock,
   importWebsiteMock,
   updateConfigurationMock,
+  updateProfileMock,
 } = vi.hoisted(() => ({
+  archiveKnowledgeMock: vi.fn(),
   getKnowledgeMock: vi.fn(),
   saveKnowledgeMock: vi.fn(),
   importWebsiteMock: vi.fn(),
   updateConfigurationMock: vi.fn(),
+  updateProfileMock: vi.fn(),
 }));
 
 vi.mock(
   "../../../services/tengaAgentOwnerConfigApi",
   () => ({
+    archiveTengaAgentOwnerKnowledgeSource: (...args) =>
+      archiveKnowledgeMock(...args),
     getTengaAgentOwnerKnowledge: (...args) =>
       getKnowledgeMock(...args),
     saveTengaAgentOwnerKnowledge: (...args) =>
       saveKnowledgeMock(...args),
     importTengaAgentOwnerWebsite: (...args) =>
       importWebsiteMock(...args),
+    updateTengaAgentOwnerBusinessProfile: (...args) =>
+      updateProfileMock(...args),
     updateTengaAgentOwnerConfiguration: (...args) =>
       updateConfigurationMock(...args),
   })
@@ -46,6 +54,9 @@ const WORKSPACE = {
     id: "org-1",
     name: "Northstar Academy",
     website: "https://northstar.example.com",
+    industry: "Education",
+    countryCode: "NG",
+    timezone: "Africa/Lagos",
   },
   agent: {
     id: "agent-1",
@@ -83,6 +94,65 @@ describe("TengaAgentKnowledgeWorkspace", () => {
       ok: true,
       sources: [READY_SOURCE],
     });
+  });
+
+  it("updates the business profile and pauses publication for review", async () => {
+    const onWorkspaceChange = vi.fn();
+    const user = userEvent.setup();
+
+    updateProfileMock.mockResolvedValue({
+      ...WORKSPACE,
+      publicationPaused: true,
+      archivedWebsiteSources: 0,
+      unchanged: false,
+      organization: {
+        ...WORKSPACE.organization,
+        industry: "Education Technology",
+      },
+      agent: {
+        ...WORKSPACE.agent,
+        status: "paused",
+        published: false,
+      },
+    });
+
+    render(
+      <TengaAgentKnowledgeWorkspace
+        workspace={WORKSPACE}
+        onWorkspaceChange={onWorkspaceChange}
+      />
+    );
+
+    await screen.findByText("Admissions FAQ");
+
+    const industry = screen.getByLabelText(/^industry$/i);
+    await user.clear(industry);
+    await user.type(industry, "Education Technology");
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /save business profile/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(updateProfileMock).toHaveBeenCalledWith({
+        name: "Northstar Academy",
+        website: "https://northstar.example.com",
+        industry: "Education Technology",
+        countryCode: "NG",
+        timezone: "Africa/Lagos",
+      });
+    });
+
+    expect(onWorkspaceChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publicationPaused: true,
+      })
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /paused.*review.*publishing again/i
+    );
   });
 
   it("loads readiness and pauses publication after live configuration changes", async () => {
@@ -265,5 +335,76 @@ describe("TengaAgentKnowledgeWorkspace", () => {
         title: "Business website",
       });
     });
+  });
+
+  it("archives a source after confirmation and refreshes it out of the active knowledge list", async () => {
+    const onWorkspaceChange = vi.fn();
+    const user = userEvent.setup();
+    const confirmSpy = vi
+      .spyOn(window, "confirm")
+      .mockReturnValue(true);
+
+    getKnowledgeMock
+      .mockResolvedValueOnce({
+        ok: true,
+        sources: [READY_SOURCE],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        sources: [],
+      });
+
+    archiveKnowledgeMock.mockResolvedValue({
+      ...WORKSPACE,
+      publicationPaused: true,
+      chunksRemoved: 2,
+      source: {
+        ...READY_SOURCE,
+        status: "archived",
+      },
+      agent: {
+        ...WORKSPACE.agent,
+        status: "paused",
+        published: false,
+      },
+    });
+
+    render(
+      <TengaAgentKnowledgeWorkspace
+        workspace={WORKSPACE}
+        onWorkspaceChange={onWorkspaceChange}
+      />
+    );
+
+    await screen.findByText("Admissions FAQ");
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /archive admissions faq/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(archiveKnowledgeMock).toHaveBeenCalledWith({
+        sourceId: "source-1",
+      });
+    });
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(onWorkspaceChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publicationPaused: true,
+      })
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Admissions FAQ")
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /archived.*removed.*paused/i
+    );
+
+    confirmSpy.mockRestore();
   });
 });

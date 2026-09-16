@@ -18,6 +18,7 @@ const {
   getLeadsMock,
   getAppointmentsMock,
   saveWorkspaceMock,
+  setPublicationMock,
   updateLeadStatusMock,
   updateAppointmentStatusMock,
 } = vi.hoisted(() => ({
@@ -25,6 +26,7 @@ const {
   getLeadsMock: vi.fn(),
   getAppointmentsMock: vi.fn(),
   saveWorkspaceMock: vi.fn(),
+  setPublicationMock: vi.fn(),
   updateLeadStatusMock: vi.fn(),
   updateAppointmentStatusMock: vi.fn(),
 }));
@@ -40,6 +42,8 @@ vi.mock(
       getAppointmentsMock(...args),
     saveTengaAgentOwnerWorkspace: (...args) =>
       saveWorkspaceMock(...args),
+    setTengaAgentOwnerPublication: (...args) =>
+      setPublicationMock(...args),
     updateTengaAgentOwnerLeadStatus: (...args) =>
       updateLeadStatusMock(...args),
     updateTengaAgentOwnerAppointmentStatus: (...args) =>
@@ -59,13 +63,18 @@ const WORKSPACE = {
   organization: {
     id: "org-1",
     name: "Kurah Ventures",
+    slug: "kurah-ventures-12345678",
     plan: "starter",
     status: "pilot",
   },
   agent: {
     id: "agent-1",
+    key: "receptionist",
     name: "TengaAgent",
     status: "draft",
+    published: false,
+    publicPath:
+      "/tengaagent/kurah-ventures-12345678/receptionist",
   },
 };
 
@@ -225,6 +234,58 @@ describe("TengaAgentOwnerDashboard", () => {
 
     expect(
       await screen.findByText("Kurah Ventures")
+    ).toBeInTheDocument();
+  });
+
+  it("publishes the owner agent and exposes its shareable tenant path", async () => {
+    primeOwnerData();
+
+    setPublicationMock.mockResolvedValue({
+      ...WORKSPACE,
+      agent: {
+        ...WORKSPACE.agent,
+        status: "active",
+        published: true,
+      },
+    });
+
+    const user = userEvent.setup();
+
+    render(
+      <TengaAgentOwnerDashboard user={USER} />
+    );
+
+    expect(
+      await screen.findByText(/not public/i)
+    ).toBeInTheDocument();
+
+    const shareLink = screen.getByRole("link", {
+      name: WORKSPACE.agent.publicPath,
+    });
+    expect(shareLink).toHaveAttribute(
+      "href",
+      WORKSPACE.agent.publicPath
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /publish agent/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(setPublicationMock).toHaveBeenCalledWith({
+        published: true,
+      });
+    });
+
+    expect(
+      await screen.findByText(/^published$/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /pause public agent/i,
+      })
     ).toBeInTheDocument();
   });
 

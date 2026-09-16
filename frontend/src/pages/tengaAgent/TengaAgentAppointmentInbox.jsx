@@ -500,6 +500,8 @@ export default function TengaAgentAppointmentInbox({
                 ["requested", "confirmed"].includes(
                   appointment.status
                 );
+              const canComplete =
+                appointment.status === "confirmed";
               const isRescheduling =
                 rescheduleDraft?.appointmentId ===
                 appointment.id;
@@ -556,6 +558,14 @@ export default function TengaAgentAppointmentInbox({
                           : ""}
                       </span>
                     ) : null}
+                    {appointment.completedAt ? (
+                      <span className="tengaagent-owner-appointments__completion-audit">
+                        Completed {formatDate(appointment.completedAt)}
+                        {appointment.completedBy
+                          ? ` · by ${appointment.completedBy}`
+                          : ""}
+                      </span>
+                    ) : null}
                   </div>
 
                   {appointment.company ? (
@@ -601,6 +611,21 @@ export default function TengaAgentAppointmentInbox({
                         </option>
                       ))}
                     </select>
+                    {canComplete ? (
+                      <button
+                        type="button"
+                        className="tengaagent-owner-appointments__complete-button"
+                        disabled={Boolean(updatingId)}
+                        onClick={() =>
+                          handleStatusChange(
+                            appointment,
+                            "completed"
+                          )
+                        }
+                      >
+                        Mark completed
+                      </button>
+                    ) : null}
                     {canReschedule ? (
                       <button
                         type="button"

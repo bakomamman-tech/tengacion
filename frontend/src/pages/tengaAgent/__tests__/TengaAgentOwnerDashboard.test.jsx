@@ -17,10 +17,12 @@ const {
   getWorkspaceMock,
   getLeadsMock,
   saveWorkspaceMock,
+  updateLeadStatusMock,
 } = vi.hoisted(() => ({
   getWorkspaceMock: vi.fn(),
   getLeadsMock: vi.fn(),
   saveWorkspaceMock: vi.fn(),
+  updateLeadStatusMock: vi.fn(),
 }));
 
 vi.mock(
@@ -32,6 +34,8 @@ vi.mock(
       getLeadsMock(...args),
     saveTengaAgentOwnerWorkspace: (...args) =>
       saveWorkspaceMock(...args),
+    updateTengaAgentOwnerLeadStatus: (...args) =>
+      updateLeadStatusMock(...args),
   })
 );
 
@@ -57,42 +61,48 @@ const WORKSPACE = {
   },
 };
 
+const LEADS = [
+  {
+    id: "lead-1",
+    name: "Ada Customer",
+    email: "ada@example.com",
+    phone: "",
+    company: "Ada Labs",
+    projectSummary: "Needs an AI receptionist.",
+    source: "web",
+    status: "new",
+    consentToContact: true,
+    lastCapturedAt: "2026-09-16T12:00:00.000Z",
+  },
+  {
+    id: "lead-2",
+    name: "Tobi Buyer",
+    email: "",
+    phone: "+2348000000000",
+    company: "",
+    projectSummary: "Wants a product demo.",
+    source: "web",
+    status: "qualified",
+    consentToContact: true,
+    lastCapturedAt: "2026-09-16T13:00:00.000Z",
+  },
+];
+
+const primeOwnerData = () => {
+  getWorkspaceMock.mockResolvedValue(WORKSPACE);
+  getLeadsMock.mockResolvedValue({
+    ok: true,
+    leads: LEADS,
+  });
+};
+
 describe("TengaAgentOwnerDashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("loads the authenticated owner's workspace and leads", async () => {
-    getWorkspaceMock.mockResolvedValue(WORKSPACE);
-    getLeadsMock.mockResolvedValue({
-      ok: true,
-      leads: [
-        {
-          id: "lead-1",
-          name: "Ada Customer",
-          email: "ada@example.com",
-          phone: "",
-          company: "Ada Labs",
-          projectSummary: "Needs an AI receptionist.",
-          source: "web",
-          status: "new",
-          consentToContact: true,
-          lastCapturedAt: "2026-09-16T12:00:00.000Z",
-        },
-        {
-          id: "lead-2",
-          name: "Tobi Buyer",
-          email: "",
-          phone: "+2348000000000",
-          company: "",
-          projectSummary: "Wants a product demo.",
-          source: "web",
-          status: "qualified",
-          consentToContact: true,
-          lastCapturedAt: "2026-09-16T13:00:00.000Z",
-        },
-      ],
-    });
+    primeOwnerData();
 
     render(
       <TengaAgentOwnerDashboard user={USER} />
@@ -179,4 +189,70 @@ describe("TengaAgentOwnerDashboard", () => {
       await screen.findByText("Kurah Ventures")
     ).toBeInTheDocument();
   });
+
+  it("moves a lead through the owner workflow and refreshes status counts", async () => {
+    primeOwnerData();
+
+    updateLeadStatusMock.mockResolvedValue({
+      ok: true,
+      lead: {
+        ...LEADS[0],
+        status: "contacted",
+      },
+    });
+
+    const user = userEvent.setup();
+
+    render(
+      <TengaAgentOwnerDashboard user={USER} />
+    );
+
+    await screen.findByText("Ada Customer");
+
+    const adaCard = screen
+      .getByText("Ada Customer")
+      .closest("article");
+
+    const statusSelect = withinArticle(
+      adaCard,
+      /lead status/i
+    );
+
+    await user.selectOptions(
+      statusSelect,
+      "contacted"
+    );
+
+    await waitFor(() => {
+      expect(updateLeadStatusMock).toHaveBeenCalledWith({
+        leadId: "lead-1",
+        status: "contacted",
+      });
+    });
+
+    expect(statusSelect).toHaveValue("contacted");
+
+    const contactedFilter = screen.getByRole(
+      "button",
+      { name: /contacted/i }
+    );
+
+    expect(contactedFilter).toHaveTextContent("1");
+  });
 });
+
+function withinArticle(article, label) {
+  if (!article) {
+    throw new Error("Expected lead article to exist.");
+  }
+
+  const select = article.querySelector("select");
+
+  if (!select) {
+    throw new Error(
+      `Expected ${String(label)} select to exist.`
+    );
+  }
+
+  return select;
+}

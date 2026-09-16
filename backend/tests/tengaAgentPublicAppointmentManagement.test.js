@@ -255,6 +255,8 @@ describe("TengaAgent visitor appointment management", () => {
     ).lean();
     expect(saved.status).toBe("cancelled");
     expect(saved.rescheduleCount).toBe(0);
+    expect(saved.cancelledBy).toBe("visitor");
+    expect(saved.cancelledAt).toBeInstanceOf(Date);
   });
 
   it("does not let a visitor cancel a completed appointment", async () => {

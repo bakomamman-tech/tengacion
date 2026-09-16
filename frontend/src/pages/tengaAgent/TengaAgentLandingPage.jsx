@@ -4,12 +4,14 @@ import {
   useState,
 } from "react";
 
+import { useAuth } from "../../context/AuthContext";
 import {
   sendTengaAgentMessage,
   submitTengaAgentLead,
 } from "../../services/tengaAgentApi";
 
 import TengaAgentLeadCaptureForm from "./TengaAgentLeadCaptureForm";
+import TengaAgentOwnerDashboard from "./TengaAgentOwnerDashboard";
 import "./tengaagent.css";
 
 const AGENT_ID = "tengacion-demo";
@@ -164,8 +166,7 @@ const getSessionId = () => {
       return existing;
     }
 
-    const generated =
-      createLocalSessionId();
+    const generated = createLocalSessionId();
 
     window.sessionStorage.setItem(
       SESSION_STORAGE_KEY,
@@ -186,7 +187,6 @@ function ChatMessage({ sender, content }) {
       <div className="tengaagent-message-avatar">
         {sender === "agent" ? "TA" : "You"}
       </div>
-
       <div className="tengaagent-message-bubble">
         {content}
       </div>
@@ -210,14 +210,11 @@ function PricingCard({ plan }) {
       ) : null}
 
       <h3>{plan.name}</h3>
-
       <div className="tengaagent-price">
         {plan.price}
         <span>/month</span>
       </div>
-
       <p>{plan.description}</p>
-
       <ul>
         {plan.features.map((feature) => (
           <li key={feature}>
@@ -226,7 +223,6 @@ function PricingCard({ plan }) {
           </li>
         ))}
       </ul>
-
       <a
         href="#live-demo"
         className="tengaagent-plan-button"
@@ -238,21 +234,20 @@ function PricingCard({ plan }) {
 }
 
 export default function TengaAgentLandingPage() {
+  const auth = useAuth();
+  const user = auth?.user || null;
+
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([
     INITIAL_MESSAGE,
   ]);
-  const [isSending, setIsSending] =
-    useState(false);
-  const [market, setMarket] =
-    useState("nigeria");
+  const [isSending, setIsSending] = useState(false);
+  const [market, setMarket] = useState("nigeria");
   const [sessionId] = useState(getSessionId);
-  const [leadAction, setLeadAction] =
-    useState(null);
+  const [leadAction, setLeadAction] = useState(null);
   const [isSubmittingLead, setIsSubmittingLead] =
     useState(false);
-  const [leadError, setLeadError] =
-    useState("");
+  const [leadError, setLeadError] = useState("");
 
   const chatEndRef = useRef(null);
 
@@ -268,11 +263,7 @@ export default function TengaAgentLandingPage() {
         block: "nearest",
       });
     }
-  }, [
-    messages,
-    isSending,
-    leadAction,
-  ]);
+  }, [messages, isSending, leadAction]);
 
   const appendAgentMessage = (
     content,
@@ -312,23 +303,22 @@ export default function TengaAgentLandingPage() {
     setIsSending(true);
 
     try {
-      const response =
-        await sendTengaAgentMessage({
-          agentId: AGENT_ID,
-          message,
-          sessionId,
-        });
+      const response = await sendTengaAgentMessage({
+        agentId: AGENT_ID,
+        message,
+        sessionId,
+      });
 
       appendAgentMessage(response.reply);
 
-      const captureAction =
-        Array.isArray(response.actions)
-          ? response.actions.find(
-              (action) =>
-                action?.type ===
-                "capture_lead"
-            )
-          : null;
+      const captureAction = Array.isArray(
+        response.actions
+      )
+        ? response.actions.find(
+            (action) =>
+              action?.type === "capture_lead"
+          )
+        : null;
 
       setLeadAction(captureAction || null);
     } catch (error) {
@@ -351,12 +341,11 @@ export default function TengaAgentLandingPage() {
     setLeadError("");
 
     try {
-      const response =
-        await submitTengaAgentLead({
-          agentId: AGENT_ID,
-          sessionId,
-          ...lead,
-        });
+      const response = await submitTengaAgentLead({
+        agentId: AGENT_ID,
+        sessionId,
+        ...lead,
+      });
 
       setLeadAction(null);
 
@@ -405,6 +394,9 @@ export default function TengaAgentLandingPage() {
         >
           <a href="#how-it-works">How it works</a>
           <a href="#pricing">Pricing</a>
+          {user ? (
+            <a href="#owner-dashboard">Lead inbox</a>
+          ) : null}
           <a
             href="#live-demo"
             className="tengaagent-nav-cta"
@@ -419,12 +411,10 @@ export default function TengaAgentLandingPage() {
           <div className="tengaagent-eyebrow">
             AI RECEPTIONIST · SALES · SUPPORT
           </div>
-
           <h1>
             Never miss another
             <span>{" "}customer.</span>
           </h1>
-
           <p className="tengaagent-hero-lead">
             TengaAgent answers enquiries, qualifies
             leads and helps businesses turn conversations
@@ -438,13 +428,21 @@ export default function TengaAgentLandingPage() {
             >
               Talk to TengaAgent
             </a>
-
-            <a
-              href="#pricing"
-              className="tengaagent-secondary-button"
-            >
-              View pricing
-            </a>
+            {user ? (
+              <a
+                href="#owner-dashboard"
+                className="tengaagent-secondary-button"
+              >
+                Open lead inbox
+              </a>
+            ) : (
+              <a
+                href="#pricing"
+                className="tengaagent-secondary-button"
+              >
+                View pricing
+              </a>
+            )}
           </div>
 
           <div className="tengaagent-proof-row">
@@ -464,13 +462,11 @@ export default function TengaAgentLandingPage() {
               <div className="tengaagent-agent-avatar">
                 TA
               </div>
-
               <div>
                 <strong>TengaAgent</strong>
                 <span>AI Receptionist</span>
               </div>
             </div>
-
             <div className="tengaagent-online">
               <span />
               Online
@@ -537,7 +533,6 @@ export default function TengaAgentLandingPage() {
             >
               Message TengaAgent
             </label>
-
             <input
               id="tengaagent-message"
               value={draft}
@@ -548,12 +543,9 @@ export default function TengaAgentLandingPage() {
                 setDraft(event.target.value)
               }
             />
-
             <button
               type="submit"
-              disabled={
-                isSending || !draft.trim()
-              }
+              disabled={isSending || !draft.trim()}
               aria-label="Send message"
             >
               →
@@ -589,6 +581,10 @@ export default function TengaAgentLandingPage() {
         </article>
       </section>
 
+      {user ? (
+        <TengaAgentOwnerDashboard user={user} />
+      ) : null}
+
       <section
         className="tengaagent-section"
         id="how-it-works"
@@ -616,7 +612,6 @@ export default function TengaAgentLandingPage() {
               documents.
             </p>
           </article>
-
           <article>
             <span>02</span>
             <h3>Talk to every customer</h3>
@@ -625,13 +620,13 @@ export default function TengaAgentLandingPage() {
               voice notes and telephone.
             </p>
           </article>
-
           <article>
             <span>03</span>
             <h3>Turn intent into action</h3>
             <p>
-              Capture leads, book meetings and hand
-              off sensitive conversations to humans.
+              Capture leads, review them in your owner
+              inbox, then progress into booking and
+              human follow-up.
             </p>
           </article>
         </div>
@@ -668,7 +663,6 @@ export default function TengaAgentLandingPage() {
           >
             🇳🇬 Nigeria
           </button>
-
           <button
             type="button"
             className={
@@ -706,10 +700,10 @@ export default function TengaAgentLandingPage() {
           Your next customer should always get an answer.
         </h2>
         <p>
-          Business onboarding, knowledge ingestion and
-          consent-based lead capture are now part of the
-          MVP. Lead qualification and appointment booking
-          are next.
+          Business onboarding, knowledge ingestion,
+          consent-based lead capture and the owner lead
+          inbox are now part of the MVP. Lead workflow
+          actions and appointment booking are next.
         </p>
         <a
           href="#live-demo"

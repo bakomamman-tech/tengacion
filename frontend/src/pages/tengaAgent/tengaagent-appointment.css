@@ -1,0 +1,148 @@
+.tengaagent-appointment-card {
+  margin: 12px 14px 0;
+  padding: 16px;
+  border: 1px solid rgba(98, 230, 189, 0.3);
+  border-radius: 16px;
+  background: rgba(7, 18, 30, 0.96);
+}
+
+.tengaagent-appointment-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.tengaagent-appointment-heading span,
+.tengaagent-appointment-heading strong {
+  display: block;
+}
+
+.tengaagent-appointment-heading span {
+  color: var(--accent, #62e6bd);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.tengaagent-appointment-heading strong {
+  margin-top: 4px;
+  font-size: 1rem;
+}
+
+.tengaagent-appointment-dismiss {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: transparent;
+  color: #f6f9fc;
+  cursor: pointer;
+}
+
+.tengaagent-appointment-card > p {
+  margin: 10px 0 14px;
+  color: var(--muted, #a4b4c8);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.tengaagent-appointment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tengaagent-appointment-card label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tengaagent-appointment-card label > span {
+  color: var(--muted, #a4b4c8);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.tengaagent-appointment-card input,
+.tengaagent-appointment-card select,
+.tengaagent-appointment-card textarea {
+  min-width: 0;
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 10px;
+  outline: none;
+  background: #0b1728;
+  color: #f6f9fc;
+  font: inherit;
+}
+
+.tengaagent-appointment-card input:focus,
+.tengaagent-appointment-card select:focus,
+.tengaagent-appointment-card textarea:focus {
+  border-color: var(--accent, #62e6bd);
+}
+
+.tengaagent-appointment-wide {
+  margin-top: 10px;
+}
+
+.tengaagent-appointment-timezone {
+  margin-top: 9px;
+  color: var(--muted, #a4b4c8);
+  font-size: 0.72rem;
+}
+
+.tengaagent-appointment-consent {
+  margin-top: 12px;
+  display: flex !important;
+  grid-template-columns: none;
+  align-items: flex-start;
+  gap: 9px !important;
+}
+
+.tengaagent-appointment-consent input {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+
+.tengaagent-appointment-consent span {
+  line-height: 1.45;
+}
+
+.tengaagent-appointment-error {
+  margin-top: 11px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 120, 120, 0.35);
+  border-radius: 9px;
+  color: #ffd4d4;
+  font-size: 0.78rem;
+}
+
+.tengaagent-appointment-submit {
+  width: 100%;
+  margin-top: 12px;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent, #62e6bd);
+  color: #061019;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.tengaagent-appointment-submit:disabled,
+.tengaagent-appointment-dismiss:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+@media (max-width: 620px) {
+  .tengaagent-appointment-grid {
+    grid-template-columns: 1fr;
+  }
+}

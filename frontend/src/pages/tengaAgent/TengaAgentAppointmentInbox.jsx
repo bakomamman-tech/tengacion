@@ -7,6 +7,7 @@ import {
 
 import {
   getTengaAgentOwnerAppointments,
+  rescheduleTengaAgentOwnerAppointment,
   updateTengaAgentOwnerAppointmentStatus,
 } from "../../services/tengaAgentApi";
 
@@ -54,6 +55,33 @@ const formatDate = (value) => {
   }).format(date);
 };
 
+const padDatePart = (value) =>
+  String(value).padStart(2, "0");
+
+const toDateTimeLocal = (value) => {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return [
+    date.getFullYear(),
+    "-",
+    padDatePart(date.getMonth() + 1),
+    "-",
+    padDatePart(date.getDate()),
+    "T",
+    padDatePart(date.getHours()),
+    ":",
+    padDatePart(date.getMinutes()),
+  ].join("");
+};
+
+const deviceTimezone = () =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone ||
+  "Africa/Lagos";
+
 const contactLabel = (appointment) =>
   appointment.email ||
   appointment.phone ||
@@ -82,6 +110,8 @@ export default function TengaAgentAppointmentInbox({
     useState(true);
   const [updatingId, setUpdatingId] =
     useState("");
+  const [rescheduleDraft, setRescheduleDraft] =
+    useState(null);
   const [error, setError] = useState("");
 
   const loadAppointments = useCallback(async () => {
@@ -156,6 +186,16 @@ export default function TengaAgentAppointmentInbox({
     [appointments, filter]
   );
 
+  const replaceAppointment = (appointment) => {
+    setAppointments((current) =>
+      current.map((entry) =>
+        entry.id === appointment.id
+          ? appointment
+          : entry
+      )
+    );
+  };
+
   const handleStatusChange = async (
     appointment,
     status
@@ -180,19 +220,93 @@ export default function TengaAgentAppointmentInbox({
         });
 
       if (response?.appointment) {
-        setAppointments((current) =>
-          current.map((entry) =>
-            entry.id ===
-            response.appointment.id
-              ? response.appointment
-              : entry
-          )
+        replaceAppointment(
+          response.appointment
         );
       }
     } catch (requestError) {
       setError(
         requestError?.message ||
           "TengaAgent could not update that appointment."
+      );
+      await loadAppointments();
+    } finally {
+      setUpdatingId("");
+    }
+  };
+
+  const openReschedule = (appointment) => {
+    if (
+      updatingId ||
+      !["requested", "confirmed"].includes(
+        appointment?.status
+      )
+    ) {
+      return;
+    }
+
+    setError("");
+    setRescheduleDraft({
+      appointmentId: appointment.id,
+      preferredStartLocal:
+        toDateTimeLocal(
+          appointment.preferredStartAt
+        ),
+      durationMinutes: String(
+        appointment.durationMinutes || 30
+      ),
+    });
+  };
+
+  const saveReschedule = async (appointment) => {
+    if (
+      !rescheduleDraft ||
+      rescheduleDraft.appointmentId !==
+        appointment.id ||
+      updatingId
+    ) {
+      return;
+    }
+
+    const parsedStart = new Date(
+      rescheduleDraft.preferredStartLocal
+    );
+
+    if (
+      !rescheduleDraft.preferredStartLocal ||
+      Number.isNaN(parsedStart.getTime())
+    ) {
+      setError(
+        "Choose a valid future meeting time before saving."
+      );
+      return;
+    }
+
+    setUpdatingId(appointment.id);
+    setError("");
+
+    try {
+      const response =
+        await rescheduleTengaAgentOwnerAppointment({
+          appointmentId: appointment.id,
+          preferredStartAt:
+            parsedStart.toISOString(),
+          timezone: deviceTimezone(),
+          durationMinutes: Number(
+            rescheduleDraft.durationMinutes
+          ),
+        });
+
+      if (response?.appointment) {
+        replaceAppointment(
+          response.appointment
+        );
+        setRescheduleDraft(null);
+      }
+    } catch (requestError) {
+      setError(
+        requestError?.message ||
+          "TengaAgent could not reschedule that appointment."
       );
       await loadAppointments();
     } finally {
@@ -284,6 +398,13 @@ export default function TengaAgentAppointmentInbox({
                 STATUS_OPTIONS[
                   appointment.status
                 ] || [appointment.status];
+              const canReschedule =
+                ["requested", "confirmed"].includes(
+                  appointment.status
+                );
+              const isRescheduling =
+                rescheduleDraft?.appointmentId ===
+                appointment.id;
 
               return (
                 <article
@@ -315,7 +436,7 @@ export default function TengaAgentAppointmentInbox({
                     </strong>
                     <span>
                       {appointment.durationMinutes || 30}
-                      {" minutes · visitor timezone: "}
+                      {" minutes · meeting timezone: "}
                       {appointment.timezone || "—"}
                     </span>
                     <span>
@@ -326,6 +447,17 @@ export default function TengaAgentAppointmentInbox({
                         ? ` · ${appointment.availabilitySource}`
                         : ""}
                     </span>
+                    {appointment.rescheduleCount ? (
+                      <span>
+                        Rescheduled {appointment.rescheduleCount}{" "}
+                        {appointment.rescheduleCount === 1
+                          ? "time"
+                          : "times"}
+                        {appointment.rescheduledAt
+                          ? ` · last ${formatDate(appointment.rescheduledAt)}`
+                          : ""}
+                      </span>
+                    ) : null}
                   </div>
 
                   {appointment.company ? (
@@ -371,12 +503,104 @@ export default function TengaAgentAppointmentInbox({
                         </option>
                       ))}
                     </select>
+                    {canReschedule ? (
+                      <button
+                        type="button"
+                        className="tengaagent-owner-appointments__reschedule-button"
+                        disabled={Boolean(updatingId)}
+                        onClick={() =>
+                          isRescheduling
+                            ? setRescheduleDraft(null)
+                            : openReschedule(appointment)
+                        }
+                      >
+                        {isRescheduling
+                          ? "Close reschedule"
+                          : "Reschedule"}
+                      </button>
+                    ) : null}
                     {updatingId === appointment.id ? (
                       <span aria-live="polite">
                         Saving…
                       </span>
                     ) : null}
                   </div>
+
+                  {isRescheduling ? (
+                    <div className="tengaagent-owner-appointments__reschedule">
+                      <div>
+                        <label
+                          htmlFor={`tengaagent-reschedule-time-${appointment.id}`}
+                        >
+                          New meeting time (your device timezone)
+                        </label>
+                        <input
+                          id={`tengaagent-reschedule-time-${appointment.id}`}
+                          type="datetime-local"
+                          value={
+                            rescheduleDraft.preferredStartLocal
+                          }
+                          onChange={(event) =>
+                            setRescheduleDraft((current) => ({
+                              ...current,
+                              preferredStartLocal:
+                                event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor={`tengaagent-reschedule-duration-${appointment.id}`}
+                        >
+                          Duration (minutes)
+                        </label>
+                        <input
+                          id={`tengaagent-reschedule-duration-${appointment.id}`}
+                          type="number"
+                          min="15"
+                          max="180"
+                          step="15"
+                          value={
+                            rescheduleDraft.durationMinutes
+                          }
+                          onChange={(event) =>
+                            setRescheduleDraft((current) => ({
+                              ...current,
+                              durationMinutes:
+                                event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="tengaagent-owner-appointments__reschedule-actions">
+                        <button
+                          type="button"
+                          disabled={Boolean(updatingId)}
+                          onClick={() =>
+                            saveReschedule(appointment)
+                          }
+                        >
+                          Save new time
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary"
+                          disabled={Boolean(updatingId)}
+                          onClick={() =>
+                            setRescheduleDraft(null)
+                          }
+                        >
+                          Keep current time
+                        </button>
+                      </div>
+                      <small>
+                        Confirmed meetings are rechecked against
+                        internal and connected calendar conflicts
+                        before the new time is saved.
+                      </small>
+                    </div>
+                  ) : null}
                 </article>
               );
             })}

@@ -36,6 +36,10 @@ const Organization = require("../models/tengaAgent/Organization");
 const Agent = require("../models/tengaAgent/Agent");
 const Conversation = require("../models/tengaAgent/Conversation");
 const Appointment = require("../models/tengaAgent/Appointment");
+const AppointmentNotification = require(
+  "../models/tengaAgent/AppointmentNotification"
+);
+const User = require("../models/User");
 
 let mongod;
 let app;
@@ -67,6 +71,15 @@ afterAll(async () => {
 
 const createConfirmedAppointment = async () => {
   const ownerUserId = new mongoose.Types.ObjectId();
+  await User.collection.insertOne({
+    _id: ownerUserId,
+    name: "Completion Owner",
+    email: "owner@example.com",
+    emailVerified: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
   const organization = await Organization.create({
     name: "Completion Audit Business",
     slug: `completion-audit-${Date.now()}-${Math.random()}`,
@@ -90,6 +103,7 @@ const createConfirmedAppointment = async () => {
     agentId: agent._id,
     conversationId: conversation._id,
     sessionKey: conversation.sessionKey,
+    name: "Completion Visitor",
     email: "visitor@example.com",
     preferredStartAt: new Date(Date.now() + 60 * 60 * 1000),
     timezone: "Africa/Lagos",
@@ -103,7 +117,7 @@ const createConfirmedAppointment = async () => {
 };
 
 describe("TengaAgent appointment completion lifecycle", () => {
-  it("records and exposes an idempotent owner completion audit", async () => {
+  it("records completion audit, queues one lifecycle event per recipient, and stays idempotent", async () => {
     const { ownerUserId, appointment } =
       await createConfirmedAppointment();
 
@@ -132,6 +146,24 @@ describe("TengaAgent appointment completion lifecycle", () => {
     expect(persisted.completedBy).toBe("owner");
     expect(persisted.completedAt).toBeInstanceOf(Date);
 
+    const completionNotifications =
+      await AppointmentNotification.find({
+        appointmentId: appointment._id,
+        eventType: "completed",
+      }).lean();
+
+    expect(completionNotifications).toHaveLength(2);
+    expect(
+      completionNotifications.map((entry) => entry.recipientKind).sort()
+    ).toEqual(["owner", "visitor"]);
+    expect(
+      completionNotifications.every(
+        (entry) =>
+          entry.actor === "owner" &&
+          entry.snapshot.appointmentStatus === "completed"
+      )
+    ).toBe(true);
+
     const second = await request(app)
       .patch(
         `/api/tengaagent/owner/appointments/${appointment._id}/status`
@@ -142,6 +174,13 @@ describe("TengaAgent appointment completion lifecycle", () => {
 
     expect(second.body.appointment.completedAt).toBe(completedAt);
     expect(second.body.appointment.completedBy).toBe("owner");
+
+    expect(
+      await AppointmentNotification.countDocuments({
+        appointmentId: appointment._id,
+        eventType: "completed",
+      })
+    ).toBe(2);
 
     await request(app)
       .patch(

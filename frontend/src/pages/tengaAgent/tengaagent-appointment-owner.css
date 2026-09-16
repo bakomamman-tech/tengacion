@@ -65,14 +65,16 @@
   gap: 4px;
 }
 
-.tengaagent-owner-appointments__filters {
+.tengaagent-owner-appointments__filters,
+.tengaagent-owner-appointments__time-filters {
   margin-top: 16px;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.tengaagent-owner-appointments__filters button {
+.tengaagent-owner-appointments__filters button,
+.tengaagent-owner-appointments__time-filters button {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -85,7 +87,8 @@
   cursor: pointer;
 }
 
-.tengaagent-owner-appointments__filters button.active {
+.tengaagent-owner-appointments__filters button.active,
+.tengaagent-owner-appointments__time-filters button.active {
   border-color: rgba(98, 230, 189, 0.5);
   background: rgba(98, 230, 189, 0.12);
   color: var(--accent, #62e6bd);
@@ -98,6 +101,54 @@
   background: rgba(255, 255, 255, 0.08);
   text-align: center;
   font-size: 0.72rem;
+}
+
+.tengaagent-owner-appointments__tools {
+  margin-top: 14px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  gap: 12px;
+  align-items: end;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.tengaagent-owner-appointments__search {
+  display: grid;
+  gap: 6px;
+}
+
+.tengaagent-owner-appointments__search span {
+  color: var(--muted, #a4b4c8);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.tengaagent-owner-appointments__search input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 9px;
+  background: #0b1728;
+  color: #f6f9fc;
+}
+
+.tengaagent-owner-appointments__search input::placeholder {
+  color: rgba(164, 180, 200, 0.7);
+}
+
+.tengaagent-owner-appointments__time-filters {
+  margin-top: 0;
+}
+
+.tengaagent-owner-appointments__result-count {
+  padding-bottom: 8px;
+  color: var(--muted, #a4b4c8);
+  font-size: 0.76rem;
+  white-space: nowrap;
 }
 
 .tengaagent-owner-appointments__list {
@@ -253,6 +304,17 @@
   grid-column: 1 / -1;
   color: var(--muted, #a4b4c8);
   line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .tengaagent-owner-appointments__tools {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .tengaagent-owner-appointments__result-count {
+    padding-bottom: 0;
+  }
 }
 
 @media (max-width: 760px) {

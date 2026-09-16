@@ -3,6 +3,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -97,11 +98,12 @@ describe("TengaAgentOutcomeOperations", () => {
     expect(
       screen.getByText(/overdue follow-up/i)
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("1", {
-        selector: ".tengaagent-outcomes__metrics strong",
-      })
-    ).toBeInTheDocument();
+
+    const overdueMetric = screen
+      .getByText("Follow-up overdue")
+      .closest("article");
+    expect(overdueMetric).not.toBeNull();
+    expect(within(overdueMetric).getByText("1")).toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", {

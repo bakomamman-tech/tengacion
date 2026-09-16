@@ -20,11 +20,13 @@ import {
 
 const {
   getPublicAgentMock,
+  getPublicConversationMock,
   sendPublicMessageMock,
   submitPublicLeadMock,
   submitPublicAppointmentMock,
 } = vi.hoisted(() => ({
   getPublicAgentMock: vi.fn(),
+  getPublicConversationMock: vi.fn(),
   sendPublicMessageMock: vi.fn(),
   submitPublicLeadMock: vi.fn(),
   submitPublicAppointmentMock: vi.fn(),
@@ -35,6 +37,8 @@ vi.mock(
   () => ({
     getPublicTengaAgent: (...args) =>
       getPublicAgentMock(...args),
+    getPublicTengaAgentConversation: (...args) =>
+      getPublicConversationMock(...args),
     sendPublicTengaAgentMessage: (...args) =>
       sendPublicMessageMock(...args),
     submitPublicTengaAgentLead: (...args) =>
@@ -96,9 +100,17 @@ describe("TengaAgentPublicAgentPage", () => {
     getPublicAgentMock.mockResolvedValue(
       PUBLIC_AGENT
     );
+    getPublicConversationMock.mockResolvedValue({
+      ok: true,
+      exists: false,
+      status: null,
+      messages: [],
+    });
 
     sendPublicMessageMock.mockResolvedValue({
       ok: true,
+      mode: "ai",
+      status: "ai_active",
       reply:
         "Use the contact option below to reach Northstar Academy.",
       actions: [
@@ -111,6 +123,9 @@ describe("TengaAgentPublicAgentPage", () => {
 
     submitPublicLeadMock.mockResolvedValue({
       ok: true,
+      conversation: {
+        status: "handoff_requested",
+      },
       message:
         "Thanks. Your details were saved and Northstar Academy can follow up on this enquiry.",
     });
@@ -199,6 +214,85 @@ describe("TengaAgentPublicAgentPage", () => {
       await screen.findByText(
         /northstar academy can follow up/i
       )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/human follow-up requested/i)
+    ).toBeInTheDocument();
+  });
+
+  it("restores human-active transcripts and sends new visitor messages without expecting an AI reply", async () => {
+    const user = userEvent.setup();
+
+    getPublicConversationMock
+      .mockResolvedValueOnce({
+        ok: true,
+        exists: true,
+        status: "human_active",
+        messages: [
+          {
+            id: "human-1",
+            sender: "human",
+            content: "Hello, I have taken over this chat.",
+            createdAt: "2026-09-16T15:00:00.000Z",
+          },
+        ],
+      })
+      .mockResolvedValue({
+        ok: true,
+        exists: true,
+        status: "human_active",
+        messages: [
+          {
+            id: "human-1",
+            sender: "human",
+            content: "Hello, I have taken over this chat.",
+            createdAt: "2026-09-16T15:00:00.000Z",
+          },
+          {
+            id: "customer-2",
+            sender: "customer",
+            content: "Can you check my request?",
+            createdAt: "2026-09-16T15:01:00.000Z",
+          },
+        ],
+      });
+
+    sendPublicMessageMock.mockResolvedValue({
+      ok: true,
+      mode: "human",
+      status: "human_active",
+      reply: null,
+      actions: [],
+    });
+
+    renderPublicAgent();
+
+    expect(
+      await screen.findByText("Hello, I have taken over this chat.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/human support is active/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText("Human")).toBeInTheDocument();
+
+    await user.type(
+      screen.getByLabelText("Message"),
+      "Can you check my request?"
+    );
+    await user.click(
+      screen.getByRole("button", { name: /^send$/i })
+    );
+
+    await waitFor(() => {
+      expect(sendPublicMessageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Can you check my request?",
+        })
+      );
+    });
+
+    expect(
+      await screen.findByText("Can you check my request?")
     ).toBeInTheDocument();
   });
 

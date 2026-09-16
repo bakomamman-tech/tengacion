@@ -20,12 +20,14 @@ import {
 
 const {
   getPublicAgentMock,
+  getPublicAvailabilityMock,
   getPublicConversationMock,
   sendPublicMessageMock,
   submitPublicLeadMock,
   submitPublicAppointmentMock,
 } = vi.hoisted(() => ({
   getPublicAgentMock: vi.fn(),
+  getPublicAvailabilityMock: vi.fn(),
   getPublicConversationMock: vi.fn(),
   sendPublicMessageMock: vi.fn(),
   submitPublicLeadMock: vi.fn(),
@@ -37,6 +39,8 @@ vi.mock(
   () => ({
     getPublicTengaAgent: (...args) =>
       getPublicAgentMock(...args),
+    getPublicTengaAgentAvailability: (...args) =>
+      getPublicAvailabilityMock(...args),
     getPublicTengaAgentConversation: (...args) =>
       getPublicConversationMock(...args),
     sendPublicTengaAgentMessage: (...args) =>
@@ -105,6 +109,14 @@ describe("TengaAgentPublicAgentPage", () => {
       exists: false,
       status: null,
       messages: [],
+    });
+    getPublicAvailabilityMock.mockResolvedValue({
+      ok: true,
+      enabled: false,
+      source: "request_only",
+      timezone: "Africa/Lagos",
+      durationMinutes: 30,
+      slots: [],
     });
 
     sendPublicMessageMock.mockResolvedValue({
@@ -218,6 +230,114 @@ describe("TengaAgentPublicAgentPage", () => {
     expect(
       screen.getByText(/human follow-up requested/i)
     ).toBeInTheDocument();
+  });
+
+  it("loads configured availability and submits one of the real public slots", async () => {
+    const user = userEvent.setup();
+    const slot = "2030-01-10T10:00:00.000Z";
+
+    sendPublicMessageMock.mockResolvedValue({
+      ok: true,
+      mode: "ai",
+      status: "ai_active",
+      reply: "Choose an available meeting time below.",
+      actions: [
+        {
+          type: "book_appointment",
+          label: "Request a meeting time",
+        },
+      ],
+    });
+    getPublicAvailabilityMock.mockResolvedValue({
+      ok: true,
+      enabled: true,
+      source: "internal_schedule",
+      timezone: "UTC",
+      durationMinutes: 30,
+      slots: [
+        {
+          startAt: slot,
+          endAt: "2030-01-10T10:30:00.000Z",
+        },
+      ],
+    });
+    submitPublicAppointmentMock.mockResolvedValue({
+      ok: true,
+      conversation: {
+        status: "handoff_requested",
+      },
+      appointment: {
+        id: "appointment-1",
+        status: "requested",
+      },
+      message:
+        "Your preferred meeting time has been requested. Northstar Academy still needs to confirm the appointment.",
+    });
+
+    renderPublicAgent();
+    await screen.findByText(
+      "Welcome to Northstar Academy. How can I help?"
+    );
+
+    await user.type(
+      screen.getByLabelText("Message"),
+      "I want to book a meeting"
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: /^send$/i,
+      })
+    );
+
+    const availableSelect =
+      await screen.findByLabelText(/available time/i);
+
+    expect(
+      getPublicAvailabilityMock
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationSlug:
+          "northstar-academy-12345678",
+        agentKey: "receptionist",
+        durationMinutes: 30,
+      })
+    );
+
+    await user.selectOptions(
+      availableSelect,
+      slot
+    );
+    await user.type(
+      screen.getByPlaceholderText("you@example.com"),
+      "meeting@northstar.test"
+    );
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /northstar academy may contact me/i,
+      })
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: /request this meeting time/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(
+        submitPublicAppointmentMock
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationSlug:
+            "northstar-academy-12345678",
+          agentKey: "receptionist",
+          email: "meeting@northstar.test",
+          preferredStartAt: slot,
+          timezone: "UTC",
+          durationMinutes: 30,
+          consentToContact: true,
+        })
+      );
+    });
   });
 
   it("restores human-active transcripts and sends new visitor messages without expecting an AI reply", async () => {

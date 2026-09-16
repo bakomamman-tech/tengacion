@@ -9,17 +9,22 @@ import {
   getTengaAgentOwnerLeads,
   getTengaAgentOwnerWorkspace,
   saveTengaAgentOwnerWorkspace,
+  updateTengaAgentOwnerLeadStatus,
 } from "../../services/tengaAgentApi";
 
 import "./tengaagent-owner.css";
 
-const STATUS_FILTERS = [
-  "all",
+const LEAD_STATUSES = [
   "new",
   "qualified",
   "contacted",
   "won",
   "lost",
+];
+
+const STATUS_FILTERS = [
+  "all",
+  ...LEAD_STATUSES,
 ];
 
 const INITIAL_SETUP = {
@@ -53,14 +58,13 @@ const contactLabel = (lead) =>
 export default function TengaAgentOwnerDashboard({
   user,
 }) {
-  const [workspace, setWorkspace] =
-    useState(null);
+  const [workspace, setWorkspace] = useState(null);
   const [leads, setLeads] = useState([]);
   const [filter, setFilter] = useState("all");
-  const [isLoading, setIsLoading] =
-    useState(true);
-  const [isSaving, setIsSaving] =
-    useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [updatingLeadId, setUpdatingLeadId] =
+    useState("");
   const [error, setError] = useState("");
   const [needsSetup, setNeedsSetup] =
     useState(false);
@@ -184,6 +188,48 @@ export default function TengaAgentOwnerDashboard({
     }
   };
 
+  const handleLeadStatusChange = async (
+    lead,
+    status
+  ) => {
+    if (
+      !lead?.id ||
+      !LEAD_STATUSES.includes(status) ||
+      status === lead.status ||
+      updatingLeadId
+    ) {
+      return;
+    }
+
+    setUpdatingLeadId(lead.id);
+    setError("");
+
+    try {
+      const response =
+        await updateTengaAgentOwnerLeadStatus({
+          leadId: lead.id,
+          status,
+        });
+
+      if (response?.lead) {
+        setLeads((current) =>
+          current.map((entry) =>
+            entry.id === response.lead.id
+              ? response.lead
+              : entry
+          )
+        );
+      }
+    } catch (requestError) {
+      setError(
+        requestError?.message ||
+          "TengaAgent could not update that lead."
+      );
+    } finally {
+      setUpdatingLeadId("");
+    }
+  };
+
   if (!user) {
     return null;
   }
@@ -204,8 +250,9 @@ export default function TengaAgentOwnerDashboard({
           </h2>
           <p>
             Review enquiries captured by your AI
-            receptionist. Tenant isolation is enforced
-            by the authenticated owner workspace API.
+            receptionist and move them through your
+            follow-up workflow. Tenant isolation is
+            enforced by the authenticated owner API.
           </p>
         </div>
 
@@ -214,7 +261,7 @@ export default function TengaAgentOwnerDashboard({
             type="button"
             className="tengaagent-owner__refresh"
             onClick={loadOwnerData}
-            disabled={isLoading}
+            disabled={isLoading || Boolean(updatingLeadId)}
           >
             {isLoading ? "Refreshing…" : "Refresh"}
           </button>
@@ -377,55 +424,98 @@ export default function TengaAgentOwnerDashboard({
             </div>
           ) : (
             <div className="tengaagent-owner__lead-list">
-              {visibleLeads.map((lead) => (
-                <article
-                  className="tengaagent-owner__lead"
-                  key={lead.id}
-                >
-                  <div className="tengaagent-owner__lead-topline">
-                    <div>
-                      <strong>
-                        {lead.name || "Unnamed lead"}
-                      </strong>
-                      <span>{contactLabel(lead)}</span>
+              {visibleLeads.map((lead) => {
+                const isUpdating =
+                  updatingLeadId === lead.id;
+
+                return (
+                  <article
+                    className="tengaagent-owner__lead"
+                    key={lead.id}
+                  >
+                    <div className="tengaagent-owner__lead-topline">
+                      <div>
+                        <strong>
+                          {lead.name || "Unnamed lead"}
+                        </strong>
+                        <span>{contactLabel(lead)}</span>
+                      </div>
+                      <span
+                        className={`tengaagent-owner__status tengaagent-owner__status--${lead.status}`}
+                      >
+                        {lead.status}
+                      </span>
                     </div>
-                    <span
-                      className={`tengaagent-owner__status tengaagent-owner__status--${lead.status}`}
-                    >
-                      {lead.status}
-                    </span>
-                  </div>
 
-                  {lead.company ? (
-                    <div className="tengaagent-owner__company">
-                      {lead.company}
+                    {lead.company ? (
+                      <div className="tengaagent-owner__company">
+                        {lead.company}
+                      </div>
+                    ) : null}
+
+                    {lead.projectSummary ? (
+                      <p>{lead.projectSummary}</p>
+                    ) : (
+                      <p className="tengaagent-owner__muted">
+                        No project summary supplied.
+                      </p>
+                    )}
+
+                    <div className="tengaagent-owner__workflow">
+                      <label
+                        htmlFor={`tengaagent-lead-status-${lead.id}`}
+                      >
+                        Lead status
+                      </label>
+                      <select
+                        id={`tengaagent-lead-status-${lead.id}`}
+                        value={lead.status}
+                        disabled={
+                          Boolean(updatingLeadId)
+                        }
+                        onChange={(event) =>
+                          handleLeadStatusChange(
+                            lead,
+                            event.target.value
+                          )
+                        }
+                      >
+                        {LEAD_STATUSES.map((status) => (
+                          <option
+                            key={status}
+                            value={status}
+                          >
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                      {isUpdating ? (
+                        <span
+                          className="tengaagent-owner__workflow-saving"
+                          aria-live="polite"
+                        >
+                          Saving…
+                        </span>
+                      ) : null}
                     </div>
-                  ) : null}
 
-                  {lead.projectSummary ? (
-                    <p>{lead.projectSummary}</p>
-                  ) : (
-                    <p className="tengaagent-owner__muted">
-                      No project summary supplied.
-                    </p>
-                  )}
-
-                  <div className="tengaagent-owner__lead-meta">
-                    <span>Source: {lead.source}</span>
-                    <span>
-                      Captured: {formatDate(
-                        lead.lastCapturedAt ||
-                          lead.createdAt
-                      )}
-                    </span>
-                    <span>
-                      Consent: {lead.consentToContact
-                        ? "yes"
-                        : "no"}
-                    </span>
-                  </div>
-                </article>
-              ))}
+                    <div className="tengaagent-owner__lead-meta">
+                      <span>Source: {lead.source}</span>
+                      <span>
+                        Captured: {formatDate(
+                          lead.lastCapturedAt ||
+                            lead.createdAt
+                        )}
+                      </span>
+                      <span>
+                        Consent: {lead.consentToContact
+                          ? "yes"
+                          : "no"}
+                      </span>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </>

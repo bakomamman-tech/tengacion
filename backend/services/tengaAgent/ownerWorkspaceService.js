@@ -194,6 +194,50 @@ const createOrUpdateOwnerWorkspace = async ({
   return { organization, agent };
 };
 
+const setOwnerAgentPublication = async ({
+  userId,
+  published,
+}) => {
+  const workspace = await findOwnerWorkspace(userId);
+
+  if (!workspace) {
+    return null;
+  }
+
+  let { agent } = workspace;
+
+  if (!agent) {
+    agent = await ensureOwnerAgent({
+      organization: workspace.organization,
+    });
+  }
+
+  if (published === true) {
+    agent.status = "active";
+    agent.enabledTools = Array.from(
+      new Set([
+        ...(Array.isArray(agent.enabledTools)
+          ? agent.enabledTools
+          : []),
+        "lead_capture",
+        "appointment_requests",
+      ])
+    );
+  } else {
+    agent.status =
+      agent.status === "draft"
+        ? "draft"
+        : "paused";
+  }
+
+  await agent.save();
+
+  return {
+    organization: workspace.organization,
+    agent,
+  };
+};
+
 const listOwnerKnowledge = async ({ userId }) => {
   const workspace = await findOwnerWorkspace(userId);
 
@@ -352,6 +396,7 @@ module.exports = {
   findOwnerWorkspace,
   listOwnerKnowledge,
   listOwnerLeads,
+  setOwnerAgentPublication,
   syncOwnerKnowledge,
   updateOwnerLeadStatus,
 };

@@ -104,7 +104,7 @@ describe("TengaAgentOwnerDashboard", () => {
 
     const newFilter = screen.getByRole(
       "button",
-      { name: /^new1$/i }
+      { name: /new/i }
     );
 
     await userEvent.click(newFilter);

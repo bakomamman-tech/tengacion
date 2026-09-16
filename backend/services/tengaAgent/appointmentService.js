@@ -395,6 +395,200 @@ const confirmOwnerAppointment = async ({
     },
   });
 
+const rescheduleOwnerAppointment = async ({
+  userId,
+  appointmentId,
+  preferredStartAt,
+  timezone,
+  durationMinutes,
+}) => {
+  const organization =
+    await findOwnerOrganization(
+      userId
+    );
+
+  if (!organization) {
+    return {
+      workspaceFound: false,
+      appointment: null,
+    };
+  }
+
+  if (
+    !mongoose.Types.ObjectId.isValid(
+      appointmentId
+    )
+  ) {
+    return {
+      workspaceFound: true,
+      appointment: null,
+    };
+  }
+
+  const seedAppointment =
+    await Appointment.findOne({
+      _id: appointmentId,
+      organizationId:
+        organization._id,
+    })
+      .select({ agentId: 1 })
+      .lean();
+
+  if (!seedAppointment) {
+    return {
+      workspaceFound: true,
+      appointment: null,
+    };
+  }
+
+  const rescheduled =
+    await withBookingConfirmationLock({
+      organizationId:
+        organization._id,
+      agentId:
+        seedAppointment.agentId,
+      task: async () => {
+        const appointment =
+          await Appointment.findOne({
+            _id: appointmentId,
+            organizationId:
+              organization._id,
+          });
+
+        if (!appointment) {
+          return null;
+        }
+
+        if (
+          !["requested", "confirmed"].includes(
+            appointment.status
+          )
+        ) {
+          throw new Error(
+            `${appointment.status} appointments cannot be rescheduled.`
+          );
+        }
+
+        const nextStart =
+          parsePreferredStart(
+            preferredStartAt
+          );
+        const nextDuration =
+          durationMinutes === undefined ||
+          durationMinutes === null ||
+          durationMinutes === ""
+            ? Number(
+                appointment.durationMinutes || 30
+              )
+            : parseDuration(
+                durationMinutes
+              );
+        const nextTimezone = cleanText(
+          timezone ||
+            appointment.timezone ||
+            "Africa/Lagos",
+          100
+        );
+
+        if (!nextTimezone) {
+          throw new Error(
+            "Timezone is required when rescheduling an appointment."
+          );
+        }
+
+        const unchanged =
+          new Date(
+            appointment.preferredStartAt
+          ).getTime() ===
+            nextStart.getTime() &&
+          Number(
+            appointment.durationMinutes || 30
+          ) === nextDuration &&
+          appointment.timezone ===
+            nextTimezone;
+
+        if (unchanged) {
+          return appointment;
+        }
+
+        const availability =
+          await checkAppointmentAvailability({
+            organizationId:
+              organization._id,
+            agentId:
+              appointment.agentId,
+            startAt:
+              nextStart,
+            durationMinutes:
+              nextDuration,
+            excludeAppointmentId:
+              appointment._id,
+          });
+
+        if (!availability.available) {
+          throw new Error(
+            "That appointment time is no longer available. Choose another slot."
+          );
+        }
+
+        if (
+          appointment.status === "confirmed" &&
+          availability.externalCalendarState ===
+            "unavailable"
+        ) {
+          throw new Error(
+            "External calendar availability could not be verified. Retry before rescheduling this confirmed appointment, or disconnect the unavailable calendar connection."
+          );
+        }
+
+        appointment.preferredStartAt =
+          nextStart;
+        appointment.durationMinutes =
+          nextDuration;
+        appointment.timezone =
+          nextTimezone;
+        appointment.availabilitySource =
+          availability.source;
+        appointment.rescheduledAt =
+          new Date();
+        appointment.rescheduleCount =
+          Number(
+            appointment.rescheduleCount || 0
+          ) + 1;
+
+        if (
+          appointment.status === "confirmed"
+        ) {
+          appointment.availabilityState =
+            "confirmed_free";
+          appointment.availabilityCheckedAt =
+            new Date();
+        } else {
+          const scheduleChecked =
+            availability.scheduleEnabled === true;
+
+          appointment.availabilityState =
+            scheduleChecked
+              ? "available_at_request"
+              : "not_checked";
+          appointment.availabilityCheckedAt =
+            scheduleChecked
+              ? new Date()
+              : null;
+        }
+
+        await appointment.save();
+
+        return appointment;
+      },
+    });
+
+  return {
+    workspaceFound: true,
+    appointment: rescheduled,
+  };
+};
+
 const updateOwnerAppointmentStatus = async ({
   userId,
   appointmentId,
@@ -503,5 +697,6 @@ module.exports = {
   APPOINTMENT_STATUSES,
   captureAppointmentRequest,
   listOwnerAppointments,
+  rescheduleOwnerAppointment,
   updateOwnerAppointmentStatus,
 };

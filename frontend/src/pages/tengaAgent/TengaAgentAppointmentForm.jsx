@@ -1,4 +1,9 @@
-import { useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import "./tengaagent-appointment.css";
 
@@ -25,6 +30,27 @@ const toLocalDateTimeInput = (date) => {
     .slice(0, 16);
 };
 
+const formatAvailableSlot = (
+  value,
+  timezone
+) => {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  try {
+    return new Intl.DateTimeFormat("en", {
+      timeZone: timezone,
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date);
+  } catch {
+    return date.toLocaleString();
+  }
+};
+
 const INITIAL_FORM = {
   name: "",
   email: "",
@@ -33,6 +59,7 @@ const INITIAL_FORM = {
   purpose: "",
   notes: "",
   preferredStartLocal: "",
+  selectedSlot: "",
   durationMinutes: "30",
   consentToContact: false,
 };
@@ -43,11 +70,18 @@ export default function TengaAgentAppointmentForm({
   error = "",
   onSubmit,
   onDismiss,
+  loadAvailability,
 }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [localError, setLocalError] = useState("");
+  const [availability, setAvailability] =
+    useState(null);
+  const [isLoadingAvailability, setIsLoadingAvailability] =
+    useState(Boolean(loadAvailability));
+  const [availabilityError, setAvailabilityError] =
+    useState("");
 
-  const timezone = useMemo(
+  const browserTimezone = useMemo(
     getBrowserTimezone,
     []
   );
@@ -59,6 +93,64 @@ export default function TengaAgentAppointmentForm({
       ),
     []
   );
+
+  const refreshAvailability = useCallback(async () => {
+    if (!loadAvailability) {
+      setAvailability(null);
+      setIsLoadingAvailability(false);
+      setAvailabilityError("");
+      return;
+    }
+
+    setIsLoadingAvailability(true);
+    setAvailabilityError("");
+
+    try {
+      const response = await loadAvailability({
+        durationMinutes: Number(
+          form.durationMinutes
+        ),
+      });
+
+      setAvailability(response || null);
+      setForm((current) => {
+        if (!response?.enabled) {
+          return {
+            ...current,
+            selectedSlot: "",
+          };
+        }
+
+        const slots = Array.isArray(response?.slots)
+          ? response.slots
+          : [];
+        const selectedStillExists = slots.some(
+          (slot) =>
+            slot?.startAt === current.selectedSlot
+        );
+
+        return {
+          ...current,
+          preferredStartLocal: "",
+          selectedSlot: selectedStillExists
+            ? current.selectedSlot
+            : "",
+        };
+      });
+    } catch (requestError) {
+      setAvailability(null);
+      setAvailabilityError(
+        requestError?.message ||
+          "Available meeting times could not be loaded."
+      );
+    } finally {
+      setIsLoadingAvailability(false);
+    }
+  }, [loadAvailability, form.durationMinutes]);
+
+  useEffect(() => {
+    refreshAvailability();
+  }, [refreshAvailability]);
 
   const updateField = (field, value) => {
     setForm((current) => ({
@@ -78,15 +170,33 @@ export default function TengaAgentAppointmentForm({
       return;
     }
 
-    if (!form.preferredStartLocal) {
+    if (
+      loadAvailability &&
+      availabilityError
+    ) {
       setLocalError(
-        "Choose a preferred date and time."
+        "Reload available meeting times before submitting."
+      );
+      return;
+    }
+
+    const usesRealAvailability =
+      availability?.enabled === true;
+    const requestedValue = usesRealAvailability
+      ? form.selectedSlot
+      : form.preferredStartLocal;
+
+    if (!requestedValue) {
+      setLocalError(
+        usesRealAvailability
+          ? "Choose one of the available meeting times."
+          : "Choose a preferred date and time."
       );
       return;
     }
 
     const preferredStart = new Date(
-      form.preferredStartLocal
+      requestedValue
     );
 
     if (
@@ -94,7 +204,7 @@ export default function TengaAgentAppointmentForm({
       preferredStart.getTime() <= Date.now()
     ) {
       setLocalError(
-        "Choose a preferred time in the future."
+        "Choose a meeting time in the future."
       );
       return;
     }
@@ -115,13 +225,19 @@ export default function TengaAgentAppointmentForm({
       notes: form.notes.trim(),
       preferredStartAt:
         preferredStart.toISOString(),
-      timezone,
+      timezone:
+        availability?.timezone ||
+        browserTimezone,
       durationMinutes: Number(
         form.durationMinutes
       ),
       consentToContact: true,
     });
   };
+
+  const slots = Array.isArray(availability?.slots)
+    ? availability.slots
+    : [];
 
   return (
     <form
@@ -146,9 +262,9 @@ export default function TengaAgentAppointmentForm({
       </div>
 
       <p>
-        Choose your preferred time. This is a request,
-        not a confirmed calendar booking, until
-        {" "}{businessName} approves it.
+        {availability?.enabled
+          ? `Choose an available time. ${businessName} still confirms the appointment after your request.`
+          : `Choose your preferred time. This is a request, not a confirmed calendar booking, until ${businessName} approves it.`}
       </p>
 
       <div className="tengaagent-appointment-grid">
@@ -206,21 +322,88 @@ export default function TengaAgentAppointmentForm({
           />
         </label>
 
-        <label>
-          <span>Preferred date and time</span>
-          <input
-            type="datetime-local"
-            value={form.preferredStartLocal}
-            min={minDateTime}
-            onChange={(event) =>
-              updateField(
-                "preferredStartLocal",
-                event.target.value
-              )
-            }
-            required
-          />
-        </label>
+        {loadAvailability ? (
+          <label>
+            <span>
+              {availability?.enabled
+                ? "Available time"
+                : "Preferred date and time"}
+            </span>
+
+            {isLoadingAvailability ? (
+              <div className="tengaagent-appointment-availability-state">
+                Loading available times…
+              </div>
+            ) : availabilityError ? (
+              <div className="tengaagent-appointment-availability-state tengaagent-appointment-availability-state--error">
+                <span>{availabilityError}</span>
+                <button
+                  type="button"
+                  onClick={refreshAvailability}
+                >
+                  Retry
+                </button>
+              </div>
+            ) : availability?.enabled ? (
+              <select
+                value={form.selectedSlot}
+                required
+                onChange={(event) =>
+                  updateField(
+                    "selectedSlot",
+                    event.target.value
+                  )
+                }
+              >
+                <option value="">
+                  {slots.length
+                    ? "Choose an available time"
+                    : "No available times in this window"}
+                </option>
+                {slots.map((slot) => (
+                  <option
+                    key={slot.startAt}
+                    value={slot.startAt}
+                  >
+                    {formatAvailableSlot(
+                      slot.startAt,
+                      availability.timezone
+                    )}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="datetime-local"
+                value={form.preferredStartLocal}
+                min={minDateTime}
+                onChange={(event) =>
+                  updateField(
+                    "preferredStartLocal",
+                    event.target.value
+                  )
+                }
+                required
+              />
+            )}
+          </label>
+        ) : (
+          <label>
+            <span>Preferred date and time</span>
+            <input
+              type="datetime-local"
+              value={form.preferredStartLocal}
+              min={minDateTime}
+              onChange={(event) =>
+                updateField(
+                  "preferredStartLocal",
+                  event.target.value
+                )
+              }
+              required
+            />
+          </label>
+        )}
 
         <label>
           <span>Duration</span>
@@ -240,8 +423,17 @@ export default function TengaAgentAppointmentForm({
         </label>
       </div>
 
+      {loadAvailability && !isLoadingAvailability && !availabilityError && !availability?.enabled ? (
+        <div className="tengaagent-appointment-timezone">
+          This business reviews requested times manually.
+        </div>
+      ) : null}
+
       <div className="tengaagent-appointment-timezone">
-        Timezone: <strong>{timezone}</strong>
+        Timezone:{" "}
+        <strong>
+          {availability?.timezone || browserTimezone}
+        </strong>
       </div>
 
       <label className="tengaagent-appointment-wide">
@@ -298,7 +490,11 @@ export default function TengaAgentAppointmentForm({
       <button
         type="submit"
         className="tengaagent-appointment-submit"
-        disabled={isSubmitting}
+        disabled={
+          isSubmitting ||
+          (availability?.enabled === true &&
+            slots.length === 0)
+        }
       >
         {isSubmitting
           ? "Requesting…"

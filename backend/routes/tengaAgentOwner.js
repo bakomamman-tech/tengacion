@@ -10,6 +10,7 @@ const {
   createOrUpdateOwnerWorkspace,
   findOwnerWorkspace,
   listOwnerKnowledge,
+  listOwnerLeads,
   syncOwnerKnowledge,
 } = require(
   "../services/tengaAgent/ownerWorkspaceService"
@@ -325,6 +326,92 @@ router.post(
           });
       }
 
+      return next(error);
+    }
+  }
+);
+
+router.get(
+  "/leads",
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const result =
+        await listOwnerLeads({
+          userId:
+            req.user._id,
+
+          limit:
+            req.query?.limit,
+        });
+
+      if (!result) {
+        return res
+          .status(404)
+          .json({
+            ok: false,
+
+            message:
+              "TengaAgent workspace not found.",
+          });
+      }
+
+      res.set(
+        "Cache-Control",
+        "no-store"
+      );
+
+      return res.json({
+        ok: true,
+
+        leads:
+          result.leads.map(
+            (lead) => ({
+              id:
+                lead._id,
+
+              agentId:
+                lead.agentId,
+
+              conversationId:
+                lead.conversationId,
+
+              name:
+                lead.name,
+
+              email:
+                lead.email,
+
+              phone:
+                lead.phone,
+
+              company:
+                lead.company,
+
+              projectSummary:
+                lead.projectSummary,
+
+              source:
+                lead.source,
+
+              status:
+                lead.status,
+
+              consentToContact:
+                lead.consentToContact,
+
+              createdAt:
+                lead.createdAt,
+
+              lastCapturedAt:
+                lead.lastCapturedAt,
+            })
+          ),
+      });
+    } catch (error) {
       return next(error);
     }
   }

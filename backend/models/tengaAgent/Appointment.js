@@ -93,6 +93,30 @@ const TengaAgentAppointmentSchema = new mongoose.Schema(
       default: "requested",
       index: true,
     },
+    availabilityState: {
+      type: String,
+      enum: [
+        "not_checked",
+        "available_at_request",
+        "conflict_at_confirmation",
+        "confirmed_free",
+      ],
+      default: "not_checked",
+      index: true,
+    },
+    availabilitySource: {
+      type: String,
+      enum: ["request_only", "internal_schedule"],
+      default: "request_only",
+    },
+    availabilityCheckedAt: {
+      type: Date,
+      default: null,
+    },
+    confirmedAt: {
+      type: Date,
+      default: null,
+    },
     consentToContact: {
       type: Boolean,
       default: false,

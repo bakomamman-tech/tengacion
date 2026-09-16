@@ -1,0 +1,284 @@
+.tengaagent-outcomes {
+  margin-top: 34px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tengaagent-outcomes__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.tengaagent-outcomes__header > div > span {
+  color: var(--accent, #62e6bd);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.tengaagent-outcomes__header h3 {
+  margin: 6px 0;
+}
+
+.tengaagent-outcomes__header p,
+.tengaagent-outcomes__notes,
+.tengaagent-outcomes__empty span {
+  color: var(--muted, #a4b4c8);
+  line-height: 1.55;
+}
+
+.tengaagent-outcomes__header button,
+.tengaagent-outcomes__actions button,
+.tengaagent-outcomes__editor button {
+  border: 1px solid rgba(98, 230, 189, 0.35);
+  border-radius: 9px;
+  padding: 9px 12px;
+  background: rgba(98, 230, 189, 0.12);
+  color: var(--accent, #62e6bd);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tengaagent-outcomes__header button {
+  border: 0;
+  background: var(--accent, #62e6bd);
+  color: #061019;
+}
+
+.tengaagent-outcomes button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.tengaagent-outcomes__error,
+.tengaagent-outcomes__empty {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tengaagent-outcomes__error {
+  border-color: rgba(255, 120, 120, 0.35);
+  color: #ffd4d4;
+}
+
+.tengaagent-outcomes__empty {
+  display: grid;
+  gap: 4px;
+}
+
+.tengaagent-outcomes__metrics {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tengaagent-outcomes__metrics article {
+  padding: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  display: grid;
+  gap: 5px;
+}
+
+.tengaagent-outcomes__metrics article.attention {
+  border-color: rgba(255, 210, 122, 0.5);
+}
+
+.tengaagent-outcomes__metrics span {
+  color: var(--muted, #a4b4c8);
+  font-size: 0.75rem;
+}
+
+.tengaagent-outcomes__metrics strong {
+  font-size: 1.35rem;
+}
+
+.tengaagent-outcomes__filters {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tengaagent-outcomes__filters button {
+  padding: 8px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted, #a4b4c8);
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.tengaagent-outcomes__filters button.active {
+  color: var(--accent, #62e6bd);
+  border-color: rgba(98, 230, 189, 0.45);
+  background: rgba(98, 230, 189, 0.1);
+}
+
+.tengaagent-outcomes__list {
+  margin-top: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.tengaagent-outcomes__card {
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(6, 16, 25, 0.4);
+}
+
+.tengaagent-outcomes__card.is-overdue {
+  border-color: rgba(255, 210, 122, 0.45);
+}
+
+.tengaagent-outcomes__topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tengaagent-outcomes__topline > div:first-child strong,
+.tengaagent-outcomes__topline > div:first-child span {
+  display: block;
+}
+
+.tengaagent-outcomes__topline > div:first-child span {
+  margin-top: 3px;
+  color: var(--muted, #a4b4c8);
+}
+
+.tengaagent-outcomes__badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.tengaagent-outcomes__badges span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(98, 230, 189, 0.1);
+  color: var(--accent, #62e6bd);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.tengaagent-outcomes__meta {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--muted, #a4b4c8);
+  font-size: 0.76rem;
+}
+
+.tengaagent-outcomes__meta .overdue {
+  color: #ffd27a;
+  font-weight: 800;
+}
+
+.tengaagent-outcomes__meta .due {
+  color: var(--accent, #62e6bd);
+  font-weight: 800;
+}
+
+.tengaagent-outcomes__actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.tengaagent-outcomes__actions button.secondary {
+  border-color: rgba(255, 210, 122, 0.4);
+  color: #ffd27a;
+  background: rgba(255, 210, 122, 0.08);
+}
+
+.tengaagent-outcomes__actions span {
+  color: var(--accent, #62e6bd);
+  font-size: 0.75rem;
+}
+
+.tengaagent-outcomes__editor {
+  margin-top: 13px;
+  padding: 14px;
+  border: 1px solid rgba(98, 230, 189, 0.22);
+  border-radius: 12px;
+  background: rgba(98, 230, 189, 0.05);
+  display: grid;
+  grid-template-columns: minmax(180px, 0.55fr) minmax(260px, 1.45fr);
+  gap: 12px;
+}
+
+.tengaagent-outcomes__editor label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted, #a4b4c8);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.tengaagent-outcomes__editor select,
+.tengaagent-outcomes__editor textarea,
+.tengaagent-outcomes__editor input[type="datetime-local"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 9px;
+  background: #0b1728;
+  color: #f6f9fc;
+}
+
+.tengaagent-outcomes__editor textarea {
+  resize: vertical;
+}
+
+.tengaagent-outcomes__editor .tengaagent-outcomes__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: end;
+}
+
+.tengaagent-outcomes__editor button {
+  justify-self: start;
+  align-self: end;
+}
+
+@media (max-width: 900px) {
+  .tengaagent-outcomes__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tengaagent-outcomes__editor {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .tengaagent-outcomes__header,
+  .tengaagent-outcomes__topline {
+    flex-direction: column;
+  }
+
+  .tengaagent-outcomes__badges {
+    justify-content: flex-start;
+  }
+
+  .tengaagent-outcomes__metrics {
+    grid-template-columns: 1fr;
+  }
+}

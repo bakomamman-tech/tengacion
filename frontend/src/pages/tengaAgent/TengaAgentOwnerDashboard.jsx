@@ -15,6 +15,7 @@ import {
 
 import TengaAgentAppointmentInbox from "./TengaAgentAppointmentInbox";
 import TengaAgentKnowledgeWorkspace from "./TengaAgentKnowledgeWorkspace";
+import TengaAgentOutcomeOperations from "./TengaAgentOutcomeOperations";
 import "./tengaagent-owner.css";
 
 const LEAD_STATUSES = [
@@ -598,6 +599,7 @@ export default function TengaAgentOwnerDashboard({
             </div>
           )}
 
+          <TengaAgentOutcomeOperations user={user} />
           <TengaAgentAppointmentInbox user={user} />
         </>
       ) : null}

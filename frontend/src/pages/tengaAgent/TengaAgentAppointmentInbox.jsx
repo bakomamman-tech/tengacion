@@ -23,6 +23,8 @@ const FILTERS = [
   "cancelled",
 ];
 
+const TIME_FILTERS = ["all", "upcoming", "past"];
+
 const STATUS_OPTIONS = {
   requested: [
     "requested",
@@ -87,6 +89,32 @@ const contactLabel = (appointment) =>
   appointment.phone ||
   "No contact method";
 
+const appointmentTime = (appointment) => {
+  const time = new Date(
+    appointment?.preferredStartAt
+  ).getTime();
+  return Number.isNaN(time) ? 0 : time;
+};
+
+const matchesSearch = (appointment, query) => {
+  if (!query) {
+    return true;
+  }
+
+  return [
+    appointment?.name,
+    appointment?.email,
+    appointment?.phone,
+    appointment?.company,
+    appointment?.purpose,
+    appointment?.notes,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .includes(query);
+};
+
 const availabilityLabel = (appointment) => {
   switch (appointment.availabilityState) {
     case "available_at_request":
@@ -106,6 +134,10 @@ export default function TengaAgentAppointmentInbox({
   const [appointments, setAppointments] =
     useState([]);
   const [filter, setFilter] = useState("all");
+  const [timeFilter, setTimeFilter] =
+    useState("all");
+  const [searchQuery, setSearchQuery] =
+    useState("");
   const [isLoading, setIsLoading] =
     useState(true);
   const [updatingId, setUpdatingId] =
@@ -175,16 +207,44 @@ export default function TengaAgentAppointmentInbox({
     return result;
   }, [appointments]);
 
-  const visibleAppointments = useMemo(
-    () =>
-      filter === "all"
-        ? appointments
-        : appointments.filter(
-            (appointment) =>
-              appointment.status === filter
-          ),
-    [appointments, filter]
-  );
+  const visibleAppointments = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const now = Date.now();
+
+    return appointments
+      .filter(
+        (appointment) =>
+          filter === "all" ||
+          appointment.status === filter
+      )
+      .filter((appointment) => {
+        if (timeFilter === "all") {
+          return true;
+        }
+
+        const time = appointmentTime(appointment);
+        if (!time) {
+          return false;
+        }
+
+        return timeFilter === "upcoming"
+          ? time >= now
+          : time < now;
+      })
+      .filter((appointment) =>
+        matchesSearch(appointment, query)
+      )
+      .sort((left, right) => {
+        const leftTime = appointmentTime(left);
+        const rightTime = appointmentTime(right);
+
+        if (timeFilter === "past") {
+          return rightTime - leftTime;
+        }
+
+        return leftTime - rightTime;
+      });
+  }, [appointments, filter, searchQuery, timeFilter]);
 
   const replaceAppointment = (appointment) => {
     setAppointments((current) =>
@@ -379,16 +439,54 @@ export default function TengaAgentAppointmentInbox({
           ))}
         </div>
 
+        <div className="tengaagent-owner-appointments__tools">
+          <label className="tengaagent-owner-appointments__search">
+            <span>Search appointments</span>
+            <input
+              type="search"
+              value={searchQuery}
+              placeholder="Name, email, company or purpose"
+              onChange={(event) =>
+                setSearchQuery(event.target.value)
+              }
+            />
+          </label>
+
+          <div
+            className="tengaagent-owner-appointments__time-filters"
+            role="group"
+            aria-label="Appointment time filter"
+          >
+            {TIME_FILTERS.map((scope) => (
+              <button
+                key={scope}
+                type="button"
+                className={
+                  timeFilter === scope ? "active" : ""
+                }
+                onClick={() => setTimeFilter(scope)}
+              >
+                {scope}
+              </button>
+            ))}
+          </div>
+
+          <span className="tengaagent-owner-appointments__result-count">
+            Showing {visibleAppointments.length} of{" "}
+            {appointments.length}
+          </span>
+        </div>
+
         {isLoading ? (
           <div className="tengaagent-owner-appointments__empty">
             Loading appointment requests…
           </div>
         ) : visibleAppointments.length === 0 ? (
           <div className="tengaagent-owner-appointments__empty">
-            <strong>No appointment requests here yet.</strong>
+            <strong>No appointments match these filters.</strong>
             <span>
-              Meeting requests raised through TengaAgent
-              will appear here.
+              Clear the search or adjust the status and
+              time filters to see other meeting requests.
             </span>
           </div>
         ) : (

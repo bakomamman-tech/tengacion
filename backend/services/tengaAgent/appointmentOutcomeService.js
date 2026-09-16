@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 
 const Appointment = require("../../models/tengaAgent/Appointment");
 const Organization = require("../../models/tengaAgent/Organization");
+const {
+  supersedeOpenFollowUpReminders,
+} = require("./followUpReminderService");
 
 const OUTCOME_DISPOSITIONS = [
   "unreviewed",
@@ -228,6 +231,12 @@ const updateOwnerAppointmentOutcome = async ({
   }
 
   await appointment.save();
+
+  if (followUpChanged) {
+    await supersedeOpenFollowUpReminders({
+      appointmentId: appointment._id,
+    });
+  }
 
   return {
     workspaceFound: true,

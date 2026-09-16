@@ -26,10 +26,14 @@ vi.mock("../../../services/tengaAgentApi", () => ({
   getTengaAgentOwnerWorkspace: vi.fn(),
   getTengaAgentOwnerLeads: vi.fn(),
   getTengaAgentOwnerAppointments: vi.fn(),
+  getTengaAgentOwnerConversations: vi.fn(),
+  getTengaAgentOwnerConversation: vi.fn(),
   saveTengaAgentOwnerWorkspace: vi.fn(),
   setTengaAgentOwnerPublication: vi.fn(),
   updateTengaAgentOwnerLeadStatus: vi.fn(),
   updateTengaAgentOwnerAppointmentStatus: vi.fn(),
+  updateTengaAgentOwnerConversationAction: vi.fn(),
+  sendTengaAgentOwnerHumanMessage: vi.fn(),
 }));
 
 describe("TengaAgent appointment request UI", () => {

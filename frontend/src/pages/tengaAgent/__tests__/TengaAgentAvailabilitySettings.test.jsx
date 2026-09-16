@@ -126,10 +126,10 @@ describe("TengaAgentAvailabilitySettings", () => {
       screen.getByText(/internal weekly rules remain the base schedule/i)
     ).toBeInTheDocument();
     expect(
-      await screen.findByText(/google calendar/i)
+      await screen.findByText(/^google calendar$/i)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/microsoft outlook/i)
+      screen.getByText(/^microsoft outlook$/i)
     ).toBeInTheDocument();
 
     await user.click(

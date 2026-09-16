@@ -126,6 +126,15 @@ const TengaAgentAppointmentSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    completedAt: {
+      type: Date,
+      default: null,
+    },
+    completedBy: {
+      type: String,
+      enum: ["owner", "system", null],
+      default: null,
+    },
     cancelledAt: {
       type: Date,
       default: null,

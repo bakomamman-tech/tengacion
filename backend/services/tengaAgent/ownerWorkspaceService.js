@@ -13,6 +13,11 @@ const KnowledgeSource =
     "../../models/tengaAgent/KnowledgeSource"
   );
 
+const Lead =
+  require(
+    "../../models/tengaAgent/Lead"
+  );
+
 const {
   syncKnowledgeSource,
 } = require(
@@ -390,6 +395,49 @@ const listOwnerKnowledge =
     };
   };
 
+const listOwnerLeads =
+  async ({
+    userId,
+    limit = 50,
+  }) => {
+    const workspace =
+      await findOwnerWorkspace(
+        userId
+      );
+
+    if (!workspace) {
+      return null;
+    }
+
+    const safeLimit =
+      Math.min(
+        Math.max(
+          Number(limit) || 50,
+          1
+        ),
+        100
+      );
+
+    const leads =
+      await Lead.find({
+        organizationId:
+          workspace
+            .organization
+            ._id,
+      })
+        .sort({
+          lastCapturedAt: -1,
+          createdAt: -1,
+        })
+        .limit(safeLimit)
+        .lean();
+
+    return {
+      ...workspace,
+      leads,
+    };
+  };
+
 const syncOwnerKnowledge =
   async ({
     userId,
@@ -507,5 +555,6 @@ module.exports = {
   createOrUpdateOwnerWorkspace,
   findOwnerWorkspace,
   listOwnerKnowledge,
+  listOwnerLeads,
   syncOwnerKnowledge,
 };

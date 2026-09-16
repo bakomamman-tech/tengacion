@@ -1,0 +1,135 @@
+.tengaagent-lead-card {
+  margin: 0 18px 14px;
+  padding: 16px;
+  border: 1px solid rgba(98, 230, 189, .28);
+  border-radius: 16px;
+  background: rgba(18, 38, 64, .72);
+}
+
+.tengaagent-lead-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.tengaagent-lead-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tengaagent-lead-heading span {
+  color: var(--accent);
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.tengaagent-lead-heading strong {
+  font-size: 1.05rem;
+}
+
+.tengaagent-lead-card > p {
+  margin: 10px 0 14px;
+  color: var(--muted);
+  font-size: .8rem;
+  line-height: 1.55;
+}
+
+.tengaagent-lead-dismiss {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.tengaagent-lead-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.tengaagent-lead-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tengaagent-lead-card label > span {
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 700;
+}
+
+.tengaagent-lead-card input,
+.tengaagent-lead-card textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #09182a;
+  color: var(--text);
+  padding: 10px 11px;
+  font: inherit;
+  outline: none;
+}
+
+.tengaagent-lead-card input:focus,
+.tengaagent-lead-card textarea:focus {
+  border-color: var(--accent);
+}
+
+.tengaagent-lead-summary {
+  margin-top: 10px;
+}
+
+.tengaagent-lead-card textarea {
+  resize: vertical;
+  min-height: 78px;
+}
+
+.tengaagent-lead-consent {
+  margin: 12px 0;
+  flex-direction: row !important;
+  align-items: flex-start;
+}
+
+.tengaagent-lead-consent input {
+  width: auto;
+  margin-top: 2px;
+}
+
+.tengaagent-lead-consent span {
+  line-height: 1.4;
+}
+
+.tengaagent-lead-error {
+  margin-bottom: 10px;
+  color: #ffb4b4;
+  font-size: .78rem;
+  line-height: 1.45;
+}
+
+.tengaagent-lead-submit {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 14px;
+  background: var(--accent);
+  color: #061019;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.tengaagent-lead-submit:disabled,
+.tengaagent-lead-dismiss:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .tengaagent-lead-grid {
+    grid-template-columns: 1fr;
+  }
+}

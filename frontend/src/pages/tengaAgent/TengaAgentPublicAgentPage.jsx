@@ -9,6 +9,7 @@ import { useParams } from "react-router-dom";
 
 import {
   getPublicTengaAgent,
+  getPublicTengaAgentAvailability,
   getPublicTengaAgentConversation,
   sendPublicTengaAgentMessage,
   submitPublicTengaAgentAppointment,
@@ -128,6 +129,16 @@ export default function TengaAgentPublicAgentPage() {
   const businessName =
     publicAgent?.organization?.name ||
     "this business";
+
+  const loadAppointmentAvailability = useCallback(
+    ({ durationMinutes }) =>
+      getPublicTengaAgentAvailability({
+        organizationSlug,
+        agentKey,
+        durationMinutes,
+      }),
+    [organizationSlug, agentKey]
+  );
 
   const applyTranscript = useCallback(
     (response, agent = publicAgent?.agent) => {
@@ -535,6 +546,7 @@ export default function TengaAgentPublicAgentPage() {
             businessName={businessName}
             isSubmitting={isSubmittingAction}
             error={actionError}
+            loadAvailability={loadAppointmentAvailability}
             onSubmit={handleAppointmentSubmit}
             onDismiss={() => {
               if (!isSubmittingAction) {

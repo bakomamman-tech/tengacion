@@ -14,6 +14,7 @@ import {
 } from "../../services/tengaAgentApi";
 
 import TengaAgentAppointmentInbox from "./TengaAgentAppointmentInbox";
+import TengaAgentKnowledgeWorkspace from "./TengaAgentKnowledgeWorkspace";
 import "./tengaagent-owner.css";
 
 const LEAD_STATUSES = [
@@ -466,6 +467,11 @@ export default function TengaAgentOwnerDashboard({
                   : "Publish agent"}
             </button>
           </div>
+
+          <TengaAgentKnowledgeWorkspace
+            workspace={workspace}
+            onWorkspaceChange={setWorkspace}
+          />
 
           <div
             className="tengaagent-owner__filters"

@@ -7,6 +7,9 @@ const {
 const {
   withBookingConfirmationLock,
 } = require("./bookingConfirmationLockService");
+const {
+  queueAppointmentEventNotifications,
+} = require("./appointmentNotificationService");
 
 const cleanText = (value, max) =>
   String(value || "")
@@ -55,6 +58,18 @@ const parseDuration = (value, fallback = 30) => {
   return Math.round(duration);
 };
 
+const queueAppointmentEventSafely = async (payload) => {
+  try {
+    return await queueAppointmentEventNotifications(payload);
+  } catch (error) {
+    console.error(
+      "[tengaagent-appointment-notifications] queue failed",
+      error?.message || error
+    );
+    return [];
+  }
+};
+
 const appointmentScope = ({
   organizationId,
   agentId,
@@ -93,7 +108,7 @@ const reschedulePublicSessionAppointment = async ({
     return null;
   }
 
-  return withBookingConfirmationLock({
+  const mutation = await withBookingConfirmationLock({
     organizationId,
     agentId: seed.agentId,
     task: async () => {
@@ -101,7 +116,10 @@ const reschedulePublicSessionAppointment = async ({
         await Appointment.findOne(scope);
 
       if (!appointment) {
-        return null;
+        return {
+          appointment: null,
+          changed: false,
+        };
       }
 
       if (
@@ -144,7 +162,10 @@ const reschedulePublicSessionAppointment = async ({
         appointment.timezone === nextTimezone;
 
       if (unchanged) {
-        return appointment;
+        return {
+          appointment,
+          changed: false,
+        };
       }
 
       const availability =
@@ -200,9 +221,22 @@ const reschedulePublicSessionAppointment = async ({
       }
 
       await appointment.save();
-      return appointment;
+      return {
+        appointment,
+        changed: true,
+      };
     },
   });
+
+  if (mutation?.appointment && mutation.changed) {
+    await queueAppointmentEventSafely({
+      appointment: mutation.appointment,
+      eventType: "rescheduled",
+      actor: "visitor",
+    });
+  }
+
+  return mutation?.appointment || null;
 };
 
 const cancelPublicSessionAppointment = async ({
@@ -225,7 +259,7 @@ const cancelPublicSessionAppointment = async ({
     return null;
   }
 
-  return withBookingConfirmationLock({
+  const mutation = await withBookingConfirmationLock({
     organizationId,
     agentId: seed.agentId,
     task: async () => {
@@ -233,7 +267,10 @@ const cancelPublicSessionAppointment = async ({
         await Appointment.findOne(scope);
 
       if (!appointment) {
-        return null;
+        return {
+          appointment: null,
+          changed: false,
+        };
       }
 
       if (appointment.status === "completed") {
@@ -243,14 +280,30 @@ const cancelPublicSessionAppointment = async ({
       }
 
       if (appointment.status === "cancelled") {
-        return appointment;
+        return {
+          appointment,
+          changed: false,
+        };
       }
 
       appointment.status = "cancelled";
       await appointment.save();
-      return appointment;
+      return {
+        appointment,
+        changed: true,
+      };
     },
   });
+
+  if (mutation?.appointment && mutation.changed) {
+    await queueAppointmentEventSafely({
+      appointment: mutation.appointment,
+      eventType: "cancelled",
+      actor: "visitor",
+    });
+  }
+
+  return mutation?.appointment || null;
 };
 
 module.exports = {

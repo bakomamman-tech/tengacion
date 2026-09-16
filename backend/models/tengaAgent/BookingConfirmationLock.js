@@ -3,6 +3,10 @@ const mongoose = require("mongoose");
 const BookingConfirmationLockSchema =
   new mongoose.Schema(
     {
+      _id: {
+        type: String,
+        required: true,
+      },
       organizationId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "TengaAgentOrganization",
@@ -31,16 +35,6 @@ const BookingConfirmationLockSchema =
       collection: "tengaagent_booking_confirmation_locks",
     }
   );
-
-BookingConfirmationLockSchema.index(
-  {
-    organizationId: 1,
-    agentId: 1,
-  },
-  {
-    unique: true,
-  }
-);
 
 module.exports = mongoose.model(
   "TengaAgentBookingConfirmationLock",

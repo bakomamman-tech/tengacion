@@ -117,8 +117,10 @@ const getOwnerCalendarConnections = async ({
         configured:
           settings.configured &&
           isCalendarEncryptionConfigured(),
-        connected:
-          connection?.status === "active",
+        connected: Boolean(
+          connection &&
+            connection.status !== "revoked"
+        ),
         connection:
           serializeConnection(connection),
       };
@@ -185,6 +187,8 @@ const decodeOAuthState = ({ state, userId }) => {
     );
   }
 
+  const expiresAt = Number(payload?.expiresAt);
+
   if (
     !payload ||
     payload.version !== 1 ||
@@ -193,7 +197,8 @@ const decodeOAuthState = ({ state, userId }) => {
     !payload.organizationId ||
     !payload.agentId ||
     !payload.codeVerifier ||
-    Number(payload.expiresAt) < Date.now()
+    !Number.isFinite(expiresAt) ||
+    expiresAt < Date.now()
   ) {
     throw new Error(
       "Calendar authorization state is invalid or expired."
@@ -435,13 +440,17 @@ const resolveConnectionCredentials = async (
   const expiresAt = credentials?.expiresAt
     ? new Date(credentials.expiresAt)
     : null;
-  const stillValid =
+  const expiresAtIsValid =
+    expiresAt &&
+    !Number.isNaN(expiresAt.getTime());
+  const stillValid = Boolean(
     accessToken &&
-    (!expiresAt ||
-      Number.isNaN(expiresAt.getTime()) ||
-      expiresAt.getTime() -
-        TOKEN_REFRESH_SKEW_MS >
-        Date.now());
+      (!expiresAt ||
+        (expiresAtIsValid &&
+          expiresAt.getTime() -
+            TOKEN_REFRESH_SKEW_MS >
+            Date.now()))
+  );
 
   if (stillValid) {
     return credentials;
@@ -463,7 +472,9 @@ const getExternalCalendarBusyContext = async ({
     await CalendarConnection.find({
       organizationId,
       agentId,
-      status: "active",
+      status: {
+        $in: ["active", "error"],
+      },
     }).select("+encryptedCredentials");
 
   if (connections.length === 0) {
@@ -494,6 +505,7 @@ const getExternalCalendarBusyContext = async ({
         });
 
       busyIntervals.push(...intervals);
+      connection.status = "active";
       connection.lastSyncedAt = new Date();
       connection.lastError = "";
       await connection.save();

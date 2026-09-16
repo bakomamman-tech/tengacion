@@ -15,14 +15,41 @@ const {
 } = require(
   "../services/tengaAgent/publicAppointmentService"
 );
+const {
+  queueAppointmentEventNotifications,
+  startAppointmentNotificationScheduler,
+} = require(
+  "../services/tengaAgent/appointmentNotificationService"
+);
 
 const router = express.Router();
 const MAX_SESSION_LENGTH = 160;
+
+startAppointmentNotificationScheduler({ logger: console });
 
 const cleanText = (value, max) =>
   String(value || "")
     .trim()
     .slice(0, max);
+
+const queueNotification = async ({
+  appointment,
+  eventType,
+  actor,
+}) => {
+  try {
+    await queueAppointmentEventNotifications({
+      appointment,
+      eventType,
+      actor,
+    });
+  } catch (error) {
+    console.error(
+      "[tengaagent-appointment-notifications] queue failed",
+      error?.message || error
+    );
+  }
+};
 
 const serializeAppointment = (appointment) => ({
   id: appointment._id,
@@ -188,6 +215,14 @@ router.patch(
         });
       }
 
+      if (appointment.rescheduledAt) {
+        await queueNotification({
+          appointment,
+          eventType: "rescheduled",
+          actor: "visitor",
+        });
+      }
+
       res.set("Cache-Control", "no-store");
       return res.json({
         ok: true,
@@ -264,6 +299,12 @@ router.patch(
             "Appointment not found for this session."
         });
       }
+
+      await queueNotification({
+        appointment,
+        eventType: "cancelled",
+        actor: "visitor",
+      });
 
       res.set("Cache-Control", "no-store");
       return res.json({

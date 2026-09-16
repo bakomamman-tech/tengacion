@@ -17,6 +17,10 @@ const {
   captureLead,
 } = require("../services/tengaAgent/leadCaptureService");
 
+const {
+  captureAppointmentRequest,
+} = require("../services/tengaAgent/appointmentService");
+
 const router = express.Router();
 
 const MAX_MESSAGE_LENGTH = 2000;
@@ -309,6 +313,124 @@ router.post(
           "Thanks. Your details were saved and the Tengacion team can follow up on this enquiry.",
       });
     } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  "/chat/:agentId/appointment",
+  async (req, res, next) => {
+    try {
+      const customerZero =
+        await resolveCustomerZeroAgent(
+          req.params.agentId
+        );
+
+      if (!customerZero) {
+        return res.status(404).json({
+          message: "TengaAgent not found.",
+        });
+      }
+
+      const sessionId = cleanText(
+        req.body?.sessionId,
+        MAX_SESSION_LENGTH
+      );
+
+      if (!sessionId) {
+        return res.status(400).json({
+          message:
+            "Session is required before requesting an appointment.",
+        });
+      }
+
+      const {
+        organization,
+        agent,
+      } = customerZero;
+
+      const conversation =
+        await Conversation.findOne({
+          organizationId:
+            organization._id,
+          agentId: agent._id,
+          sessionKey: sessionId,
+        });
+
+      if (!conversation) {
+        return res.status(404).json({
+          message:
+            "Conversation not found for this session.",
+        });
+      }
+
+      const appointment =
+        await captureAppointmentRequest({
+          organizationId:
+            organization._id,
+          agentId:
+            agent._id,
+          conversationId:
+            conversation._id,
+          sessionKey: sessionId,
+          name: req.body?.name,
+          email: req.body?.email,
+          phone: req.body?.phone,
+          company: req.body?.company,
+          purpose: req.body?.purpose,
+          notes: req.body?.notes,
+          preferredStartAt:
+            req.body?.preferredStartAt,
+          timezone:
+            req.body?.timezone,
+          durationMinutes:
+            req.body?.durationMinutes,
+          source: "web",
+          consentToContact:
+            req.body?.consentToContact ===
+            true,
+        });
+
+      conversation.status =
+        "handoff_requested";
+      await conversation.save();
+
+      res.set(
+        "Cache-Control",
+        "no-store"
+      );
+
+      return res.status(201).json({
+        ok: true,
+        appointment: {
+          id: appointment._id,
+          status: appointment.status,
+          preferredStartAt:
+            appointment.preferredStartAt,
+          timezone:
+            appointment.timezone,
+          durationMinutes:
+            appointment.durationMinutes,
+        },
+        conversation: {
+          id: conversation._id,
+          status: conversation.status,
+        },
+        message:
+          "Your preferred meeting time has been requested. The Tengacion team still needs to confirm the appointment.",
+      });
+    } catch (error) {
+      if (
+        /appointment|email|phone|contact|consent|timezone|future|duration|changed/i.test(
+          error?.message || ""
+        )
+      ) {
+        return res.status(400).json({
+          message: error.message,
+        });
+      }
+
       return next(error);
     }
   }

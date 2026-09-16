@@ -153,6 +153,47 @@ const TengaAgentAppointmentSchema = new mongoose.Schema(
       enum: ["owner", "visitor", "system", null],
       default: null,
     },
+    outcomeDisposition: {
+      type: String,
+      enum: [
+        "unreviewed",
+        "converted",
+        "qualified",
+        "not_interested",
+        "reschedule_requested",
+        "other",
+      ],
+      default: "unreviewed",
+      index: true,
+    },
+    outcomeNotes: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 4000,
+    },
+    outcomeUpdatedAt: {
+      type: Date,
+      default: null,
+    },
+    followUpNeeded: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    followUpAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    followUpUpdatedAt: {
+      type: Date,
+      default: null,
+    },
+    followUpCompletedAt: {
+      type: Date,
+      default: null,
+    },
     consentToContact: {
       type: Boolean,
       default: false,
@@ -183,6 +224,12 @@ TengaAgentAppointmentSchema.index({
   organizationId: 1,
   status: 1,
   preferredStartAt: 1,
+});
+
+TengaAgentAppointmentSchema.index({
+  organizationId: 1,
+  followUpNeeded: 1,
+  followUpAt: 1,
 });
 
 module.exports = mongoose.model(

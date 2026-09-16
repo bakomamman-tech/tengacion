@@ -134,7 +134,10 @@ describe("TengaAgentCalendarConnections", () => {
     render(<TengaAgentCalendarConnections />);
 
     expect(
-      await screen.findByText(
+      await screen.findByText("Needs attention")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
         "Calendar provider authorization must be refreshed."
       )
     ).toBeInTheDocument();

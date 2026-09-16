@@ -220,7 +220,9 @@ describe("TengaAgentAppointmentInbox", () => {
       })
     ).not.toBeInTheDocument();
     expect(
-      screen.getByLabelText(/appointment status/i)
+      screen.getByRole("combobox", {
+        name: /^appointment status$/i,
+      })
     ).toHaveValue("completed");
   });
 

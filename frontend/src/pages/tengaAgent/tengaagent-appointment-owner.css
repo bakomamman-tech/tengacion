@@ -208,6 +208,11 @@
   font-size: 0.76rem;
 }
 
+.tengaagent-owner-appointments__time .tengaagent-owner-appointments__completion-audit {
+  color: var(--accent, #62e6bd);
+  font-weight: 800;
+}
+
 .tengaagent-owner-appointments__company {
   margin-top: 12px;
   color: var(--accent, #62e6bd);
@@ -249,6 +254,7 @@
   font-size: 0.75rem;
 }
 
+.tengaagent-owner-appointments__complete-button,
 .tengaagent-owner-appointments__reschedule-button,
 .tengaagent-owner-appointments__reschedule-actions button {
   border: 1px solid rgba(98, 230, 189, 0.35);
@@ -260,6 +266,12 @@
   cursor: pointer;
 }
 
+.tengaagent-owner-appointments__complete-button {
+  background: var(--accent, #62e6bd);
+  color: #061019;
+}
+
+.tengaagent-owner-appointments__complete-button:disabled,
 .tengaagent-owner-appointments__reschedule-button:disabled,
 .tengaagent-owner-appointments__reschedule-actions button:disabled {
   opacity: 0.55;

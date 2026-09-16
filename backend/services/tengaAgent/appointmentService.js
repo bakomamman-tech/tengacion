@@ -736,6 +736,12 @@ const updateOwnerAppointmentStatus = async ({
   ) {
     appointment.status =
       normalizedStatus;
+
+    if (normalizedStatus === "cancelled") {
+      appointment.cancelledAt = new Date();
+      appointment.cancelledBy = "owner";
+    }
+
     await appointment.save();
   }
 

@@ -102,6 +102,14 @@ const serializeAppointment = (appointment) => ({
     appointment.rescheduledAt || null,
   rescheduleCount:
     Number(appointment.rescheduleCount || 0),
+  completedAt:
+    appointment.completedAt || null,
+  completedBy:
+    appointment.completedBy || null,
+  cancelledAt:
+    appointment.cancelledAt || null,
+  cancelledBy:
+    appointment.cancelledBy || null,
   consentToContact: appointment.consentToContact,
   requestedAt: appointment.requestedAt,
   createdAt: appointment.createdAt,
@@ -447,6 +455,22 @@ router.patch(
           ok: false,
           message: "TengaAgent appointment not found.",
         });
+      }
+
+      const requestedStatus = String(
+        req.body?.status || ""
+      )
+        .trim()
+        .toLowerCase();
+
+      if (
+        requestedStatus === "completed" &&
+        result.appointment.status === "completed" &&
+        !result.appointment.completedAt
+      ) {
+        result.appointment.completedAt = new Date();
+        result.appointment.completedBy = "owner";
+        await result.appointment.save();
       }
 
       res.set("Cache-Control", "no-store");

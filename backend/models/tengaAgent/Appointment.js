@@ -117,6 +117,15 @@ const TengaAgentAppointmentSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    rescheduledAt: {
+      type: Date,
+      default: null,
+    },
+    rescheduleCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     consentToContact: {
       type: Boolean,
       default: false,

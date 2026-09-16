@@ -32,6 +32,7 @@ const TovidoAnthonyFoundationPage = lazy(() => import("./pages/TovidoAnthonyFoun
 const CygroEnterprisePage = lazy(() => import("./pages/CygroEnterprisePage"));
 const CodeSwitchPage = lazy(() => import("./pages/CodeSwitchPage"));
 const TengaAgentLandingPage = lazy(() => import("./pages/tengaAgent/TengaAgentLandingPage"));
+const TengaAgentPublicAgentPage = lazy(() => import("./pages/tengaAgent/TengaAgentPublicAgentPage"));
 const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
 const TeacherTrainingPage = lazy(() => import("./pages/TeacherTrainingPage"));
 const Register = lazy(() => import("./pages/Register"));
@@ -182,7 +183,7 @@ export default function App() {
   usePageTracking();
   const isBrightFutureRoute = pathname.toLowerCase().startsWith("/bright-future-academy");
   const isCodeSwitchRoute = pathname === "/codeswitch";
-  const isTengaAgentRoute = pathname === "/tengaagent";
+  const isTengaAgentRoute = pathname === "/tengaagent" || pathname.startsWith("/tengaagent/");
   const isFocusedExperienceRoute =
     pathname === "/millionaire" || isBrightFutureRoute || isCodeSwitchRoute || isTengaAgentRoute;
   const isCygroEnterpriseRoute = pathname === "/cygro-enterprise";
@@ -228,6 +229,7 @@ export default function App() {
           <Route path="/cygro-enterprise" element={<CygroEnterprisePage />} />
           <Route path="/codeswitch" element={<CodeSwitchPage />} />
           <Route path="/tengaagent" element={<TengaAgentLandingPage />} />
+          <Route path="/tengaagent/:organizationSlug/:agentKey" element={<TengaAgentPublicAgentPage />} />
           <Route
             path="/schools/kurahtechandartsacademy"
             element={<Navigate to="/kurahtechandartsacademy" replace />}

@@ -14,6 +14,7 @@ import {
 } from "../../services/tengaAgentApi";
 
 import TengaAgentAppointmentInbox from "./TengaAgentAppointmentInbox";
+import TengaAgentFollowUpInbox from "./TengaAgentFollowUpInbox";
 import TengaAgentKnowledgeWorkspace from "./TengaAgentKnowledgeWorkspace";
 import TengaAgentOutcomeOperations from "./TengaAgentOutcomeOperations";
 import "./tengaagent-owner.css";
@@ -599,6 +600,7 @@ export default function TengaAgentOwnerDashboard({
             </div>
           )}
 
+          <TengaAgentFollowUpInbox user={user} />
           <TengaAgentOutcomeOperations user={user} />
           <TengaAgentAppointmentInbox user={user} />
         </>

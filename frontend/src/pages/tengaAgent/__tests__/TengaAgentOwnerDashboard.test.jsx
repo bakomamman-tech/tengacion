@@ -16,13 +16,17 @@ import {
 const {
   getWorkspaceMock,
   getLeadsMock,
+  getAppointmentsMock,
   saveWorkspaceMock,
   updateLeadStatusMock,
+  updateAppointmentStatusMock,
 } = vi.hoisted(() => ({
   getWorkspaceMock: vi.fn(),
   getLeadsMock: vi.fn(),
+  getAppointmentsMock: vi.fn(),
   saveWorkspaceMock: vi.fn(),
   updateLeadStatusMock: vi.fn(),
+  updateAppointmentStatusMock: vi.fn(),
 }));
 
 vi.mock(
@@ -32,10 +36,14 @@ vi.mock(
       getWorkspaceMock(...args),
     getTengaAgentOwnerLeads: (...args) =>
       getLeadsMock(...args),
+    getTengaAgentOwnerAppointments: (...args) =>
+      getAppointmentsMock(...args),
     saveTengaAgentOwnerWorkspace: (...args) =>
       saveWorkspaceMock(...args),
     updateTengaAgentOwnerLeadStatus: (...args) =>
       updateLeadStatusMock(...args),
+    updateTengaAgentOwnerAppointmentStatus: (...args) =>
+      updateAppointmentStatusMock(...args),
   })
 );
 
@@ -88,17 +96,43 @@ const LEADS = [
   },
 ];
 
+const APPOINTMENTS = [
+  {
+    id: "appointment-1",
+    name: "Musa Visitor",
+    email: "musa@example.com",
+    phone: "",
+    company: "Musa Ventures",
+    purpose: "Discuss an AI support project.",
+    notes: "Would like a short demo.",
+    preferredStartAt: "2030-01-10T10:00:00.000Z",
+    timezone: "Africa/Lagos",
+    durationMinutes: 30,
+    source: "web",
+    status: "requested",
+    consentToContact: true,
+  },
+];
+
 const primeOwnerData = () => {
   getWorkspaceMock.mockResolvedValue(WORKSPACE);
   getLeadsMock.mockResolvedValue({
     ok: true,
     leads: LEADS,
   });
+  getAppointmentsMock.mockResolvedValue({
+    ok: true,
+    appointments: [],
+  });
 };
 
 describe("TengaAgentOwnerDashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getAppointmentsMock.mockResolvedValue({
+      ok: true,
+      appointments: [],
+    });
   });
 
   it("loads the authenticated owner's workspace and leads", async () => {
@@ -239,11 +273,62 @@ describe("TengaAgentOwnerDashboard", () => {
 
     expect(contactedFilter).toHaveTextContent("1");
   });
+
+  it("confirms an appointment request from the owner inbox", async () => {
+    primeOwnerData();
+    getAppointmentsMock.mockResolvedValue({
+      ok: true,
+      appointments: APPOINTMENTS,
+    });
+
+    updateAppointmentStatusMock.mockResolvedValue({
+      ok: true,
+      appointment: {
+        ...APPOINTMENTS[0],
+        status: "confirmed",
+      },
+    });
+
+    const user = userEvent.setup();
+
+    render(
+      <TengaAgentOwnerDashboard user={USER} />
+    );
+
+    expect(
+      await screen.findByText("Musa Visitor")
+    ).toBeInTheDocument();
+
+    const card = screen
+      .getByText("Musa Visitor")
+      .closest("article");
+
+    const select = withinArticle(
+      card,
+      /appointment status/i
+    );
+
+    await user.selectOptions(
+      select,
+      "confirmed"
+    );
+
+    await waitFor(() => {
+      expect(
+        updateAppointmentStatusMock
+      ).toHaveBeenCalledWith({
+        appointmentId: "appointment-1",
+        status: "confirmed",
+      });
+    });
+
+    expect(select).toHaveValue("confirmed");
+  });
 });
 
 function withinArticle(article, label) {
   if (!article) {
-    throw new Error("Expected lead article to exist.");
+    throw new Error("Expected workflow article to exist.");
   }
 
   const select = article.querySelector("select");

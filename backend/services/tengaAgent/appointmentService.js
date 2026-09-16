@@ -16,6 +16,11 @@ const {
 } = require(
   "./bookingConfirmationLockService"
 );
+const {
+  queueAppointmentEventNotifications,
+} = require(
+  "./appointmentNotificationService"
+);
 
 const APPOINTMENT_STATUSES = [
   "requested",
@@ -96,6 +101,18 @@ const parseDuration = (value) => {
   }
 
   return Math.round(duration);
+};
+
+const queueAppointmentEventSafely = async (payload) => {
+  try {
+    return await queueAppointmentEventNotifications(payload);
+  } catch (error) {
+    console.error(
+      "[tengaagent-appointment-notifications] queue failed",
+      error?.message || error
+    );
+    return [];
+  }
 };
 
 const captureAppointmentRequest = async ({
@@ -199,7 +216,7 @@ const captureAppointmentRequest = async ({
   const scheduleChecked =
     availability.scheduleEnabled === true;
 
-  return Appointment.findOneAndUpdate(
+  const appointment = await Appointment.findOneAndUpdate(
     {
       organizationId,
       agentId,
@@ -255,6 +272,14 @@ const captureAppointmentRequest = async ({
       setDefaultsOnInsert: true,
     }
   );
+
+  await queueAppointmentEventSafely({
+    appointment,
+    eventType: "requested",
+    actor: "visitor",
+  });
+
+  return appointment;
 };
 
 const findOwnerOrganization = async (
@@ -441,7 +466,7 @@ const rescheduleOwnerAppointment = async ({
     };
   }
 
-  const rescheduled =
+  const mutation =
     await withBookingConfirmationLock({
       organizationId:
         organization._id,
@@ -456,7 +481,10 @@ const rescheduleOwnerAppointment = async ({
           });
 
         if (!appointment) {
-          return null;
+          return {
+            appointment: null,
+            changed: false,
+          };
         }
 
         if (
@@ -508,7 +536,10 @@ const rescheduleOwnerAppointment = async ({
             nextTimezone;
 
         if (unchanged) {
-          return appointment;
+          return {
+            appointment,
+            changed: false,
+          };
         }
 
         const availability =
@@ -579,13 +610,24 @@ const rescheduleOwnerAppointment = async ({
 
         await appointment.save();
 
-        return appointment;
+        return {
+          appointment,
+          changed: true,
+        };
       },
     });
 
+  if (mutation?.appointment && mutation.changed) {
+    await queueAppointmentEventSafely({
+      appointment: mutation.appointment,
+      eventType: "rescheduled",
+      actor: "owner",
+    });
+  }
+
   return {
     workspaceFound: true,
-    appointment: rescheduled,
+    appointment: mutation?.appointment || null,
   };
 };
 
@@ -672,11 +714,21 @@ const updateOwnerAppointmentStatus = async ({
           appointment.agentId,
       });
 
+    if (confirmed) {
+      await queueAppointmentEventSafely({
+        appointment: confirmed,
+        eventType: "confirmed",
+        actor: "owner",
+      });
+    }
+
     return {
       workspaceFound: true,
       appointment: confirmed,
     };
   }
+
+  const previousStatus = appointment.status;
 
   if (
     appointment.status !==
@@ -685,6 +737,17 @@ const updateOwnerAppointmentStatus = async ({
     appointment.status =
       normalizedStatus;
     await appointment.save();
+  }
+
+  if (
+    previousStatus !== normalizedStatus &&
+    normalizedStatus === "cancelled"
+  ) {
+    await queueAppointmentEventSafely({
+      appointment,
+      eventType: "cancelled",
+      actor: "owner",
+    });
   }
 
   return {

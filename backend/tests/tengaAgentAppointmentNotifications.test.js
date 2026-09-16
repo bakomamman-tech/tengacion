@@ -245,4 +245,59 @@ describe("TengaAgent appointment notification outbox", () => {
     ]);
     expect(records.every((entry) => entry.actor === "visitor")).toBe(true);
   });
+
+  it("queues completion notices for both sides and supersedes stale reminders", async () => {
+    const { appointment } = await createContext({ status: "confirmed" });
+
+    await queueAppointmentEventNotifications({
+      appointment,
+      eventType: "reminder_24h",
+      actor: "system",
+      dispatch: false,
+    });
+
+    appointment.status = "completed";
+    appointment.completedAt = new Date();
+    appointment.completedBy = "owner";
+    await appointment.save();
+
+    const first = await queueAppointmentEventNotifications({
+      appointment,
+      eventType: "completed",
+      actor: "owner",
+      dispatch: false,
+    });
+    const second = await queueAppointmentEventNotifications({
+      appointment,
+      eventType: "completed",
+      actor: "owner",
+      dispatch: false,
+    });
+
+    expect(first).toHaveLength(2);
+    expect(second).toHaveLength(2);
+
+    const records = await AppointmentNotification.find({
+      appointmentId: appointment._id,
+      eventType: "completed",
+    }).lean();
+    const reminders = await AppointmentNotification.find({
+      appointmentId: appointment._id,
+      eventType: "reminder_24h",
+    }).lean();
+
+    expect(records).toHaveLength(2);
+    expect(records.map((entry) => entry.recipientKind).sort()).toEqual([
+      "owner",
+      "visitor",
+    ]);
+    expect(records.every((entry) => entry.actor === "owner")).toBe(true);
+    expect(records.every((entry) => entry.snapshot.appointmentStatus === "completed")).toBe(
+      true
+    );
+    expect(reminders).toHaveLength(2);
+    expect(reminders.every((entry) => entry.status === "superseded")).toBe(
+      true
+    );
+  });
 });

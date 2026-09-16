@@ -85,4 +85,9 @@ router.put("/availability", async (req, res, next) => {
   }
 });
 
+router.use(
+  "/",
+  require("./tengaAgentOwnerCalendars")
+);
+
 module.exports = router;

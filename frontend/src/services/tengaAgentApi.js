@@ -226,6 +226,17 @@ export const getPublicTengaAgent = ({
     agentKey
   );
 
+export const getPublicTengaAgentConversation = ({
+  organizationSlug,
+  agentKey,
+  sessionId,
+}) =>
+  publicAgentRequest(
+    organizationSlug,
+    agentKey,
+    `/conversation?sessionId=${encodeURIComponent(sessionId)}`
+  );
+
 export const sendPublicTengaAgentMessage = ({
   organizationSlug,
   agentKey,
@@ -341,5 +352,44 @@ export const updateTengaAgentOwnerAppointmentStatus = ({
     {
       method: "PATCH",
       body: { status },
+    }
+  );
+
+export const getTengaAgentOwnerConversations = ({
+  status = "all",
+  limit = 50,
+} = {}) =>
+  ownerRequest(
+    `/conversations?status=${encodeURIComponent(status)}&limit=${encodeURIComponent(limit)}`
+  );
+
+export const getTengaAgentOwnerConversation = ({
+  conversationId,
+}) =>
+  ownerRequest(
+    `/conversations/${encodeURIComponent(conversationId)}`
+  );
+
+export const updateTengaAgentOwnerConversationAction = ({
+  conversationId,
+  action,
+}) =>
+  ownerRequest(
+    `/conversations/${encodeURIComponent(conversationId)}/action`,
+    {
+      method: "PATCH",
+      body: { action },
+    }
+  );
+
+export const sendTengaAgentOwnerHumanMessage = ({
+  conversationId,
+  content,
+}) =>
+  ownerRequest(
+    `/conversations/${encodeURIComponent(conversationId)}/messages`,
+    {
+      method: "POST",
+      body: { content },
     }
   );

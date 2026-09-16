@@ -177,13 +177,15 @@
   flex-wrap: wrap;
 }
 
-.tengaagent-owner-appointments__workflow label {
+.tengaagent-owner-appointments__workflow label,
+.tengaagent-owner-appointments__reschedule label {
   color: var(--muted, #a4b4c8);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
-.tengaagent-owner-appointments__workflow select {
+.tengaagent-owner-appointments__workflow select,
+.tengaagent-owner-appointments__reschedule input {
   padding: 8px 10px;
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 9px;
@@ -196,9 +198,70 @@
   font-size: 0.75rem;
 }
 
+.tengaagent-owner-appointments__reschedule-button,
+.tengaagent-owner-appointments__reschedule-actions button {
+  border: 1px solid rgba(98, 230, 189, 0.35);
+  border-radius: 9px;
+  padding: 8px 11px;
+  background: rgba(98, 230, 189, 0.12);
+  color: var(--accent, #62e6bd);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tengaagent-owner-appointments__reschedule-button:disabled,
+.tengaagent-owner-appointments__reschedule-actions button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.tengaagent-owner-appointments__reschedule {
+  margin-top: 14px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px);
+  gap: 12px;
+  border: 1px solid rgba(98, 230, 189, 0.22);
+  border-radius: 12px;
+  background: rgba(98, 230, 189, 0.05);
+}
+
+.tengaagent-owner-appointments__reschedule > div:not(.tengaagent-owner-appointments__reschedule-actions) {
+  display: grid;
+  gap: 6px;
+}
+
+.tengaagent-owner-appointments__reschedule input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tengaagent-owner-appointments__reschedule-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tengaagent-owner-appointments__reschedule-actions button.secondary {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--muted, #a4b4c8);
+}
+
+.tengaagent-owner-appointments__reschedule small {
+  grid-column: 1 / -1;
+  color: var(--muted, #a4b4c8);
+  line-height: 1.45;
+}
+
 @media (max-width: 760px) {
   .tengaagent-owner-appointments__header,
   .tengaagent-owner-appointments__topline {
     flex-direction: column;
+  }
+
+  .tengaagent-owner-appointments__reschedule {
+    grid-template-columns: 1fr;
   }
 }

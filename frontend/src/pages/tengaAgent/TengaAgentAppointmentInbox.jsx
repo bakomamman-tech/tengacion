@@ -10,6 +10,7 @@ import {
   updateTengaAgentOwnerAppointmentStatus,
 } from "../../services/tengaAgentApi";
 
+import TengaAgentAvailabilitySettings from "./TengaAgentAvailabilitySettings";
 import TengaAgentHandoffInbox from "./TengaAgentHandoffInbox";
 import "./tengaagent-appointment-owner.css";
 
@@ -57,6 +58,19 @@ const contactLabel = (appointment) =>
   appointment.email ||
   appointment.phone ||
   "No contact method";
+
+const availabilityLabel = (appointment) => {
+  switch (appointment.availabilityState) {
+    case "available_at_request":
+      return "available when requested";
+    case "confirmed_free":
+      return "availability checked at confirmation";
+    case "conflict_at_confirmation":
+      return "time now conflicts";
+    default:
+      return "manual request-time review";
+  }
+};
 
 export default function TengaAgentAppointmentInbox({
   user,
@@ -180,6 +194,7 @@ export default function TengaAgentAppointmentInbox({
         requestError?.message ||
           "TengaAgent could not update that appointment."
       );
+      await loadAppointments();
     } finally {
       setUpdatingId("");
     }
@@ -191,6 +206,8 @@ export default function TengaAgentAppointmentInbox({
 
   return (
     <>
+      <TengaAgentAvailabilitySettings />
+
       <div
         className="tengaagent-owner-appointments"
         id="owner-appointments"
@@ -200,9 +217,11 @@ export default function TengaAgentAppointmentInbox({
             <span>APPOINTMENTS</span>
             <h3>Meeting requests</h3>
             <p>
-              Visitors choose a preferred time. You
-              confirm or cancel the request here; no
-              calendar availability is implied yet.
+              When internal availability is enabled,
+              visitors choose from free TengaAgent slots
+              and confirmation rechecks for conflicts.
+              Otherwise, preferred times remain manual
+              requests until you approve them.
             </p>
           </div>
 
@@ -298,6 +317,14 @@ export default function TengaAgentAppointmentInbox({
                       {appointment.durationMinutes || 30}
                       {" minutes · visitor timezone: "}
                       {appointment.timezone || "—"}
+                    </span>
+                    <span>
+                      Availability: {availabilityLabel(
+                        appointment
+                      )}
+                      {appointment.availabilitySource
+                        ? ` · ${appointment.availabilitySource}`
+                        : ""}
                     </span>
                   </div>
 

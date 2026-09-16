@@ -6,6 +6,11 @@ const Appointment = require(
 const Organization = require(
   "../../models/tengaAgent/Organization"
 );
+const {
+  checkAppointmentAvailability,
+} = require(
+  "./availabilityService"
+);
 
 const APPOINTMENT_STATUSES = [
   "requested",
@@ -141,6 +146,8 @@ const captureAppointmentRequest = async ({
     parsePreferredStart(
       preferredStartAt
     );
+  const duration =
+    parseDuration(durationMinutes);
 
   const cleanTimezone = cleanText(
     timezone || "Africa/Lagos",
@@ -169,6 +176,24 @@ const captureAppointmentRequest = async ({
     );
   }
 
+  const availability =
+    await checkAppointmentAvailability({
+      organizationId,
+      agentId,
+      startAt: requestedStart,
+      durationMinutes: duration,
+      excludeAppointmentId: existing?._id,
+    });
+
+  if (!availability.available) {
+    throw new Error(
+      "That meeting time is no longer available. Choose another slot."
+    );
+  }
+
+  const scheduleChecked =
+    availability.scheduleEnabled === true;
+
   return Appointment.findOneAndUpdate(
     {
       organizationId,
@@ -196,13 +221,22 @@ const captureAppointmentRequest = async ({
         timezone:
           cleanTimezone,
         durationMinutes:
-          parseDuration(durationMinutes),
+          duration,
         source:
           cleanText(source, 40) || "web",
         consentToContact:
           true,
         requestedAt:
           new Date(),
+        availabilityState:
+          scheduleChecked
+            ? "available_at_request"
+            : "not_checked",
+        availabilitySource:
+          availability.source,
+        availabilityCheckedAt:
+          scheduleChecked ? new Date() : null,
+        confirmedAt: null,
       },
       $setOnInsert: {
         status:
@@ -342,6 +376,44 @@ const updateOwnerAppointmentStatus = async ({
   }
 
   if (
+    appointment.status === "requested" &&
+    normalizedStatus === "confirmed"
+  ) {
+    const availability =
+      await checkAppointmentAvailability({
+        organizationId:
+          organization._id,
+        agentId:
+          appointment.agentId,
+        startAt:
+          appointment.preferredStartAt,
+        durationMinutes:
+          appointment.durationMinutes,
+        excludeAppointmentId:
+          appointment._id,
+      });
+
+    appointment.availabilitySource =
+      availability.source;
+    appointment.availabilityCheckedAt =
+      new Date();
+
+    if (!availability.available) {
+      appointment.availabilityState =
+        "conflict_at_confirmation";
+      await appointment.save();
+
+      throw new Error(
+        "That meeting time is no longer available. Choose another slot before confirming."
+      );
+    }
+
+    appointment.status = "confirmed";
+    appointment.availabilityState =
+      "confirmed_free";
+    appointment.confirmedAt = new Date();
+    await appointment.save();
+  } else if (
     appointment.status !==
     normalizedStatus
   ) {

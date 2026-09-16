@@ -9,6 +9,11 @@ const AvailabilitySchedule = require(
 const Organization = require(
   "../../models/tengaAgent/Organization"
 );
+const {
+  getExternalCalendarBusyContext,
+} = require(
+  "./calendarConnectionService"
+);
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_PUBLIC_RANGE_DAYS = 31;
@@ -173,7 +178,11 @@ const normalizeWeeklyHours = (value) => {
     a.startMinutes - b.startMinutes
   );
 
-  for (let index = 1; index < windows.length; index += 1) {
+  for (
+    let index = 1;
+    index < windows.length;
+    index += 1
+  ) {
     const previous = windows[index - 1];
     const current = windows[index];
 
@@ -255,11 +264,14 @@ const serializeAvailabilitySchedule = (
   schedule,
   organization
 ) => {
-  const source = schedule || scheduleDefaults(organization);
+  const source =
+    schedule || scheduleDefaults(organization);
 
   return {
     organizationId:
-      organization?._id || source.organizationId || null,
+      organization?._id ||
+      source.organizationId ||
+      null,
     enabled: Boolean(source.enabled),
     timezone:
       source.timezone ||
@@ -353,9 +365,10 @@ const saveOwnerAvailabilitySchedule = async ({
     return null;
   }
 
-  const existing = await AvailabilitySchedule.findOne({
-    organizationId: organization._id,
-  });
+  const existing =
+    await AvailabilitySchedule.findOne({
+      organizationId: organization._id,
+    });
 
   const cleanTimezone = cleanText(
     timezone ||
@@ -374,7 +387,9 @@ const saveOwnerAvailabilitySchedule = async ({
   const normalizedWeeklyHours =
     weeklyHours === undefined
       ? existing?.weeklyHours?.length
-        ? normalizeWeeklyHours(existing.weeklyHours)
+        ? normalizeWeeklyHours(
+            existing.weeklyHours
+          )
         : DEFAULT_WEEKLY_HOURS
       : normalizeWeeklyHours(weeklyHours);
 
@@ -397,82 +412,87 @@ const saveOwnerAvailabilitySchedule = async ({
       ? normalizeBlockedIntervals(
           existing?.blockedIntervals || []
         )
-      : normalizeBlockedIntervals(blockedIntervals);
+      : normalizeBlockedIntervals(
+          blockedIntervals
+        );
 
-  const schedule = await AvailabilitySchedule.findOneAndUpdate(
-    { organizationId: organization._id },
-    {
-      $set: {
-        enabled: normalizedEnabled,
-        timezone: cleanTimezone,
-        source: "internal_schedule",
-        minimumNoticeMinutes:
-          parseBoundedInteger(
-            minimumNoticeMinutes,
-            existing?.minimumNoticeMinutes ?? 60,
-            0,
-            10080,
-            "Minimum notice"
-          ),
-        bookingHorizonDays:
-          parseBoundedInteger(
-            bookingHorizonDays,
-            existing?.bookingHorizonDays ?? 30,
-            1,
-            365,
-            "Booking horizon"
-          ),
-        slotStepMinutes:
-          [15, 30, 60].includes(
-            Number(
-              slotStepMinutes ??
-                existing?.slotStepMinutes ??
-                30
-            )
-          )
-            ? Number(
+  const schedule =
+    await AvailabilitySchedule.findOneAndUpdate(
+      {
+        organizationId: organization._id,
+      },
+      {
+        $set: {
+          enabled: normalizedEnabled,
+          timezone: cleanTimezone,
+          source: "internal_schedule",
+          minimumNoticeMinutes:
+            parseBoundedInteger(
+              minimumNoticeMinutes,
+              existing?.minimumNoticeMinutes ?? 60,
+              0,
+              10080,
+              "Minimum notice"
+            ),
+          bookingHorizonDays:
+            parseBoundedInteger(
+              bookingHorizonDays,
+              existing?.bookingHorizonDays ?? 30,
+              1,
+              365,
+              "Booking horizon"
+            ),
+          slotStepMinutes:
+            [15, 30, 60].includes(
+              Number(
                 slotStepMinutes ??
                   existing?.slotStepMinutes ??
                   30
               )
-            : (() => {
-                throw new Error(
-                  "Slot step must be 15, 30 or 60 minutes."
-                );
-              })(),
-        defaultDurationMinutes:
-          normalizeDuration(
-            defaultDurationMinutes,
-            existing?.defaultDurationMinutes ?? 30
-          ),
-        bufferBeforeMinutes:
-          parseBoundedInteger(
-            bufferBeforeMinutes,
-            existing?.bufferBeforeMinutes ?? 0,
-            0,
-            180,
-            "Buffer before"
-          ),
-        bufferAfterMinutes:
-          parseBoundedInteger(
-            bufferAfterMinutes,
-            existing?.bufferAfterMinutes ?? 0,
-            0,
-            180,
-            "Buffer after"
-          ),
-        weeklyHours: normalizedWeeklyHours,
-        blockedIntervals:
-          normalizedBlockedIntervals,
+            )
+              ? Number(
+                  slotStepMinutes ??
+                    existing?.slotStepMinutes ??
+                    30
+                )
+              : (() => {
+                  throw new Error(
+                    "Slot step must be 15, 30 or 60 minutes."
+                  );
+                })(),
+          defaultDurationMinutes:
+            normalizeDuration(
+              defaultDurationMinutes,
+              existing?.defaultDurationMinutes ?? 30
+            ),
+          bufferBeforeMinutes:
+            parseBoundedInteger(
+              bufferBeforeMinutes,
+              existing?.bufferBeforeMinutes ?? 0,
+              0,
+              180,
+              "Buffer before"
+            ),
+          bufferAfterMinutes:
+            parseBoundedInteger(
+              bufferAfterMinutes,
+              existing?.bufferAfterMinutes ?? 0,
+              0,
+              180,
+              "Buffer after"
+            ),
+          weeklyHours: normalizedWeeklyHours,
+          blockedIntervals:
+            normalizedBlockedIntervals,
+        },
       },
-    },
-    {
-      upsert: true,
-      returnDocument: "after",
-      runValidators: true,
-      setDefaultsOnInsert: true,
-    }
-  );
+      {
+        upsert: true,
+        returnDocument: "after",
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
+    );
 
   return {
     organization,
@@ -505,10 +525,12 @@ const getConfirmedBusyIntervals = async ({
     status: "confirmed",
     preferredStartAt: {
       $gte: new Date(
-        from.getTime() - 6 * 60 * 60 * 1000
+        from.getTime() -
+          6 * 60 * 60 * 1000
       ),
       $lt: new Date(
-        to.getTime() + 6 * 60 * 60 * 1000
+        to.getTime() +
+          6 * 60 * 60 * 1000
       ),
     },
   };
@@ -519,33 +541,45 @@ const getConfirmedBusyIntervals = async ({
       excludeAppointmentId
     )
   ) {
-    query._id = { $ne: excludeAppointmentId };
+    query._id = {
+      $ne: excludeAppointmentId,
+    };
   }
 
-  const appointments = await Appointment.find(query)
-    .select({
-      preferredStartAt: 1,
-      durationMinutes: 1,
-    })
-    .lean();
+  const appointments =
+    await Appointment.find(query)
+      .select({
+        preferredStartAt: 1,
+        durationMinutes: 1,
+      })
+      .lean();
 
   const before =
-    Number(schedule?.bufferBeforeMinutes || 0) *
+    Number(
+      schedule?.bufferBeforeMinutes || 0
+    ) *
     60 *
     1000;
   const after =
-    Number(schedule?.bufferAfterMinutes || 0) *
+    Number(
+      schedule?.bufferAfterMinutes || 0
+    ) *
     60 *
     1000;
 
   return appointments.map((appointment) => {
     const startAt = new Date(
-      new Date(appointment.preferredStartAt).getTime() -
-        before
+      new Date(
+        appointment.preferredStartAt
+      ).getTime() - before
     );
     const endAt = new Date(
-      new Date(appointment.preferredStartAt).getTime() +
-        Number(appointment.durationMinutes || 30) *
+      new Date(
+        appointment.preferredStartAt
+      ).getTime() +
+        Number(
+          appointment.durationMinutes || 30
+        ) *
           60 *
           1000 +
         after
@@ -557,6 +591,85 @@ const getConfirmedBusyIntervals = async ({
       kind: "confirmed_appointment",
     };
   });
+};
+
+const withScheduleBuffers = (
+  intervals,
+  schedule
+) => {
+  const before =
+    Number(
+      schedule?.bufferBeforeMinutes || 0
+    ) *
+    60 *
+    1000;
+  const after =
+    Number(
+      schedule?.bufferAfterMinutes || 0
+    ) *
+    60 *
+    1000;
+
+  return intervals.map((interval) => ({
+    ...interval,
+    startAt: new Date(
+      new Date(interval.startAt).getTime() -
+        before
+    ),
+    endAt: new Date(
+      new Date(interval.endAt).getTime() +
+        after
+    ),
+  }));
+};
+
+const getBusyContext = async ({
+  organizationId,
+  agentId,
+  from,
+  to,
+  schedule,
+  excludeAppointmentId,
+}) => {
+  const internalBusy =
+    await getConfirmedBusyIntervals({
+      organizationId,
+      agentId,
+      from,
+      to,
+      schedule,
+      excludeAppointmentId,
+    });
+
+  if (!schedule.enabled) {
+    return {
+      busyIntervals: internalBusy,
+      connectedProviders: [],
+      unavailableProviders: [],
+    };
+  }
+
+  const external =
+    await getExternalCalendarBusyContext({
+      organizationId,
+      agentId,
+      from,
+      to,
+    });
+
+  return {
+    busyIntervals: [
+      ...internalBusy,
+      ...withScheduleBuffers(
+        external.busyIntervals || [],
+        schedule
+      ),
+    ],
+    connectedProviders:
+      external.connectedProviders || [],
+    unavailableProviders:
+      external.unavailableProviders || [],
+  };
 };
 
 const isWithinWeeklyHours = ({
@@ -624,7 +737,9 @@ const evaluateSlotAgainstContext = ({
 
   const minimumStart = new Date(
     now.getTime() +
-      schedule.minimumNoticeMinutes * 60 * 1000
+      schedule.minimumNoticeMinutes *
+        60 *
+        1000
   );
   const latestStart = new Date(
     now.getTime() +
@@ -661,7 +776,10 @@ const evaluateSlotAgainstContext = ({
     };
   }
 
-  for (const blocked of schedule.blockedIntervals || []) {
+  for (
+    const blocked of
+      schedule.blockedIntervals || []
+  ) {
     if (
       rangesOverlap(
         startAt,
@@ -693,9 +811,10 @@ const checkAppointmentAvailability = async ({
   excludeAppointmentId,
   now = new Date(),
 }) => {
-  const organization = await Organization.findById(
-    organizationId
-  );
+  const organization =
+    await Organization.findById(
+      organizationId
+    );
 
   if (!organization) {
     throw new Error(
@@ -704,10 +823,14 @@ const checkAppointmentAvailability = async ({
   }
 
   const schedule =
-    await getScheduleForOrganization(organization);
+    await getScheduleForOrganization(
+      organization
+    );
   const normalizedStart = new Date(startAt);
 
-  if (Number.isNaN(normalizedStart.getTime())) {
+  if (
+    Number.isNaN(normalizedStart.getTime())
+  ) {
     throw new Error(
       "A valid appointment start time is required."
     );
@@ -721,24 +844,54 @@ const checkAppointmentAvailability = async ({
     normalizedStart.getTime() +
       duration * 60 * 1000
   );
-
-  const busyIntervals =
-    await getConfirmedBusyIntervals({
-      organizationId,
-      agentId,
-      from: normalizedStart,
-      to: candidateEnd,
-      schedule,
-      excludeAppointmentId,
-    });
-
-  const evaluation = evaluateSlotAgainstContext({
-    startAt: normalizedStart,
-    durationMinutes: duration,
+  const busyContext = await getBusyContext({
+    organizationId,
+    agentId,
+    from: normalizedStart,
+    to: candidateEnd,
     schedule,
-    busyIntervals,
-    now,
+    excludeAppointmentId,
   });
+
+  if (
+    busyContext.unavailableProviders.length > 0
+  ) {
+    const requestOnlyEvaluation =
+      evaluateSlotAgainstContext({
+        startAt: normalizedStart,
+        durationMinutes: duration,
+        schedule: {
+          ...schedule,
+          enabled: false,
+        },
+        busyIntervals:
+          busyContext.busyIntervals,
+        now,
+      });
+
+    return {
+      ...requestOnlyEvaluation,
+      scheduleEnabled: false,
+      source: "request_only",
+      timezone: schedule.timezone,
+      durationMinutes: duration,
+      externalCalendarState: "unavailable",
+      externalProviders:
+        busyContext.connectedProviders,
+      unavailableProviders:
+        busyContext.unavailableProviders,
+    };
+  }
+
+  const evaluation =
+    evaluateSlotAgainstContext({
+      startAt: normalizedStart,
+      durationMinutes: duration,
+      schedule,
+      busyIntervals:
+        busyContext.busyIntervals,
+      now,
+    });
 
   return {
     ...evaluation,
@@ -748,6 +901,13 @@ const checkAppointmentAvailability = async ({
       : "request_only",
     timezone: schedule.timezone,
     durationMinutes: duration,
+    externalCalendarState:
+      busyContext.connectedProviders.length > 0
+        ? "verified"
+        : "not_connected",
+    externalProviders:
+      busyContext.connectedProviders,
+    unavailableProviders: [],
   };
 };
 
@@ -767,6 +927,15 @@ const parseRangeDate = (value, fallback) => {
   return parsed;
 };
 
+const availabilityRules = (schedule) => ({
+  minimumNoticeMinutes:
+    schedule.minimumNoticeMinutes,
+  bookingHorizonDays:
+    schedule.bookingHorizonDays,
+  slotStepMinutes:
+    schedule.slotStepMinutes,
+});
+
 const getPublicAvailability = async ({
   organization,
   agent,
@@ -776,7 +945,9 @@ const getPublicAvailability = async ({
   now = new Date(),
 }) => {
   const schedule =
-    await getScheduleForOrganization(organization);
+    await getScheduleForOrganization(
+      organization
+    );
   const duration = normalizeDuration(
     durationMinutes,
     schedule.defaultDurationMinutes
@@ -789,20 +960,20 @@ const getPublicAvailability = async ({
       timezone: schedule.timezone,
       durationMinutes: duration,
       slots: [],
-      rules: {
-        minimumNoticeMinutes:
-          schedule.minimumNoticeMinutes,
-        bookingHorizonDays:
-          schedule.bookingHorizonDays,
-        slotStepMinutes:
-          schedule.slotStepMinutes,
+      rules: availabilityRules(schedule),
+      externalCalendar: {
+        state: "not_checked",
+        providers: [],
+        unavailableProviders: [],
       },
     };
   }
 
   const earliest = new Date(
     now.getTime() +
-      schedule.minimumNoticeMinutes * 60 * 1000
+      schedule.minimumNoticeMinutes *
+        60 *
+        1000
   );
   const horizon = new Date(
     now.getTime() +
@@ -815,7 +986,8 @@ const getPublicAvailability = async ({
   let rangeEnd = parseRangeDate(
     to,
     new Date(
-      rangeStart.getTime() + 14 * DAY_MS
+      rangeStart.getTime() +
+        14 * DAY_MS
     )
   );
 
@@ -843,28 +1015,46 @@ const getPublicAvailability = async ({
       timezone: schedule.timezone,
       durationMinutes: duration,
       slots: [],
-      rules: {
-        minimumNoticeMinutes:
-          schedule.minimumNoticeMinutes,
-        bookingHorizonDays:
-          schedule.bookingHorizonDays,
-        slotStepMinutes:
-          schedule.slotStepMinutes,
+      rules: availabilityRules(schedule),
+      externalCalendar: {
+        state: "not_checked",
+        providers: [],
+        unavailableProviders: [],
       },
     };
   }
 
-  const busyIntervals =
-    await getConfirmedBusyIntervals({
-      organizationId: organization._id,
-      agentId: agent._id,
-      from: rangeStart,
-      to: rangeEnd,
-      schedule,
-    });
+  const busyContext = await getBusyContext({
+    organizationId: organization._id,
+    agentId: agent._id,
+    from: rangeStart,
+    to: rangeEnd,
+    schedule,
+  });
+
+  if (
+    busyContext.unavailableProviders.length > 0
+  ) {
+    return {
+      enabled: false,
+      source: "request_only",
+      timezone: schedule.timezone,
+      durationMinutes: duration,
+      slots: [],
+      rules: availabilityRules(schedule),
+      externalCalendar: {
+        state: "unavailable",
+        providers:
+          busyContext.connectedProviders,
+        unavailableProviders:
+          busyContext.unavailableProviders,
+      },
+    };
+  }
 
   const slots = [];
-  const fifteenMinutes = 15 * 60 * 1000;
+  const fifteenMinutes =
+    15 * 60 * 1000;
   let cursor = new Date(
     Math.ceil(
       rangeStart.getTime() /
@@ -891,7 +1081,8 @@ const getPublicAvailability = async ({
           startAt: cursor,
           durationMinutes: duration,
           schedule,
-          busyIntervals,
+          busyIntervals:
+            busyContext.busyIntervals,
           now,
         });
 
@@ -917,13 +1108,15 @@ const getPublicAvailability = async ({
     timezone: schedule.timezone,
     durationMinutes: duration,
     slots,
-    rules: {
-      minimumNoticeMinutes:
-        schedule.minimumNoticeMinutes,
-      bookingHorizonDays:
-        schedule.bookingHorizonDays,
-      slotStepMinutes:
-        schedule.slotStepMinutes,
+    rules: availabilityRules(schedule),
+    externalCalendar: {
+      state:
+        busyContext.connectedProviders.length > 0
+          ? "verified"
+          : "not_connected",
+      providers:
+        busyContext.connectedProviders,
+      unavailableProviders: [],
     },
   };
 };

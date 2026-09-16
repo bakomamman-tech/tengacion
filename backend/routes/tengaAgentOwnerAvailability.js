@@ -90,4 +90,9 @@ router.use(
   require("./tengaAgentOwnerCalendars")
 );
 
+router.use(
+  "/",
+  require("./tengaAgentOwnerOutcomes")
+);
+
 module.exports = router;

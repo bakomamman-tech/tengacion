@@ -27,6 +27,10 @@ const cleanText = (value, max) =>
     .trim()
     .slice(0, max);
 
+const hasEnabledTool = (agent, tool) =>
+  Array.isArray(agent?.enabledTools) &&
+  agent.enabledTools.includes(tool);
+
 const serializePublicAgent = ({
   organization,
   agent,
@@ -238,6 +242,18 @@ router.post(
         });
       }
 
+      if (
+        !hasEnabledTool(
+          publicAgent.agent,
+          "lead_capture"
+        )
+      ) {
+        return res.status(404).json({
+          message:
+            "Lead capture is not enabled for this TengaAgent.",
+        });
+      }
+
       const sessionId = cleanText(
         req.body?.sessionId,
         MAX_SESSION_LENGTH
@@ -332,6 +348,18 @@ router.post(
         return res.status(404).json({
           message:
             "This TengaAgent is not currently public.",
+        });
+      }
+
+      if (
+        !hasEnabledTool(
+          publicAgent.agent,
+          "appointment_requests"
+        )
+      ) {
+        return res.status(404).json({
+          message:
+            "Appointment requests are not enabled for this TengaAgent.",
         });
       }
 

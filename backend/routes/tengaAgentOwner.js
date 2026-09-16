@@ -17,6 +17,9 @@ const {
   rescheduleOwnerAppointment,
   updateOwnerAppointmentStatus,
 } = require("../services/tengaAgent/appointmentService");
+const {
+  queueAppointmentEventNotifications,
+} = require("../services/tengaAgent/appointmentNotificationService");
 
 const router = express.Router();
 
@@ -471,6 +474,19 @@ router.patch(
         result.appointment.completedAt = new Date();
         result.appointment.completedBy = "owner";
         await result.appointment.save();
+
+        try {
+          await queueAppointmentEventNotifications({
+            appointment: result.appointment,
+            eventType: "completed",
+            actor: "owner",
+          });
+        } catch (notificationError) {
+          console.error(
+            "[tengaagent-appointment-notifications] completion queue failed",
+            notificationError?.message || notificationError
+          );
+        }
       }
 
       res.set("Cache-Control", "no-store");

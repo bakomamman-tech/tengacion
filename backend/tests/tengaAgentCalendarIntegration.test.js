@@ -417,15 +417,22 @@ describe("TengaAgent external calendar integration", () => {
     expect(starts).toHaveLength(5);
   });
 
-  it("falls back to manual requests and blocks owner confirmation when a connected calendar cannot be verified", async () => {
+  it("falls back to manual requests and keeps a failed connected calendar fail-closed until recovery or disconnect", async () => {
     const owner = await createOwner();
     const slot = futureSlot({ hour: 10 });
     await enableScheduleFor(owner, slot);
     await connectProvider(owner, "google");
 
-    global.fetch = jest.fn(async () => {
-      throw new Error("calendar network unavailable");
-    });
+    global.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 401,
+      text: async () =>
+        JSON.stringify({
+          error: {
+            message: "invalid calendar authorization",
+          },
+        }),
+    }));
 
     const from = new Date(slot);
     from.setUTCHours(9, 0, 0, 0);
@@ -452,6 +459,14 @@ describe("TengaAgent external calendar integration", () => {
     expect(
       publicAvailability.externalCalendar.state
     ).toBe("unavailable");
+
+    const failedConnection =
+      await CalendarConnection.findOne({
+        organizationId: owner.organization._id,
+        agentId: owner.agent._id,
+        provider: "google",
+      });
+    expect(failedConnection.status).toBe("error");
 
     const appointment = await requestAppointment({
       owner,

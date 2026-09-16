@@ -12,6 +12,7 @@ const EMPTY_FORM = {
 };
 
 export default function TengaAgentLeadCaptureForm({
+  businessName = "Tengacion",
   isSubmitting = false,
   error = "",
   onSubmit,
@@ -32,12 +33,16 @@ export default function TengaAgentLeadCaptureForm({
     event.preventDefault();
 
     if (!form.email.trim() && !form.phone.trim()) {
-      setLocalError("Add an email address or phone number so the Tengacion team can reach you.");
+      setLocalError(
+        `Add an email address or phone number so ${businessName} can reach you.`
+      );
       return;
     }
 
     if (!form.consentToContact) {
-      setLocalError("Please confirm that Tengacion may contact you about this enquiry.");
+      setLocalError(
+        `Please confirm that ${businessName} may contact you about this enquiry.`
+      );
       return;
     }
 
@@ -139,7 +144,7 @@ export default function TengaAgentLeadCaptureForm({
           checked={form.consentToContact}
           onChange={(event) => updateField("consentToContact", event.target.checked)}
         />
-        <span>I agree that Tengacion may contact me about this enquiry.</span>
+        <span>I agree that {businessName} may contact me about this enquiry.</span>
       </label>
 
       {localError || error ? (

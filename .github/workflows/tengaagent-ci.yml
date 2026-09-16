@@ -36,17 +36,20 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Use Node.js 20
-        uses: actions/setup-node@v4
+      - name: Use Node.js 20.20.2
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 20.20.2
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
       - name: Install backend dependencies
         run: npm ci
+
+      - name: Reject critical backend dependency vulnerabilities
+        run: npm audit --audit-level=critical
 
       - name: Run full TengaAgent backend suite serially
         run: npx cross-env NODE_PATH=./node_modules jest tests/tengaAgent*.test.js --runInBand --testTimeout=60000 --hookTimeout=60000
@@ -61,17 +64,20 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Use Node.js 20
-        uses: actions/setup-node@v4
+      - name: Use Node.js 20.20.2
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 20.20.2
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Reject critical frontend dependency vulnerabilities
+        run: npm audit --audit-level=critical
 
       - name: Run TengaAgent frontend tests
         run: npx vitest run src/pages/tengaAgent/__tests__ --reporter=dot --testTimeout=20000 --hookTimeout=20000

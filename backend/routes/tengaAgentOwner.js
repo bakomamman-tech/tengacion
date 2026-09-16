@@ -11,6 +11,11 @@ const {
   updateOwnerLeadStatus,
 } = require("../services/tengaAgent/ownerWorkspaceService");
 
+const {
+  listOwnerAppointments,
+  updateOwnerAppointmentStatus,
+} = require("../services/tengaAgent/appointmentService");
+
 const router = express.Router();
 
 router.use(auth);
@@ -53,6 +58,27 @@ const serializeLead = (lead) => ({
   createdAt: lead.createdAt,
   lastCapturedAt: lead.lastCapturedAt,
   updatedAt: lead.updatedAt,
+});
+
+const serializeAppointment = (appointment) => ({
+  id: appointment._id,
+  agentId: appointment.agentId,
+  conversationId: appointment.conversationId,
+  name: appointment.name,
+  email: appointment.email,
+  phone: appointment.phone,
+  company: appointment.company,
+  purpose: appointment.purpose,
+  notes: appointment.notes,
+  preferredStartAt: appointment.preferredStartAt,
+  timezone: appointment.timezone,
+  durationMinutes: appointment.durationMinutes,
+  source: appointment.source,
+  status: appointment.status,
+  consentToContact: appointment.consentToContact,
+  requestedAt: appointment.requestedAt,
+  createdAt: appointment.createdAt,
+  updatedAt: appointment.updatedAt,
 });
 
 router.get("/workspace", async (req, res, next) => {
@@ -236,6 +262,86 @@ router.patch(
       });
     } catch (error) {
       if (/lead status/i.test(error?.message || "")) {
+        return res.status(400).json({
+          ok: false,
+          message: error.message,
+        });
+      }
+
+      return next(error);
+    }
+  }
+);
+
+router.get("/appointments", async (req, res, next) => {
+  try {
+    const result = await listOwnerAppointments({
+      userId: req.user._id,
+      limit: req.query?.limit,
+    });
+
+    if (!result) {
+      return res.status(404).json({
+        ok: false,
+        message: "TengaAgent workspace not found.",
+      });
+    }
+
+    res.set("Cache-Control", "no-store");
+
+    return res.json({
+      ok: true,
+      appointments:
+        result.appointments.map(
+          serializeAppointment
+        ),
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.patch(
+  "/appointments/:appointmentId/status",
+  async (req, res, next) => {
+    try {
+      const result =
+        await updateOwnerAppointmentStatus({
+          userId: req.user._id,
+          appointmentId:
+            req.params.appointmentId,
+          status: req.body?.status,
+        });
+
+      if (!result.workspaceFound) {
+        return res.status(404).json({
+          ok: false,
+          message: "TengaAgent workspace not found.",
+        });
+      }
+
+      if (!result.appointment) {
+        return res.status(404).json({
+          ok: false,
+          message: "TengaAgent appointment not found.",
+        });
+      }
+
+      res.set("Cache-Control", "no-store");
+
+      return res.json({
+        ok: true,
+        appointment:
+          serializeAppointment(
+            result.appointment
+          ),
+      });
+    } catch (error) {
+      if (
+        /appointment status|cannot move|unsupported appointment/i.test(
+          error?.message || ""
+        )
+      ) {
         return res.status(400).json({
           ok: false,
           message: error.message,

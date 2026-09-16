@@ -6,6 +6,10 @@ const {
   updateOwnerAgentConfiguration,
 } = require("../services/tengaAgent/ownerAgentConfigurationService");
 const {
+  archiveOwnerKnowledgeSource,
+  updateOwnerBusinessProfile,
+} = require("../services/tengaAgent/ownerKnowledgeLifecycleService");
+const {
   syncOwnerWebsiteKnowledge,
 } = require("../services/tengaAgent/ownerWebsiteKnowledgeService");
 
@@ -45,6 +49,64 @@ const serializeWorkspace = (workspace) => ({
       }
     : null,
 });
+
+const serializeSource = (source) => ({
+  id: source._id,
+  type: source.type,
+  title: source.title,
+  sourceUrl: source.sourceUrl,
+  status: source.status,
+  chunkCount: source.chunkCount,
+  updatedAt: source.updatedAt,
+});
+
+router.patch(
+  "/profile",
+  async (req, res, next) => {
+    try {
+      const workspace = await updateOwnerBusinessProfile({
+        userId: req.user._id,
+        name: req.body?.name,
+        website: req.body?.website,
+        industry: req.body?.industry,
+        countryCode: req.body?.countryCode,
+        timezone: req.body?.timezone,
+      });
+
+      if (!workspace) {
+        return res.status(404).json({
+          ok: false,
+          message: "TengaAgent workspace not found.",
+        });
+      }
+
+      res.set("Cache-Control", "no-store");
+
+      return res.json({
+        ok: true,
+        unchanged: Boolean(workspace.unchanged),
+        publicationPaused:
+          Boolean(workspace.publicationPaused),
+        archivedWebsiteSources:
+          workspace.archivedWebsiteSources || 0,
+        ...serializeWorkspace(workspace),
+      });
+    } catch (error) {
+      if (
+        /required|country code|website|https|credentials|timezone/i.test(
+          error?.message || ""
+        )
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: error.message,
+        });
+      }
+
+      return next(error);
+    }
+  }
+);
 
 router.patch(
   "/agent/publication",
@@ -146,15 +208,7 @@ router.post(
 
       return res.status(201).json({
         ok: true,
-        source: {
-          id: result.source._id,
-          type: result.source.type,
-          title: result.source.title,
-          sourceUrl: result.source.sourceUrl,
-          status: result.source.status,
-          chunkCount: result.source.chunkCount,
-          updatedAt: result.source.updatedAt,
-        },
+        source: serializeSource(result.source),
         chunksCreated: result.chunksCreated,
         unchanged: result.unchanged,
       });
@@ -170,6 +224,45 @@ router.post(
         });
       }
 
+      return next(error);
+    }
+  }
+);
+
+router.delete(
+  "/knowledge/:sourceId",
+  async (req, res, next) => {
+    try {
+      const result = await archiveOwnerKnowledgeSource({
+        userId: req.user._id,
+        sourceId: req.params.sourceId,
+      });
+
+      if (!result) {
+        return res.status(404).json({
+          ok: false,
+          message: "TengaAgent workspace not found.",
+        });
+      }
+
+      if (!result.source) {
+        return res.status(404).json({
+          ok: false,
+          message: "Knowledge source not found.",
+        });
+      }
+
+      res.set("Cache-Control", "no-store");
+
+      return res.json({
+        ok: true,
+        source: serializeSource(result.source),
+        chunksRemoved: result.chunksRemoved || 0,
+        publicationPaused:
+          Boolean(result.publicationPaused),
+        ...serializeWorkspace(result),
+      });
+    } catch (error) {
       return next(error);
     }
   }

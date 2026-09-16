@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -8,6 +9,7 @@ import { useParams } from "react-router-dom";
 
 import {
   getPublicTengaAgent,
+  getPublicTengaAgentConversation,
   sendPublicTengaAgentMessage,
   submitPublicTengaAgentAppointment,
   submitPublicTengaAgentLead,
@@ -54,14 +56,27 @@ const readSessionId = (storageKey) => {
   }
 };
 
+const buildWelcomeMessage = (agent) => ({
+  id: "welcome",
+  sender: "agent",
+  content:
+    agent?.greeting ||
+    `Hi! I'm ${agent?.name || "TengaAgent"}. How can I help you today?`,
+});
+
+const senderLabel = (sender) => {
+  if (sender === "agent") return "AI";
+  if (sender === "human") return "Human";
+  if (sender === "system") return "System";
+  return "You";
+};
+
 function PublicMessage({ sender, content }) {
   return (
     <div
       className={`tengaagent-public__message tengaagent-public__message--${sender}`}
     >
-      <strong>
-        {sender === "agent" ? "AI" : "You"}
-      </strong>
+      <strong>{senderLabel(sender)}</strong>
       <div>{content}</div>
     </div>
   );
@@ -85,6 +100,8 @@ export default function TengaAgentPublicAgentPage() {
   const [publicAgent, setPublicAgent] =
     useState(null);
   const [messages, setMessages] = useState([]);
+  const [conversationStatus, setConversationStatus] =
+    useState("");
   const [draft, setDraft] = useState("");
   const [isLoading, setIsLoading] =
     useState(true);
@@ -102,6 +119,58 @@ export default function TengaAgentPublicAgentPage() {
   const businessName =
     publicAgent?.organization?.name ||
     "this business";
+
+  const applyTranscript = useCallback(
+    (response, agent = publicAgent?.agent) => {
+      setConversationStatus(response?.status || "");
+
+      if (!response?.exists) {
+        return;
+      }
+
+      setMessages((current) => {
+        const transient = current.filter((message) =>
+          String(message.id || "").startsWith("local-")
+        );
+        const persisted = Array.isArray(response?.messages)
+          ? response.messages.map((message) => ({
+              id: String(message.id),
+              sender: message.sender,
+              content: message.content,
+            }))
+          : [];
+
+        return [
+          buildWelcomeMessage(agent),
+          ...persisted,
+          ...transient,
+        ];
+      });
+    },
+    [publicAgent?.agent]
+  );
+
+  const syncConversation = useCallback(async () => {
+    if (!publicAgent) {
+      return null;
+    }
+
+    const response =
+      await getPublicTengaAgentConversation({
+        organizationSlug,
+        agentKey,
+        sessionId,
+      });
+
+    applyTranscript(response);
+    return response;
+  }, [
+    agentKey,
+    applyTranscript,
+    organizationSlug,
+    publicAgent,
+    sessionId,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,14 +191,35 @@ export default function TengaAgentPublicAgentPage() {
 
         setPublicAgent(response);
         setMessages([
-          {
-            id: "welcome",
-            sender: "agent",
-            content:
-              response?.agent?.greeting ||
-              `Hi! I'm ${response?.agent?.name || "TengaAgent"}. How can I help you today?`,
-          },
+          buildWelcomeMessage(response?.agent),
         ]);
+
+        try {
+          const transcript =
+            await getPublicTengaAgentConversation({
+              organizationSlug,
+              agentKey,
+              sessionId,
+            });
+
+          if (!cancelled && transcript?.exists) {
+            setConversationStatus(
+              transcript.status || ""
+            );
+            setMessages([
+              buildWelcomeMessage(response?.agent),
+              ...(transcript.messages || []).map(
+                (message) => ({
+                  id: String(message.id),
+                  sender: message.sender,
+                  content: message.content,
+                })
+              ),
+            ]);
+          }
+        } catch {
+          // Existing-session restoration is best effort.
+        }
       } catch (error) {
         if (!cancelled) {
           setPageError(
@@ -151,7 +241,19 @@ export default function TengaAgentPublicAgentPage() {
     return () => {
       cancelled = true;
     };
-  }, [organizationSlug, agentKey]);
+  }, [organizationSlug, agentKey, sessionId]);
+
+  useEffect(() => {
+    if (!publicAgent) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      syncConversation().catch(() => {});
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [publicAgent, syncConversation]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({
@@ -160,7 +262,11 @@ export default function TengaAgentPublicAgentPage() {
     });
   }, [messages, activeAction, isSending]);
 
-  const appendAgent = (content, prefix = "agent") => {
+  const appendAgent = (content, prefix = "local-agent") => {
+    if (!content) {
+      return;
+    }
+
     setMessages((current) => [
       ...current,
       {
@@ -186,7 +292,7 @@ export default function TengaAgentPublicAgentPage() {
     setMessages((current) => [
       ...current,
       {
-        id: `customer-${Date.now()}`,
+        id: `local-customer-${Date.now()}`,
         sender: "customer",
         content: message,
       },
@@ -202,25 +308,31 @@ export default function TengaAgentPublicAgentPage() {
           sessionId,
         });
 
-      appendAgent(response.reply);
+      setConversationStatus(response?.status || "");
 
-      const nextAction = Array.isArray(
-        response.actions
-      )
-        ? response.actions.find((action) =>
-            [
-              "capture_lead",
-              "book_appointment",
-            ].includes(action?.type)
-          )
-        : null;
+      if (response?.mode !== "human") {
+        appendAgent(response.reply);
 
-      setActiveAction(nextAction || null);
+        const nextAction = Array.isArray(
+          response.actions
+        )
+          ? response.actions.find((action) =>
+              [
+                "capture_lead",
+                "book_appointment",
+              ].includes(action?.type)
+            )
+          : null;
+
+        setActiveAction(nextAction || null);
+      }
+
+      await syncConversation();
     } catch (error) {
       appendAgent(
         error?.message ||
           "I couldn't complete that request. Please try again.",
-        "error"
+        "local-error"
       );
     } finally {
       setIsSending(false);
@@ -240,11 +352,15 @@ export default function TengaAgentPublicAgentPage() {
           ...lead,
         });
 
+      setConversationStatus(
+        response?.conversation?.status ||
+          "handoff_requested"
+      );
       setActiveAction(null);
       appendAgent(
         response?.message ||
           `Thanks. ${businessName} can follow up with you.`,
-        "lead-saved"
+        "local-lead"
       );
     } catch (error) {
       setActionError(
@@ -271,11 +387,15 @@ export default function TengaAgentPublicAgentPage() {
           ...appointment,
         });
 
+      setConversationStatus(
+        response?.conversation?.status ||
+          "handoff_requested"
+      );
       setActiveAction(null);
       appendAgent(
         response?.message ||
           `Your preferred meeting time was sent to ${businessName} for confirmation.`,
-        "appointment-saved"
+        "local-appointment"
       );
     } catch (error) {
       setActionError(
@@ -339,6 +459,33 @@ export default function TengaAgentPublicAgentPage() {
           </p>
         </div>
 
+        {conversationStatus === "human_active" ? (
+          <div className="tengaagent-public__handoff-status">
+            <strong>Human support is active.</strong>
+            <span>
+              A person from {businessName} is handling this
+              conversation. New messages go to them without
+              generating an AI reply.
+            </span>
+          </div>
+        ) : conversationStatus === "handoff_requested" ? (
+          <div className="tengaagent-public__handoff-status tengaagent-public__handoff-status--pending">
+            <strong>Human follow-up requested.</strong>
+            <span>
+              TengaAgent can still help until someone from
+              {` ${businessName} `}claims the conversation.
+            </span>
+          </div>
+        ) : conversationStatus === "closed" ? (
+          <div className="tengaagent-public__handoff-status tengaagent-public__handoff-status--closed">
+            <strong>Conversation closed.</strong>
+            <span>
+              Send a new message if you need more help; the
+              AI receptionist will start responding again.
+            </span>
+          </div>
+        ) : null}
+
         <div className="tengaagent-public__chat" aria-live="polite">
           {messages.map((message) => (
             <PublicMessage
@@ -350,7 +497,9 @@ export default function TengaAgentPublicAgentPage() {
 
           {isSending ? (
             <div className="tengaagent-public__typing">
-              TengaAgent is replying…
+              {conversationStatus === "human_active"
+                ? "Sending to human support…"
+                : "TengaAgent is replying…"}
             </div>
           ) : null}
 
@@ -403,7 +552,11 @@ export default function TengaAgentPublicAgentPage() {
               value={draft}
               maxLength={2000}
               disabled={isSending}
-              placeholder={`Ask ${publicAgent.agent?.name || "TengaAgent"} a question…`}
+              placeholder={
+                conversationStatus === "human_active"
+                  ? `Message ${businessName}…`
+                  : `Ask ${publicAgent.agent?.name || "TengaAgent"} a question…`
+              }
               onChange={(event) =>
                 setDraft(event.target.value)
               }

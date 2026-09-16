@@ -116,11 +116,29 @@ const updateOwnerBusinessProfile = async ({
   }
 
   const organization = workspace.organization;
-  const nextName = cleanText(name, 180);
-  const nextWebsite = normalizeWebsite(website);
-  const nextIndustry = cleanText(industry, 120);
-  const nextCountryCode = normalizeCountryCode(countryCode);
-  const nextTimezone = cleanText(timezone, 100);
+  const currentWebsite = normalizeWebsite(
+    organization.website || ""
+  );
+  const nextName =
+    typeof name === "string"
+      ? cleanText(name, 180)
+      : organization.name;
+  const nextWebsite =
+    typeof website === "string"
+      ? normalizeWebsite(website)
+      : currentWebsite;
+  const nextIndustry =
+    typeof industry === "string"
+      ? cleanText(industry, 120)
+      : String(organization.industry || "");
+  const nextCountryCode =
+    typeof countryCode === "string"
+      ? normalizeCountryCode(countryCode)
+      : organization.countryCode;
+  const nextTimezone =
+    typeof timezone === "string"
+      ? cleanText(timezone, 100)
+      : organization.timezone;
 
   if (!nextName) {
     throw new Error("Business name is required.");
@@ -130,8 +148,7 @@ const updateOwnerBusinessProfile = async ({
     throw new Error("Business timezone is required.");
   }
 
-  const websiteChanged =
-    String(organization.website || "") !== nextWebsite;
+  const websiteChanged = currentWebsite !== nextWebsite;
 
   const changed =
     organization.name !== nextName ||

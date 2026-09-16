@@ -334,6 +334,17 @@ const googleBusyIntervals = async ({
     Object.values(calendars)[0] ||
     {};
 
+  if (
+    Array.isArray(calendar.errors) &&
+    calendar.errors.length > 0
+  ) {
+    const error = new Error(
+      "Google Calendar free/busy could not be verified for the selected calendar."
+    );
+    error.status = 502;
+    throw error;
+  }
+
   return Array.isArray(calendar.busy)
     ? calendar.busy
         .map((entry) => ({

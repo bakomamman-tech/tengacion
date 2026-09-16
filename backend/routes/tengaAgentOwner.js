@@ -21,6 +21,7 @@ const router = express.Router();
 
 router.use(auth);
 router.use("/", require("./tengaAgentOwnerConfiguration"));
+router.use("/", require("./tengaAgentOwnerHandoff"));
 
 const serializeWorkspace = (workspace) => ({
   organization: {

@@ -228,6 +228,8 @@ export default function TengaAgentCalendarConnections() {
             const connection = provider.connection;
             const isBusy =
               actionProvider === provider.provider;
+            const needsAttention =
+              connection?.status === "error";
 
             return (
               <article
@@ -240,7 +242,9 @@ export default function TengaAgentCalendarConnections() {
                   </span>
                   <strong>
                     {provider.connected
-                      ? "Connected"
+                      ? needsAttention
+                        ? "Needs attention"
+                        : "Connected"
                       : provider.configured
                         ? "Ready to connect"
                         : "Admin setup required"}

@@ -22,6 +22,7 @@ const router = express.Router();
 router.use(auth);
 router.use("/", require("./tengaAgentOwnerConfiguration"));
 router.use("/", require("./tengaAgentOwnerHandoff"));
+router.use("/", require("./tengaAgentOwnerAvailability"));
 
 const serializeWorkspace = (workspace) => ({
   organization: {
@@ -88,6 +89,14 @@ const serializeAppointment = (appointment) => ({
   durationMinutes: appointment.durationMinutes,
   source: appointment.source,
   status: appointment.status,
+  availabilityState:
+    appointment.availabilityState || "not_checked",
+  availabilitySource:
+    appointment.availabilitySource || "request_only",
+  availabilityCheckedAt:
+    appointment.availabilityCheckedAt || null,
+  confirmedAt:
+    appointment.confirmedAt || null,
   consentToContact: appointment.consentToContact,
   requestedAt: appointment.requestedAt,
   createdAt: appointment.createdAt,
@@ -390,7 +399,7 @@ router.patch(
       });
     } catch (error) {
       if (
-        /appointment status|cannot move|unsupported appointment/i.test(
+        /appointment status|cannot move|unsupported appointment|available|availability/i.test(
           error?.message || ""
         )
       ) {

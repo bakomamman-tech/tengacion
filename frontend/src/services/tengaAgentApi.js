@@ -237,6 +237,31 @@ export const getPublicTengaAgentConversation = ({
     `/conversation?sessionId=${encodeURIComponent(sessionId)}`
   );
 
+export const getPublicTengaAgentAvailability = ({
+  organizationSlug,
+  agentKey,
+  durationMinutes = 30,
+  from,
+  to,
+}) => {
+  const params = new URLSearchParams();
+  params.set("durationMinutes", String(durationMinutes));
+
+  if (from) {
+    params.set("from", from);
+  }
+
+  if (to) {
+    params.set("to", to);
+  }
+
+  return publicAgentRequest(
+    organizationSlug,
+    agentKey,
+    `/availability?${params.toString()}`
+  );
+};
+
 export const sendPublicTengaAgentMessage = ({
   organizationSlug,
   agentKey,
@@ -315,6 +340,17 @@ export const setTengaAgentOwnerPublication = ({
   ownerRequest("/agent/publication", {
     method: "PATCH",
     body: { published },
+  });
+
+export const getTengaAgentOwnerAvailability = () =>
+  ownerRequest("/availability");
+
+export const saveTengaAgentOwnerAvailability = (
+  schedule
+) =>
+  ownerRequest("/availability", {
+    method: "PUT",
+    body: schedule,
   });
 
 export const getTengaAgentOwnerLeads = ({

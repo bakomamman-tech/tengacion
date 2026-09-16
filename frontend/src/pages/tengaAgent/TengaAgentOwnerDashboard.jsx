@@ -9,6 +9,7 @@ import {
   getTengaAgentOwnerLeads,
   getTengaAgentOwnerWorkspace,
   saveTengaAgentOwnerWorkspace,
+  setTengaAgentOwnerPublication,
   updateTengaAgentOwnerLeadStatus,
 } from "../../services/tengaAgentApi";
 
@@ -64,6 +65,8 @@ export default function TengaAgentOwnerDashboard({
   const [filter, setFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] =
+    useState(false);
   const [updatingLeadId, setUpdatingLeadId] =
     useState("");
   const [error, setError] = useState("");
@@ -189,6 +192,31 @@ export default function TengaAgentOwnerDashboard({
     }
   };
 
+  const handlePublicationChange = async () => {
+    if (!workspace?.agent || isPublishing) {
+      return;
+    }
+
+    setIsPublishing(true);
+    setError("");
+
+    try {
+      const response =
+        await setTengaAgentOwnerPublication({
+          published: !workspace.agent.published,
+        });
+
+      setWorkspace(response);
+    } catch (requestError) {
+      setError(
+        requestError?.message ||
+          "TengaAgent could not update publication status."
+      );
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const handleLeadStatusChange = async (
     lead,
     status
@@ -262,7 +290,11 @@ export default function TengaAgentOwnerDashboard({
             type="button"
             className="tengaagent-owner__refresh"
             onClick={loadOwnerData}
-            disabled={isLoading || Boolean(updatingLeadId)}
+            disabled={
+              isLoading ||
+              Boolean(updatingLeadId) ||
+              isPublishing
+            }
           >
             {isLoading ? "Refreshing…" : "Refresh leads"}
           </button>
@@ -393,6 +425,46 @@ export default function TengaAgentOwnerDashboard({
               <span>Leads</span>
               <strong>{counts.all}</strong>
             </article>
+          </div>
+
+          <div className="tengaagent-owner__publication">
+            <div>
+              <span className="tengaagent-owner__publication-label">
+                PUBLIC BUSINESS AGENT
+              </span>
+              <strong>
+                {workspace.agent?.published
+                  ? "Published"
+                  : "Not public"}
+              </strong>
+              <p>
+                Publishing makes this business agent
+                available through its own tenant-isolated
+                TengaAgent link. Pausing removes public
+                access immediately.
+              </p>
+              {workspace.agent?.publicPath ? (
+                <a
+                  href={workspace.agent.publicPath}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {workspace.agent.publicPath}
+                </a>
+              ) : null}
+            </div>
+
+            <button
+              type="button"
+              onClick={handlePublicationChange}
+              disabled={isPublishing}
+            >
+              {isPublishing
+                ? "Saving…"
+                : workspace.agent?.published
+                  ? "Pause public agent"
+                  : "Publish agent"}
+            </button>
           </div>
 
           <div

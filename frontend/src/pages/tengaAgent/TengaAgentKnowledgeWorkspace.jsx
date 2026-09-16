@@ -5,9 +5,11 @@ import {
 } from "react";
 
 import {
+  archiveTengaAgentOwnerKnowledgeSource,
   getTengaAgentOwnerKnowledge,
   importTengaAgentOwnerWebsite,
   saveTengaAgentOwnerKnowledge,
+  updateTengaAgentOwnerBusinessProfile,
   updateTengaAgentOwnerConfiguration,
 } from "../../services/tengaAgentOwnerConfigApi";
 
@@ -30,6 +32,14 @@ const emptyKnowledge = {
   title: "",
   text: "",
 };
+
+const buildProfile = (organization) => ({
+  name: organization?.name || "",
+  website: organization?.website || "",
+  industry: organization?.industry || "",
+  countryCode: organization?.countryCode || "NG",
+  timezone: organization?.timezone || "Africa/Lagos",
+});
 
 const buildConfiguration = (agent) => ({
   name: agent?.name || "TengaAgent",
@@ -60,6 +70,9 @@ export default function TengaAgentKnowledgeWorkspace({
   workspace,
   onWorkspaceChange,
 }) {
+  const [profile, setProfile] = useState(
+    () => buildProfile(workspace?.organization)
+  );
   const [configuration, setConfiguration] = useState(
     () => buildConfiguration(workspace?.agent)
   );
@@ -75,16 +88,23 @@ export default function TengaAgentKnowledgeWorkspace({
   );
   const [isLoadingKnowledge, setIsLoadingKnowledge] =
     useState(true);
+  const [isSavingProfile, setIsSavingProfile] =
+    useState(false);
   const [isSavingConfig, setIsSavingConfig] =
     useState(false);
   const [isSavingKnowledge, setIsSavingKnowledge] =
     useState(false);
   const [isImportingWebsite, setIsImportingWebsite] =
     useState(false);
+  const [archivingSourceId, setArchivingSourceId] =
+    useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
+    setProfile(
+      buildProfile(workspace?.organization)
+    );
     setConfiguration(
       buildConfiguration(workspace?.agent)
     );
@@ -130,6 +150,14 @@ export default function TengaAgentKnowledgeWorkspace({
   const readiness = useMemo(
     () => [
       {
+        label: "Business profile",
+        ready: Boolean(
+          profile.name.trim() &&
+            profile.countryCode.trim() &&
+            profile.timezone.trim()
+        ),
+      },
+      {
         label: "Agent identity and greeting",
         ready: Boolean(
           configuration.name.trim() &&
@@ -164,8 +192,16 @@ export default function TengaAgentKnowledgeWorkspace({
         ready: Boolean(workspace?.agent?.published),
       },
     ],
-    [configuration, readySources.length, workspace]
+    [configuration, profile, readySources.length, workspace]
   );
+
+  const updateProfile = (field, value) => {
+    setProfile((current) => ({
+      ...current,
+      [field]: value,
+    }));
+    setNotice("");
+  };
 
   const updateConfiguration = (field, value) => {
     setConfiguration((current) => ({
@@ -185,6 +221,62 @@ export default function TengaAgentKnowledgeWorkspace({
         : [...current.enabledTools, tool],
     }));
     setNotice("");
+  };
+
+  const handleProfileSubmit = async (event) => {
+    event.preventDefault();
+
+    if (isSavingProfile || !profile.name.trim()) {
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setError("");
+    setNotice("");
+
+    try {
+      const response =
+        await updateTengaAgentOwnerBusinessProfile({
+          name: profile.name.trim(),
+          website: profile.website.trim(),
+          industry: profile.industry.trim(),
+          countryCode: profile.countryCode.trim(),
+          timezone: profile.timezone.trim(),
+        });
+
+      onWorkspaceChange?.(response);
+
+      if (response?.archivedWebsiteSources > 0) {
+        await loadKnowledge();
+      }
+
+      const messages = [
+        response?.unchanged
+          ? "Business profile is already up to date."
+          : "Business profile saved.",
+      ];
+
+      if (response?.archivedWebsiteSources > 0) {
+        messages.push(
+          `${response.archivedWebsiteSources} previous website source(s) were archived because the registered website changed.`
+        );
+      }
+
+      if (response?.publicationPaused) {
+        messages.push(
+          "The public agent was paused so you can review the updated business details before publishing again."
+        );
+      }
+
+      setNotice(messages.join(" "));
+    } catch (requestError) {
+      setError(
+        requestError?.message ||
+          "TengaAgent could not save the business profile."
+      );
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handleConfigurationSubmit = async (event) => {
@@ -305,6 +397,48 @@ export default function TengaAgentKnowledgeWorkspace({
     }
   };
 
+  const handleArchiveSource = async (source) => {
+    if (!source?.id || archivingSourceId) {
+      return;
+    }
+
+    const confirmed =
+      typeof window === "undefined" ||
+      window.confirm(
+        `Archive “${source.title}”? It will stop being used for AI answers and its searchable chunks will be removed.`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setArchivingSourceId(source.id);
+    setError("");
+    setNotice("");
+
+    try {
+      const response =
+        await archiveTengaAgentOwnerKnowledgeSource({
+          sourceId: source.id,
+        });
+
+      onWorkspaceChange?.(response);
+      await loadKnowledge();
+      setNotice(
+        response?.publicationPaused
+          ? `“${source.title}” was archived and removed from searchable knowledge. The public agent was paused for review.`
+          : `“${source.title}” was archived and removed from searchable knowledge.`
+      );
+    } catch (requestError) {
+      setError(
+        requestError?.message ||
+          "TengaAgent could not archive that knowledge source."
+      );
+    } finally {
+      setArchivingSourceId("");
+    }
+  };
+
   return (
     <section className="tengaagent-knowledge-workspace">
       <div className="tengaagent-knowledge-workspace__header">
@@ -312,10 +446,10 @@ export default function TengaAgentKnowledgeWorkspace({
           <span>AGENT & KNOWLEDGE</span>
           <h3>Train your business receptionist</h3>
           <p>
-            Configure how your agent introduces itself,
-            what actions it can offer, and the approved
-            business knowledge it can retrieve when
-            answering visitors.
+            Configure your business identity, how your
+            agent introduces itself, what actions it can
+            offer, and the approved knowledge it can
+            retrieve when answering visitors.
           </p>
         </div>
       </div>
@@ -337,6 +471,126 @@ export default function TengaAgentKnowledgeWorkspace({
           {notice}
         </div>
       ) : null}
+
+      <div className="tengaagent-knowledge-workspace__layout">
+        <form
+          className="tengaagent-knowledge-workspace__card"
+          onSubmit={handleProfileSubmit}
+        >
+          <div className="tengaagent-knowledge-workspace__card-heading">
+            <strong>Business profile</strong>
+            <span>
+              The public slug stays stable when you edit
+              business details. Live changes pause the
+              agent for review.
+            </span>
+          </div>
+
+          <label>
+            Business name
+            <input
+              value={profile.name}
+              maxLength={180}
+              onChange={(event) =>
+                updateProfile("name", event.target.value)
+              }
+              required
+            />
+          </label>
+
+          <label>
+            Business website
+            <input
+              type="url"
+              value={profile.website}
+              maxLength={500}
+              onChange={(event) =>
+                updateProfile("website", event.target.value)
+              }
+              placeholder="https://example.com"
+            />
+          </label>
+
+          <label>
+            Industry
+            <input
+              value={profile.industry}
+              maxLength={120}
+              onChange={(event) =>
+                updateProfile("industry", event.target.value)
+              }
+              placeholder="Education, retail, services…"
+            />
+          </label>
+
+          <div className="tengaagent-knowledge-workspace__grid">
+            <label>
+              Country code
+              <input
+                value={profile.countryCode}
+                maxLength={2}
+                onChange={(event) =>
+                  updateProfile(
+                    "countryCode",
+                    event.target.value
+                  )
+                }
+                required
+              />
+            </label>
+
+            <label>
+              Timezone
+              <input
+                value={profile.timezone}
+                maxLength={100}
+                onChange={(event) =>
+                  updateProfile(
+                    "timezone",
+                    event.target.value
+                  )
+                }
+                required
+              />
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSavingProfile}
+          >
+            {isSavingProfile
+              ? "Saving business profile…"
+              : "Save business profile"}
+          </button>
+        </form>
+
+        <aside className="tengaagent-knowledge-workspace__card">
+          <div className="tengaagent-knowledge-workspace__card-heading">
+            <strong>Readiness</strong>
+            <span>
+              Review these checks before publishing.
+            </span>
+          </div>
+
+          <div className="tengaagent-knowledge-workspace__readiness">
+            {readiness.map((item) => (
+              <div key={item.label}>
+                <span aria-hidden="true">
+                  {item.ready ? "✓" : "○"}
+                </span>
+                <strong>{item.label}</strong>
+              </div>
+            ))}
+          </div>
+
+          <p className="tengaagent-knowledge-workspace__safety">
+            Keep secrets out of business knowledge. Never
+            add passwords, OTPs, API keys, private customer
+            records, card details, or internal credentials.
+          </p>
+        </aside>
+      </div>
 
       <div className="tengaagent-knowledge-workspace__layout">
         <form
@@ -477,31 +731,26 @@ export default function TengaAgentKnowledgeWorkspace({
           </button>
         </form>
 
-        <aside className="tengaagent-knowledge-workspace__card">
+        <div className="tengaagent-knowledge-workspace__card tengaagent-knowledge-workspace__maintenance-note">
           <div className="tengaagent-knowledge-workspace__card-heading">
-            <strong>Readiness</strong>
+            <strong>Knowledge maintenance</strong>
             <span>
-              Review these checks before publishing.
+              Keep the AI grounded in current information.
             </span>
           </div>
-
-          <div className="tengaagent-knowledge-workspace__readiness">
-            {readiness.map((item) => (
-              <div key={item.label}>
-                <span aria-hidden="true">
-                  {item.ready ? "✓" : "○"}
-                </span>
-                <strong>{item.label}</strong>
-              </div>
-            ))}
-          </div>
-
-          <p className="tengaagent-knowledge-workspace__safety">
-            Keep secrets out of business knowledge. Never
-            add passwords, OTPs, API keys, private customer
-            records, card details, or internal credentials.
+          <p>
+            Archive outdated sources below when prices,
+            policies, hours or services change. Archived
+            sources are removed from searchable chunks and
+            no longer participate in AI answers.
           </p>
-        </aside>
+          <p>
+            If you change the registered business website,
+            TengaAgent automatically retires previous
+            website-derived knowledge before you import the
+            new site.
+          </p>
+        </div>
       </div>
 
       <div className="tengaagent-knowledge-workspace__layout tengaagent-knowledge-workspace__layout--knowledge">
@@ -645,28 +894,47 @@ export default function TengaAgentKnowledgeWorkspace({
         ) : null}
 
         <div className="tengaagent-knowledge-workspace__source-list">
-          {sources.map((source) => (
-            <article key={source.id}>
-              <div>
-                <strong>{source.title}</strong>
-                <span>
-                  {source.type} · {source.status} · {source.chunkCount || 0} chunk(s)
-                </span>
-                {source.sourceUrl ? (
-                  <a
-                    href={source.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
+          {sources.map((source) => {
+            const isArchiving =
+              archivingSourceId === source.id;
+
+            return (
+              <article key={source.id}>
+                <div className="tengaagent-knowledge-workspace__source-copy">
+                  <strong>{source.title}</strong>
+                  <span>
+                    {source.type} · {source.status} · {source.chunkCount || 0} chunk(s)
+                  </span>
+                  {source.sourceUrl ? (
+                    <a
+                      href={source.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {source.sourceUrl}
+                    </a>
+                  ) : null}
+                </div>
+
+                <div className="tengaagent-knowledge-workspace__source-actions">
+                  <time dateTime={source.updatedAt || ""}>
+                    {formatDate(source.updatedAt)}
+                  </time>
+                  <button
+                    type="button"
+                    className="tengaagent-knowledge-workspace__archive"
+                    onClick={() => handleArchiveSource(source)}
+                    disabled={Boolean(archivingSourceId)}
+                    aria-label={`Archive ${source.title}`}
                   >
-                    {source.sourceUrl}
-                  </a>
-                ) : null}
-              </div>
-              <time dateTime={source.updatedAt || ""}>
-                {formatDate(source.updatedAt)}
-              </time>
-            </article>
-          ))}
+                    {isArchiving
+                      ? "Archiving…"
+                      : "Archive source"}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>

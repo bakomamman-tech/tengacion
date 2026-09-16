@@ -13,9 +13,15 @@ import {
   vi,
 } from "vitest";
 
-const getWorkspaceMock = vi.fn();
-const getLeadsMock = vi.fn();
-const saveWorkspaceMock = vi.fn();
+const {
+  getWorkspaceMock,
+  getLeadsMock,
+  saveWorkspaceMock,
+} = vi.hoisted(() => ({
+  getWorkspaceMock: vi.fn(),
+  getLeadsMock: vi.fn(),
+  saveWorkspaceMock: vi.fn(),
+}));
 
 vi.mock(
   "../../../services/tengaAgentApi",

@@ -40,6 +40,8 @@ vi.mock(
       getLeadsMock(...args),
     getTengaAgentOwnerAppointments: (...args) =>
       getAppointmentsMock(...args),
+    getTengaAgentOwnerAvailability: vi.fn(),
+    saveTengaAgentOwnerAvailability: vi.fn(),
     saveTengaAgentOwnerWorkspace: (...args) =>
       saveWorkspaceMock(...args),
     setTengaAgentOwnerPublication: (...args) =>

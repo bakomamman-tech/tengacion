@@ -18,6 +18,7 @@ const {
 } = require("../services/tengaAgent/appointmentService");
 
 const router = express.Router();
+router.use("/", require("./tengaAgentPublicAvailability"));
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_SESSION_LENGTH = 160;
@@ -531,6 +532,10 @@ router.post(
           timezone: appointment.timezone,
           durationMinutes:
             appointment.durationMinutes,
+          availabilityState:
+            appointment.availabilityState,
+          availabilitySource:
+            appointment.availabilitySource,
         },
         conversation: {
           id: conversation._id,
@@ -541,7 +546,7 @@ router.post(
       });
     } catch (error) {
       if (
-        /appointment|email|phone|contact|consent|timezone|future|duration|changed/i.test(
+        /appointment|email|phone|contact|consent|timezone|future|duration|changed|available|availability/i.test(
           error?.message || ""
         )
       ) {

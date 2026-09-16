@@ -53,6 +53,13 @@ const serializePublicAgent = ({
   },
 });
 
+const serializePublicMessage = (message) => ({
+  id: message._id,
+  sender: message.sender,
+  content: message.content,
+  createdAt: message.createdAt,
+});
+
 const resolveRequestAgent = (req) =>
   resolvePublishedAgent({
     organizationSlug:
@@ -90,6 +97,73 @@ router.get(
       return res.json({
         ok: true,
         ...serializePublicAgent(publicAgent),
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.get(
+  "/:organizationSlug/:agentKey/conversation",
+  async (req, res, next) => {
+    try {
+      const publicAgent =
+        await resolveRequestAgent(req);
+
+      if (!publicAgent) {
+        return res.status(404).json({
+          message:
+            "This TengaAgent is not currently public.",
+        });
+      }
+
+      const sessionId = cleanText(
+        req.query?.sessionId,
+        MAX_SESSION_LENGTH
+      );
+
+      if (!sessionId) {
+        return res.status(400).json({
+          message: "Session is required.",
+        });
+      }
+
+      const { organization, agent } = publicAgent;
+      const conversation = await findConversation({
+        organization,
+        agent,
+        sessionId,
+      });
+
+      if (!conversation) {
+        res.set("Cache-Control", "no-store");
+        return res.json({
+          ok: true,
+          exists: false,
+          status: null,
+          messages: [],
+        });
+      }
+
+      const messagesDesc = await Message.find({
+        organizationId: organization._id,
+        conversationId: conversation._id,
+      })
+        .sort({ createdAt: -1 })
+        .limit(200)
+        .lean();
+
+      res.set("Cache-Control", "no-store");
+      return res.json({
+        ok: true,
+        exists: true,
+        conversationId: conversation._id,
+        status: conversation.status,
+        messages: messagesDesc
+          .reverse()
+          .filter((message) => message.sender !== "tool")
+          .map(serializePublicMessage),
       });
     } catch (error) {
       return next(error);
@@ -157,9 +231,14 @@ router.post(
             status: "ai_active",
             lastMessageAt: new Date(),
           });
+      } else if (conversation.status === "closed") {
+        conversation.status = "ai_active";
+        conversation.assignedToUser = null;
+        conversation.claimedAt = null;
+        conversation.closedAt = null;
       }
 
-      await Message.create({
+      const customerMessage = await Message.create({
         organizationId:
           organization._id,
         conversationId:
@@ -169,6 +248,23 @@ router.post(
         type: "text",
         content: message,
       });
+
+      if (conversation.status === "human_active") {
+        conversation.lastMessageAt = customerMessage.createdAt;
+        await conversation.save();
+
+        res.set("Cache-Control", "no-store");
+        return res.json({
+          ok: true,
+          conversationId: conversation._id,
+          sessionId,
+          mode: "human",
+          status: conversation.status,
+          reply: null,
+          actions: [],
+          ...serializePublicAgent(publicAgent),
+        });
+      }
 
       const recentMessages = await Message.find({
         conversationId: conversation._id,
@@ -216,6 +312,8 @@ router.post(
         conversationId:
           conversation._id,
         sessionId,
+        mode: "ai",
+        status: conversation.status,
         reply: result.reply,
         actions: result.actions || [],
         ...serializePublicAgent(

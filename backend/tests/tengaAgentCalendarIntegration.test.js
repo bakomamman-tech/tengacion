@@ -12,6 +12,13 @@ process.env.GOOGLE_CALENDAR_CLIENT_SECRET =
   "google-calendar-test-secret";
 process.env.GOOGLE_CALENDAR_REDIRECT_URI =
   "http://localhost:5173/tengaagent";
+process.env.MICROSOFT_CALENDAR_CLIENT_ID =
+  "microsoft-calendar-test-client";
+process.env.MICROSOFT_CALENDAR_CLIENT_SECRET =
+  "microsoft-calendar-test-secret";
+process.env.MICROSOFT_CALENDAR_TENANT = "common";
+process.env.MICROSOFT_CALENDAR_REDIRECT_URI =
+  "http://localhost:5173/tengaagent";
 
 const mongoose = require("mongoose");
 const {
@@ -122,7 +129,10 @@ const enableScheduleFor = async (
     ],
   });
 
-const connectGoogle = async (owner) => {
+const connectProvider = async (
+  owner,
+  provider
+) => {
   const expiresAt = new Date(
     Date.now() + 60 * 60 * 1000
   );
@@ -130,16 +140,22 @@ const connectGoogle = async (owner) => {
   return CalendarConnection.create({
     organizationId: owner.organization._id,
     agentId: owner.agent._id,
-    provider: "google",
+    provider,
     status: "active",
     calendarId: "primary",
-    displayName: "Google Calendar",
-    scopes: [
-      "https://www.googleapis.com/auth/calendar.freebusy",
-    ],
+    displayName:
+      provider === "google"
+        ? "Google Calendar"
+        : "Microsoft Outlook",
+    scopes:
+      provider === "google"
+        ? [
+            "https://www.googleapis.com/auth/calendar.freebusy",
+          ]
+        : ["Calendars.ReadBasic"],
     encryptedCredentials: encryptJson({
-      accessToken: "google-test-access-token",
-      refreshToken: "google-test-refresh-token",
+      accessToken: `${provider}-test-access-token`,
+      refreshToken: `${provider}-test-refresh-token`,
       tokenType: "Bearer",
       expiresAt: expiresAt.toISOString(),
     }),
@@ -205,11 +221,45 @@ describe("TengaAgent external calendar integration", () => {
     expect(payload.codeVerifier).toBeTruthy();
   });
 
+  it("creates a Microsoft OAuth URL using read-only calendar access and the common tenant", async () => {
+    const owner = await createOwner();
+
+    const result =
+      await startOwnerCalendarConnection({
+        userId: owner.userId,
+        provider: "microsoft",
+      });
+
+    const url = new URL(result.authorizationUrl);
+    const state = url.searchParams.get("state");
+    const payload = decryptJson(state);
+
+    expect(url.origin).toBe(
+      "https://login.microsoftonline.com"
+    );
+    expect(url.pathname).toContain(
+      "/common/oauth2/v2.0/authorize"
+    );
+    expect(url.searchParams.get("scope")).toContain(
+      "Calendars.ReadBasic"
+    );
+    expect(url.searchParams.get("scope")).toContain(
+      "offline_access"
+    );
+    expect(
+      url.searchParams.get("code_challenge_method")
+    ).toBe("S256");
+    expect(payload.provider).toBe("microsoft");
+    expect(String(payload.userId)).toBe(
+      String(owner.userId)
+    );
+  });
+
   it("removes Google Calendar busy periods from public TengaAgent slots", async () => {
     const owner = await createOwner();
     const slot = futureSlot({ hour: 10 });
     await enableScheduleFor(owner, slot);
-    await connectGoogle(owner);
+    await connectProvider(owner, "google");
 
     global.fetch = jest.fn(async (url) => {
       expect(String(url)).toContain(
@@ -274,11 +324,104 @@ describe("TengaAgent external calendar integration", () => {
     expect(starts).toHaveLength(5);
   });
 
+  it("uses Microsoft calendarView busy state while leaving free events bookable", async () => {
+    const owner = await createOwner();
+    const slot = futureSlot({ hour: 10 });
+    const freeSlot = new Date(
+      slot.getTime() + 30 * 60 * 1000
+    );
+    await enableScheduleFor(owner, slot);
+    await connectProvider(owner, "microsoft");
+
+    global.fetch = jest.fn(async (url) => {
+      expect(String(url)).toContain(
+        "graph.microsoft.com/v1.0/me/calendar/calendarView"
+      );
+
+      return {
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            value: [
+              {
+                showAs: "busy",
+                isCancelled: false,
+                start: {
+                  dateTime: slot.toISOString(),
+                  timeZone: "UTC",
+                },
+                end: {
+                  dateTime: new Date(
+                    slot.getTime() +
+                      30 * 60 * 1000
+                  ).toISOString(),
+                  timeZone: "UTC",
+                },
+              },
+              {
+                showAs: "free",
+                isCancelled: false,
+                start: {
+                  dateTime: freeSlot.toISOString(),
+                  timeZone: "UTC",
+                },
+                end: {
+                  dateTime: new Date(
+                    freeSlot.getTime() +
+                      30 * 60 * 1000
+                  ).toISOString(),
+                  timeZone: "UTC",
+                },
+              },
+            ],
+          }),
+      };
+    });
+
+    const from = new Date(slot);
+    from.setUTCHours(9, 0, 0, 0);
+    const to = new Date(slot);
+    to.setUTCHours(12, 0, 0, 0);
+
+    const availability =
+      await getPublicAvailability({
+        organization: owner.organization,
+        agent: owner.agent,
+        from: from.toISOString(),
+        to: to.toISOString(),
+        durationMinutes: 30,
+        now: new Date(
+          from.getTime() -
+            24 * 60 * 60 * 1000
+        ),
+      });
+
+    const starts = availability.slots.map(
+      (entry) =>
+        new Date(entry.startAt).toISOString()
+    );
+
+    expect(availability.externalCalendar).toEqual(
+      expect.objectContaining({
+        state: "verified",
+        providers: ["microsoft"],
+      })
+    );
+    expect(starts).not.toContain(
+      slot.toISOString()
+    );
+    expect(starts).toContain(
+      freeSlot.toISOString()
+    );
+    expect(starts).toHaveLength(5);
+  });
+
   it("falls back to manual requests and blocks owner confirmation when a connected calendar cannot be verified", async () => {
     const owner = await createOwner();
     const slot = futureSlot({ hour: 10 });
     await enableScheduleFor(owner, slot);
-    await connectGoogle(owner);
+    await connectProvider(owner, "google");
 
     global.fetch = jest.fn(async () => {
       throw new Error("calendar network unavailable");

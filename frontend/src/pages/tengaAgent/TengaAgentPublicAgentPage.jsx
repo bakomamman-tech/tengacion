@@ -19,44 +19,8 @@ import {
 import TengaAgentAppointmentForm from "./TengaAgentAppointmentForm";
 import TengaAgentLeadCaptureForm from "./TengaAgentLeadCaptureForm";
 import TengaAgentVisitorAppointmentManager from "./TengaAgentVisitorAppointmentManager";
+import { readTengaAgentSessionId } from "./sessionId";
 import "./tengaagent-public.css";
-
-const createSessionId = () => {
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
-  ) {
-    return crypto.randomUUID();
-  }
-
-  return `tengaagent-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2)}`;
-};
-
-const readSessionId = (storageKey) => {
-  if (typeof window === "undefined") {
-    return createSessionId();
-  }
-
-  try {
-    const existing =
-      window.sessionStorage.getItem(storageKey);
-
-    if (existing) {
-      return existing;
-    }
-
-    const created = createSessionId();
-    window.sessionStorage.setItem(
-      storageKey,
-      created
-    );
-    return created;
-  } catch {
-    return createSessionId();
-  }
-};
 
 const buildWelcomeMessage = (agent) => ({
   id: "welcome",
@@ -106,7 +70,7 @@ export default function TengaAgentPublicAgentPage() {
   );
 
   const [sessionId] = useState(() =>
-    readSessionId(storageKey)
+    readTengaAgentSessionId(storageKey)
   );
   const [publicAgent, setPublicAgent] =
     useState(null);

@@ -187,7 +187,7 @@ const captureAppointmentRequest = async ({
 
   if (!availability.available) {
     throw new Error(
-      "That meeting time is no longer available. Choose another slot."
+      "That appointment time is no longer available. Choose another slot."
     );
   }
 
@@ -404,7 +404,7 @@ const updateOwnerAppointmentStatus = async ({
       await appointment.save();
 
       throw new Error(
-        "That meeting time is no longer available. Choose another slot before confirming."
+        "That appointment time is no longer available. Choose another slot before confirming."
       );
     }
 

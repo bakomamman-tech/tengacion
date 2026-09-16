@@ -2,6 +2,7 @@ const express = require("express");
 
 const auth = require("../middleware/auth");
 const {
+  setOwnerAgentPublicationPreservingTools,
   updateOwnerAgentConfiguration,
 } = require("../services/tengaAgent/ownerAgentConfigurationService");
 const {
@@ -44,6 +45,42 @@ const serializeWorkspace = (workspace) => ({
       }
     : null,
 });
+
+router.patch(
+  "/agent/publication",
+  async (req, res, next) => {
+    try {
+      if (typeof req.body?.published !== "boolean") {
+        return res.status(400).json({
+          ok: false,
+          message: "published must be true or false.",
+        });
+      }
+
+      const workspace =
+        await setOwnerAgentPublicationPreservingTools({
+          userId: req.user._id,
+          published: req.body.published,
+        });
+
+      if (!workspace) {
+        return res.status(404).json({
+          ok: false,
+          message: "TengaAgent workspace not found.",
+        });
+      }
+
+      res.set("Cache-Control", "no-store");
+
+      return res.json({
+        ok: true,
+        ...serializeWorkspace(workspace),
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
 
 router.patch(
   "/agent/configuration",

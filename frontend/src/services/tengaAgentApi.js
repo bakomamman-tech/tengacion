@@ -1,4 +1,4 @@
-﻿import { getSessionAccessToken } from "../authSession";
+import { getSessionAccessToken } from "../authSession";
 import { API_BASE } from "../config/apiBase";
 
 const parseJson = async (response) => {
@@ -377,6 +377,24 @@ export const getTengaAgentOwnerAppointments = ({
 } = {}) =>
   ownerRequest(
     `/appointments?limit=${encodeURIComponent(limit)}`
+  );
+
+export const rescheduleTengaAgentOwnerAppointment = ({
+  appointmentId,
+  preferredStartAt,
+  timezone,
+  durationMinutes,
+}) =>
+  ownerRequest(
+    `/appointments/${encodeURIComponent(appointmentId)}/reschedule`,
+    {
+      method: "PATCH",
+      body: {
+        preferredStartAt,
+        timezone,
+        durationMinutes,
+      },
+    }
   );
 
 export const updateTengaAgentOwnerAppointmentStatus = ({

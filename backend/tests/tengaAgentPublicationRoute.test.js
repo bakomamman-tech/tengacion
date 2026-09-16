@@ -77,7 +77,7 @@ describe("TengaAgent owner publication route", () => {
       .expect(401);
   });
 
-  it("publishes and pauses only the authenticated owner's agent", async () => {
+  it("publishes and pauses only the authenticated owner's agent while preserving selected tools", async () => {
     const ownerA = new mongoose.Types.ObjectId();
     const ownerB = new mongoose.Types.ObjectId();
 
@@ -86,6 +86,9 @@ describe("TengaAgent owner publication route", () => {
         userId: ownerA,
         name: "Alpha Academy",
       });
+
+    workspaceA.agent.enabledTools = ["lead_capture"];
+    await workspaceA.agent.save();
 
     const workspaceB =
       await createOrUpdateOwnerWorkspace({
@@ -109,6 +112,7 @@ describe("TengaAgent owner publication route", () => {
         key: "receptionist",
         status: "active",
         published: true,
+        enabledTools: ["lead_capture"],
         publicPath:
           `/tengaagent/${workspaceA.organization.slug}/receptionist`,
       })
@@ -145,6 +149,7 @@ describe("TengaAgent owner publication route", () => {
       expect.objectContaining({
         status: "paused",
         published: false,
+        enabledTools: ["lead_capture"],
       })
     );
   });

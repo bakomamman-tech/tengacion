@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -195,8 +196,15 @@ describe("TengaAgentAppointmentInbox", () => {
       screen.getByText(/showing 2 of 2/i)
     ).toBeInTheDocument();
 
+    const timeFilterGroup = screen.getByRole("group", {
+      name: /appointment time filter/i,
+    });
+    const statusFilterGroup = screen.getByRole("group", {
+      name: /appointment status filter/i,
+    });
+
     await user.click(
-      screen.getByRole("button", {
+      within(timeFilterGroup).getByRole("button", {
         name: /^upcoming$/i,
       })
     );
@@ -212,7 +220,7 @@ describe("TengaAgentAppointmentInbox", () => {
     ).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", {
+      within(timeFilterGroup).getByRole("button", {
         name: /^all$/i,
       })
     );
@@ -236,7 +244,7 @@ describe("TengaAgentAppointmentInbox", () => {
       })
     );
     await user.click(
-      screen.getByRole("button", {
+      within(statusFilterGroup).getByRole("button", {
         name: /completed/i,
       })
     );

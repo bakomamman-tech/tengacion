@@ -55,6 +55,10 @@ vi.mock("../TengaAgentKnowledgeWorkspace", () => ({
   default: () => <div data-testid="knowledge-workspace" />,
 }));
 
+vi.mock("../TengaAgentHandoffInbox", () => ({
+  default: () => <div data-testid="handoff-inbox" />,
+}));
+
 import TengaAgentOwnerDashboard from "../TengaAgentOwnerDashboard";
 
 const USER = {
@@ -160,6 +164,9 @@ describe("TengaAgentOwnerDashboard", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByTestId("knowledge-workspace")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("handoff-inbox")
     ).toBeInTheDocument();
     expect(
       screen.getByText("Ada Customer")

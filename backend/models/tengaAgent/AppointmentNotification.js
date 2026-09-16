@@ -27,6 +27,7 @@ const AppointmentNotificationSchema = new mongoose.Schema(
         "confirmed",
         "rescheduled",
         "completed",
+        "no_show",
         "cancelled",
         "reminder_24h",
       ],

@@ -26,6 +26,7 @@ const APPOINTMENT_STATUSES = [
   "requested",
   "confirmed",
   "completed",
+  "no_show",
   "cancelled",
 ];
 
@@ -38,10 +39,14 @@ const APPOINTMENT_TRANSITIONS = {
   confirmed: new Set([
     "confirmed",
     "completed",
+    "no_show",
     "cancelled",
   ]),
   completed: new Set([
     "completed",
+  ]),
+  no_show: new Set([
+    "no_show",
   ]),
   cancelled: new Set([
     "cancelled",
@@ -737,6 +742,11 @@ const updateOwnerAppointmentStatus = async ({
     appointment.status =
       normalizedStatus;
 
+    if (normalizedStatus === "no_show") {
+      appointment.noShowAt = new Date();
+      appointment.noShowBy = "owner";
+    }
+
     if (normalizedStatus === "cancelled") {
       appointment.cancelledAt = new Date();
       appointment.cancelledBy = "owner";
@@ -747,11 +757,11 @@ const updateOwnerAppointmentStatus = async ({
 
   if (
     previousStatus !== normalizedStatus &&
-    normalizedStatus === "cancelled"
+    ["no_show", "cancelled"].includes(normalizedStatus)
   ) {
     await queueAppointmentEventSafely({
       appointment,
-      eventType: "cancelled",
+      eventType: normalizedStatus,
       actor: "owner",
     });
   }

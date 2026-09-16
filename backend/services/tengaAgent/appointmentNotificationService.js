@@ -104,6 +104,12 @@ const eventVersion = ({ appointment, eventType }) => {
     ).getTime();
   }
 
+  if (eventType === "no_show") {
+    return new Date(
+      appointment.noShowAt || appointment.updatedAt || Date.now()
+    ).getTime();
+  }
+
   if (eventType === "cancelled") {
     return new Date(
       appointment.cancelledAt || appointment.updatedAt || Date.now()
@@ -200,7 +206,7 @@ const recipientsForEvent = ({
     return recipients;
   }
 
-  if (eventType === "completed") {
+  if (["completed", "no_show"].includes(eventType)) {
     add("visitor", visitorEmail);
     add("owner", ownerEmail);
     return recipients;
@@ -312,6 +318,26 @@ const buildNotificationCopy = (notification) => {
       subject,
       text,
       html: `<h2>Appointment completed</h2><p>${message}</p>${details}`,
+    };
+  }
+
+  if (notification.eventType === "no_show") {
+    const subject = `Appointment marked no-show — ${businessName}`;
+    const text =
+      notification.recipientKind === "owner"
+        ? `${visitorName}'s appointment for ${time} was marked as a no-show.`
+        : `Your appointment with ${businessName} for ${time} was recorded as a no-show. If this seems incorrect, contact the business.`;
+    const message =
+      notification.recipientKind === "owner"
+        ? `${escapeHtml(visitorName)}'s appointment has been closed as a no-show.`
+        : `Your appointment with ${escapeHtml(
+            businessName
+          )} was recorded as a no-show. If this seems incorrect, please contact the business.`;
+
+    return {
+      subject,
+      text,
+      html: `<h2>Appointment marked no-show</h2><p>${message}</p>${details}`,
     };
   }
 
@@ -475,7 +501,7 @@ const queueAppointmentEventNotifications = async ({
   const { appointment, organization, owner } = context;
 
   if (
-    ["rescheduled", "completed", "cancelled"].includes(eventType)
+    ["rescheduled", "completed", "no_show", "cancelled"].includes(eventType)
   ) {
     await supersedeOldReminders(appointment._id);
   }

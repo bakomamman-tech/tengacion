@@ -18,9 +18,13 @@ import {
 vi.mock("../../../services/tengaAgentApi", () => ({
   sendTengaAgentMessage: vi.fn(),
   submitTengaAgentLead: vi.fn(),
+  submitTengaAgentAppointment: vi.fn(),
   getTengaAgentOwnerWorkspace: vi.fn(),
   getTengaAgentOwnerLeads: vi.fn(),
+  getTengaAgentOwnerAppointments: vi.fn(),
   saveTengaAgentOwnerWorkspace: vi.fn(),
+  updateTengaAgentOwnerLeadStatus: vi.fn(),
+  updateTengaAgentOwnerAppointmentStatus: vi.fn(),
 }));
 
 describe("TengaAgent lead capture UI", () => {

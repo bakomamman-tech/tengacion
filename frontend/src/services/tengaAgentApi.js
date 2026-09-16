@@ -71,6 +71,40 @@ const ownerRequest = async (
   );
 };
 
+const publicAgentRequest = async (
+  organizationSlug,
+  agentKey,
+  suffix = "",
+  { method = "GET", body } = {}
+) => {
+  const base =
+    `${API_BASE}/tengaagent/public/${encodeURIComponent(
+      organizationSlug
+    )}/${encodeURIComponent(agentKey)}`;
+
+  const response = await fetch(
+    `${base}${suffix}`,
+    {
+      method,
+      headers:
+        body !== undefined
+          ? { "Content-Type": "application/json" }
+          : undefined,
+      ...(body !== undefined
+        ? { body: JSON.stringify(body) }
+        : {}),
+    }
+  );
+
+  const data = await parseJson(response);
+
+  return assertOk(
+    response,
+    data,
+    "This public TengaAgent request could not be completed."
+  );
+};
+
 export async function sendTengaAgentMessage({
   agentId = "tengacion-demo",
   message,
@@ -183,6 +217,66 @@ export async function submitTengaAgentAppointment({
   );
 }
 
+export const getPublicTengaAgent = ({
+  organizationSlug,
+  agentKey,
+}) =>
+  publicAgentRequest(
+    organizationSlug,
+    agentKey
+  );
+
+export const sendPublicTengaAgentMessage = ({
+  organizationSlug,
+  agentKey,
+  message,
+  sessionId,
+}) =>
+  publicAgentRequest(
+    organizationSlug,
+    agentKey,
+    "/message",
+    {
+      method: "POST",
+      body: { message, sessionId },
+    }
+  );
+
+export const submitPublicTengaAgentLead = ({
+  organizationSlug,
+  agentKey,
+  sessionId,
+  ...lead
+}) =>
+  publicAgentRequest(
+    organizationSlug,
+    agentKey,
+    "/lead",
+    {
+      method: "POST",
+      body: { sessionId, ...lead },
+    }
+  );
+
+export const submitPublicTengaAgentAppointment = ({
+  organizationSlug,
+  agentKey,
+  sessionId,
+  ...appointment
+}) =>
+  publicAgentRequest(
+    organizationSlug,
+    agentKey,
+    "/appointment",
+    {
+      method: "POST",
+      body: {
+        sessionId,
+        ...appointment,
+      },
+    }
+  );
+
 export const getTengaAgentOwnerWorkspace = () =>
   ownerRequest("/workspace");
 
@@ -202,6 +296,14 @@ export const saveTengaAgentOwnerWorkspace = ({
       countryCode,
       timezone,
     },
+  });
+
+export const setTengaAgentOwnerPublication = ({
+  published,
+}) =>
+  ownerRequest("/agent/publication", {
+    method: "PATCH",
+    body: { published },
   });
 
 export const getTengaAgentOwnerLeads = ({

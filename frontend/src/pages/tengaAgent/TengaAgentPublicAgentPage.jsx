@@ -18,6 +18,7 @@ import {
 
 import TengaAgentAppointmentForm from "./TengaAgentAppointmentForm";
 import TengaAgentLeadCaptureForm from "./TengaAgentLeadCaptureForm";
+import TengaAgentVisitorAppointmentManager from "./TengaAgentVisitorAppointmentManager";
 import "./tengaagent-public.css";
 
 const createSessionId = () => {
@@ -124,6 +125,8 @@ export default function TengaAgentPublicAgentPage() {
     useState("");
   const [isSubmittingAction, setIsSubmittingAction] =
     useState(false);
+  const [appointmentRefreshKey, setAppointmentRefreshKey] =
+    useState(0);
   const endRef = useRef(null);
 
   const businessName =
@@ -412,6 +415,7 @@ export default function TengaAgentPublicAgentPage() {
           "handoff_requested"
       );
       setActiveAction(null);
+      setAppointmentRefreshKey((current) => current + 1);
       appendAgent(
         response?.message ||
           `Your preferred meeting time was sent to ${businessName} for confirmation.`,
@@ -505,6 +509,14 @@ export default function TengaAgentPublicAgentPage() {
             </span>
           </div>
         ) : null}
+
+        <TengaAgentVisitorAppointmentManager
+          organizationSlug={organizationSlug}
+          agentKey={agentKey}
+          sessionId={sessionId}
+          businessName={businessName}
+          refreshKey={appointmentRefreshKey}
+        />
 
         <div className="tengaagent-public__chat" aria-live="polite">
           {messages.map((message) => (

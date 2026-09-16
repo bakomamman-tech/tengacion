@@ -12,6 +12,7 @@ import {
   updateTengaAgentOwnerLeadStatus,
 } from "../../services/tengaAgentApi";
 
+import TengaAgentAppointmentInbox from "./TengaAgentAppointmentInbox";
 import "./tengaagent-owner.css";
 
 const LEAD_STATUSES = [
@@ -246,13 +247,13 @@ export default function TengaAgentOwnerDashboard({
             OWNER WORKSPACE
           </span>
           <h2 id="tengaagent-owner-title">
-            TengaAgent lead inbox
+            TengaAgent owner inbox
           </h2>
           <p>
-            Review enquiries captured by your AI
-            receptionist and move them through your
-            follow-up workflow. Tenant isolation is
-            enforced by the authenticated owner API.
+            Review enquiries and appointment requests
+            captured by your AI receptionist. Tenant
+            isolation is enforced by the authenticated
+            owner API.
           </p>
         </div>
 
@@ -263,7 +264,7 @@ export default function TengaAgentOwnerDashboard({
             onClick={loadOwnerData}
             disabled={isLoading || Boolean(updatingLeadId)}
           >
-            {isLoading ? "Refreshing…" : "Refresh"}
+            {isLoading ? "Refreshing…" : "Refresh leads"}
           </button>
         ) : null}
       </div>
@@ -518,6 +519,8 @@ export default function TengaAgentOwnerDashboard({
               })}
             </div>
           )}
+
+          <TengaAgentAppointmentInbox user={user} />
         </>
       ) : null}
     </section>

@@ -38,6 +38,7 @@ const INITIAL_FORM = {
 };
 
 export default function TengaAgentAppointmentForm({
+  businessName = "Tengacion",
   isSubmitting = false,
   error = "",
   onSubmit,
@@ -72,7 +73,7 @@ export default function TengaAgentAppointmentForm({
 
     if (!form.email.trim() && !form.phone.trim()) {
       setLocalError(
-        "Add an email address or phone number so the team can confirm the appointment."
+        `Add an email address or phone number so ${businessName} can confirm the appointment.`
       );
       return;
     }
@@ -100,7 +101,7 @@ export default function TengaAgentAppointmentForm({
 
     if (!form.consentToContact) {
       setLocalError(
-        "Please confirm that Tengacion may contact you to manage this appointment request."
+        `Please confirm that ${businessName} may contact you to manage this appointment request.`
       );
       return;
     }
@@ -146,8 +147,8 @@ export default function TengaAgentAppointmentForm({
 
       <p>
         Choose your preferred time. This is a request,
-        not a confirmed calendar booking, until the
-        Tengacion team approves it.
+        not a confirmed calendar booking, until
+        {" "}{businessName} approves it.
       </p>
 
       <div className="tengaagent-appointment-grid">
@@ -280,7 +281,7 @@ export default function TengaAgentAppointmentForm({
           }
         />
         <span>
-          I agree that Tengacion may contact me to
+          I agree that {businessName} may contact me to
           confirm or manage this appointment request.
         </span>
       </label>

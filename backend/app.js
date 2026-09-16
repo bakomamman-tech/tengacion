@@ -1,79 +1,245 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const path = require("path");
-const fs = require("fs");
-const compression = require("compression");
 
-const { connectDB } = require("./config/db");
-const { requestId } = require("./middleware/requestId");
-const { errorHandler } = require("./middleware/errorHandler");
-const { initializeSocket } = require("./socket");
-const { logger } = require("./utils/logger");
-const { configureTrustProxy } = require("./config/trustProxy");
-const { corsOptions } = require("./config/cors");
-const { apiLimiter, authLimiter, passwordResetLimiter, otpLimiter, uploadLimiter, searchLimiter, routeAnalyticsLimiter } = require("./middleware/rateLimiters");
-const { sanitizePayload } = require("./middleware/sanitizePayload");
-
-require("dotenv").config();
+const auth = require("./middleware/auth");
+const upload = require("./utils/upload");
+const errorHandler = require("../apps/api/middleware/errorHandler");
+const { config } = require("./config/env");
+const { buildAndroidAssetLinksFromConfig } = require("./services/androidAssetLinksService");
+const {
+  buildLivenessPayload,
+  buildPublicReadinessPayload,
+} = require("./services/healthService");
+const { REQUEST_ID_HEADER, requestId } = require("./middleware/requestId");
+const { requestLogger } = require("./middleware/requestLogger");
+const User = require("./models/User");
+const { normalizeUserMediaDocument } = require("./utils/userMedia");
 
 const app = express();
-configureTrustProxy(app);
+const isProduction = config.isProduction;
+const requestBodyLimit = "2mb";
+const allowedOriginSet = new Set(config.allowedOrigins);
+const googleAnalyticsScriptSrc = [
+  "https://www.googletagmanager.com",
+  "https://www.google-analytics.com",
+];
+const googleAnalyticsConnectSrc = [
+  "https://www.google-analytics.com",
+  "https://region1.google-analytics.com",
+  "https://www.googletagmanager.com",
+];
+const corsOrigin = (origin, callback) => {
+  if (!origin || allowedOriginSet.has(origin)) {
+    callback(null, true);
+    return;
+  }
 
+  callback(null, false);
+};
+
+app.set("trust proxy", 1);
 app.disable("x-powered-by");
-
 app.use(requestId);
+app.use(requestLogger());
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 240,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 180,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const routeAnalyticsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginResourcePolicy: false,
+    frameguard: { action: "sameorigin" },
+    hsts: isProduction
+      ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+      : false,
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        baseUri: ["'self'"],
+        connectSrc: [
+          "'self'",
+          "https://*.livekit.cloud",
+          "wss://*.livekit.cloud",
+          "https://tengacioncom-8unikgcj.livekit.cloud",
+          "wss://tengacioncom-8unikgcj.livekit.cloud",
+          ...googleAnalyticsConnectSrc,
+        ],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
+        imgSrc: ["'self'", "data:", "blob:", "https:", "https://ui-avatars.com"],
+        mediaSrc: ["'self'", "blob:", "https:"],
+        objectSrc: ["'none'"],
+        workerSrc: ["'self'", "blob:"],
+        scriptSrc: isProduction
+          ? ["'self'", ...googleAnalyticsScriptSrc]
+          : ["'self'", "'unsafe-inline'", ...googleAnalyticsScriptSrc],
+      },
+    },
   })
 );
-app.use(compression());
-app.use(cors(corsOptions));
-app.use(express.json({ limit: "2mb" }));
-app.use(express.urlencoded({ extended: true, limit: "2mb" }));
-app.use(sanitizePayload);
 
-app.get("/health", (_req, res) => {
-  res.status(200).json({
-    ok: true,
-    service: "tengacion-api",
-    timestamp: new Date().toISOString(),
-  });
+app.use((_req, res, next) => {
+  res.set(
+    "Permissions-Policy",
+    "camera=(self), microphone=(self), geolocation=(self), payment=(self), fullscreen=(self)"
+  );
+  next();
+});
+
+app.use("/api", (req, res, next) => {
+  if (
+    req.path.startsWith("/media") ||
+    req.path.startsWith("/payments/webhook") ||
+    req.path.startsWith("/payments/paystack/transfers/webhook") ||
+    req.path.startsWith("/marketplace/orders/webhook") ||
+    req.path.startsWith("/analytics/route-views") ||
+    req.path.startsWith("/assistant") ||
+    req.path.startsWith("/akuso")
+  ) {
+    return next();
+  }
+  return apiLimiter(req, res, next);
+});
+
+app.use(
+  cors({
+    origin: corsOrigin,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: [REQUEST_ID_HEADER],
+  })
+);
+
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
+
+app.use(
+  express.json({
+    limit: requestBodyLimit,
+    verify: (req, _res, buf) => {
+      const normalizedUrl = String(req.originalUrl || "").split("?")[0];
+      if (
+        normalizedUrl.startsWith("/api/payments/webhook/") ||
+        normalizedUrl === "/api/payments/paystack/webhook" ||
+        normalizedUrl === "/api/payments/paystack/transfers/webhook" ||
+        normalizedUrl === "/api/payments/stripe/webhook" ||
+        normalizedUrl === "/api/marketplace/orders/webhook/paystack"
+      ) {
+        req.rawBody = buf.toString("utf8");
+      }
+    },
+  })
+);
+
+app.use(express.urlencoded({ extended: true, limit: "512kb", parameterLimit: 1000 }));
+app.use("/uploads", express.static(upload.uploadDir));
+
+app.get("/.well-known/assetlinks.json", (_req, res) => {
+  const statements = buildAndroidAssetLinksFromConfig(config);
+  if (!statements) {
+    return res
+      .status(404)
+      .set("Cache-Control", "no-store")
+      .type("application/json")
+      .send({
+        error: "Android Digital Asset Links are not configured.",
+      });
+  }
+
+  return res
+    .status(200)
+    .set("Cache-Control", isProduction ? "public, max-age=3600" : "no-store")
+    .type("application/json")
+    .send(`${JSON.stringify(statements, null, 2)}\n`);
 });
 
 app.get("/api/health", (_req, res) => {
-  res.status(200).json({
-    ok: true,
-    service: "tengacion-api",
-    timestamp: new Date().toISOString(),
-  });
+  res.set("Cache-Control", "no-store").json(buildLivenessPayload());
 });
 
-app.use("/api/auth", authLimiter, require("./routes/auth"));
-app.use("/api/password-reset", passwordResetLimiter, require("./routes/passwordReset"));
-app.use("/api/otp", otpLimiter, require("./routes/otp"));
-app.use("/api/uploads", uploadLimiter, require("./routes/uploads"));
-app.use("/api/search", searchLimiter, require("./routes/search"));
-app.use("/api", apiLimiter);
+app.get("/api/health/live", (_req, res) => {
+  res.set("Cache-Control", "no-store").json(buildLivenessPayload());
+});
 
+app.get("/api/health/ready", async (_req, res) => {
+  const payload = await buildPublicReadinessPayload();
+  const isReady = payload.status === "ready";
+  res.set("Cache-Control", "no-store");
+  if (!isReady) {
+    res.set("Retry-After", "30");
+  }
+  return res.status(isReady ? 200 : 503).json(payload);
+});
+
+app.get("/api/me", auth, async (req, res) => {
+  const user = await User.findById(req.user.id).select("-password");
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+  normalizeUserMediaDocument(user);
+  return res.json(user);
+});
+
+app.use("/api/auth", authLimiter, require("../apps/api/routes/auth"));
+app.use("/api/admin", adminLimiter, require("../apps/api/routes/admin"));
+app.use("/api/moderation", require("./routes/moderation"));
 app.use("/api/users", require("./routes/users"));
 app.use("/api/posts", require("./routes/posts"));
 app.use("/api/comments", require("./routes/comments"));
+app.use("/api/stories", require("./routes/stories"));
+app.use("/api/media", require("./routes/media"));
 app.use("/api/notifications", require("./routes/notifications"));
-app.use("/api/follows", require("./routes/follows"));
-app.use("/api/friends", require("./routes/friends"));
 app.use("/api/messages", require("./routes/messages"));
-app.use("/api/reels", require("./routes/reels"));
+app.use("/api/reports", require("./routes/reports"));
+app.use("/api/support", require("./routes/support"));
+app.use("/api/talent-show", require("./routes/talentShow"));
+app.use("/api/summer-bootcamp", require("./routes/summerBootcamp"));
+app.use("/api/recharge-raffle", require("./routes/rechargeRaffle"));
+app.use("/api/millionaire", require("./routes/millionaireGame"));
+app.use("/api/bright-future-academy", require("./routes/brightFutureAcademy"));
+app.use("/api/top-up-promo", require("./routes/topUpPromo"));
+app.use("/api/search", require("./routes/search"));
+app.use("/api/codeswitch", require("./routes/codeswitch"));
+app.use("/api/assistant", require("./routes/assistant"));
+app.use("/api/akuso", require("./routes/akuso"));
+app.use("/api/videos", require("./routes/videos"));
 app.use("/api/live", require("./routes/live"));
 app.use("/api/creators", require("./routes/creators"));
-app.use("/api/creator", require("./routes/creator"));
-app.use("/api/admin", require("./routes/admin"));
-app.use("/api/admin", require("./routes/adminAssistant"));
-app.use("/api/admin", require("./routes/adminBookReview"));
-app.use("/api/assurance", require("./routes/assurance"));
+app.use("/api/creator", require("./routes/creatorAlbums"));
+app.use("/api/creator", require("./routes/creatorRoutes"));
+app.use("/api/referrals", require("./routes/referrals"));
+app.use("/r", require("./routes/referrals"));
+app.use("/api/tracks", require("./routes/tracks"));
+app.use("/api/books", require("./routes/books"));
+app.use("/api/albums", require("./routes/albums"));
 app.use("/api/payments", require("./routes/payments"));
 app.use("/api/purchases", require("./routes/purchases"));
 app.use("/api/entitlements", require("./routes/entitlements"));
@@ -112,14 +278,18 @@ app.get(
 );
 
 app.use((req, res, next) => {
-  if (req.path.startsWith("/api/")) {
+  if (req.path.startsWith("/api")) {
     return res.status(404).json({
-      error: "Not found",
-      requestId: req.id,
+      success: false,
+      message: "API route not found",
+      requestId: req.requestId,
     });
   }
-  next();
+
+  return next();
 });
+
+app.get("/socket.io", (_, res) => res.send("socket ok"));
 
 app.use(errorHandler);
 

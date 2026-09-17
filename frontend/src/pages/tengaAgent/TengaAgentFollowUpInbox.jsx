@@ -2,8 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   completeTengaAgentOwnerFollowUp,
+  getTengaAgentOwnerFollowUpActivity,
   getTengaAgentOwnerFollowUps,
+  logTengaAgentOwnerFollowUpContact,
   rescheduleTengaAgentOwnerFollowUp,
+  sendTengaAgentOwnerFollowUpEmail,
 } from "../../services/tengaAgentFollowUpApi";
 import "./tengaagent-follow-up.css";
 
@@ -38,6 +41,21 @@ const reminderLabel = (reminder) => {
   return "Reminder queued";
 };
 
+const activityLabel = (activity) => {
+  if (activity.channel === "email" && activity.status === "sent") return "Email sent";
+  if (activity.channel === "email" && activity.status === "failed") return "Email failed";
+  if (activity.channel === "email" && activity.status === "sending") return "Email sending";
+  if (activity.channel === "phone") {
+    return activity.direction === "inbound" ? "Inbound phone contact" : "Phone contact logged";
+  }
+  return activity.direction === "inbound" ? "Inbound contact logged" : "Manual contact logged";
+};
+
+const defaultEmailSubject = (followUp) => {
+  const purpose = String(followUp?.purpose || "").trim();
+  return purpose ? `Following up: ${purpose.slice(0, 160)}` : "Following up on our conversation";
+};
+
 export default function TengaAgentFollowUpInbox({ user }) {
   const [filter, setFilter] = useState("all");
   const [followUps, setFollowUps] = useState([]);
@@ -46,6 +64,15 @@ export default function TengaAgentFollowUpInbox({ user }) {
   const [actionId, setActionId] = useState("");
   const [rescheduleId, setRescheduleId] = useState("");
   const [rescheduleAt, setRescheduleAt] = useState("");
+  const [workspace, setWorkspace] = useState({ appointmentId: "", mode: "" });
+  const [activitiesByAppointment, setActivitiesByAppointment] = useState({});
+  const [activityLoadingId, setActivityLoadingId] = useState("");
+  const [emailDraft, setEmailDraft] = useState({ subject: "", message: "" });
+  const [contactDraft, setContactDraft] = useState({
+    channel: "phone",
+    direction: "outbound",
+    notes: "",
+  });
   const [error, setError] = useState("");
 
   const loadFollowUps = useCallback(async () => {
@@ -78,9 +105,61 @@ export default function TengaAgentFollowUpInbox({ user }) {
     }
   }, [filter, user]);
 
+  const loadActivity = useCallback(async (followUp) => {
+    if (!followUp?.appointmentId) return;
+
+    setActivityLoadingId(followUp.appointmentId);
+    try {
+      const response = await getTengaAgentOwnerFollowUpActivity({
+        appointmentId: followUp.appointmentId,
+        limit: 100,
+      });
+      setActivitiesByAppointment((current) => ({
+        ...current,
+        [followUp.appointmentId]: Array.isArray(response?.activities)
+          ? response.activities
+          : [],
+      }));
+    } catch (requestError) {
+      setError(
+        requestError?.message || "TengaAgent could not load contact activity."
+      );
+    } finally {
+      setActivityLoadingId("");
+    }
+  }, []);
+
   useEffect(() => {
     loadFollowUps();
   }, [loadFollowUps]);
+
+  const openWorkspace = async (followUp, mode) => {
+    if (!followUp?.appointmentId || actionId) return;
+
+    const isSame =
+      workspace.appointmentId === followUp.appointmentId && workspace.mode === mode;
+    if (isSame) {
+      setWorkspace({ appointmentId: "", mode: "" });
+      return;
+    }
+
+    setError("");
+    setWorkspace({ appointmentId: followUp.appointmentId, mode });
+    if (mode === "email") {
+      setEmailDraft({
+        subject: defaultEmailSubject(followUp),
+        message: "",
+      });
+    }
+    if (mode === "log") {
+      setContactDraft({
+        channel: followUp.phone ? "phone" : "manual",
+        direction: "outbound",
+        notes: "",
+      });
+    }
+    await loadActivity(followUp);
+  };
 
   const completeFollowUp = async (followUp) => {
     if (!followUp?.appointmentId || actionId) return;
@@ -93,6 +172,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
       });
       setRescheduleId("");
       setRescheduleAt("");
+      setWorkspace({ appointmentId: "", mode: "" });
       await loadFollowUps();
     } catch (requestError) {
       setError(
@@ -131,6 +211,63 @@ export default function TengaAgentFollowUpInbox({ user }) {
     }
   };
 
+  const sendEmail = async (followUp) => {
+    if (!followUp?.appointmentId || actionId) return;
+    if (!emailDraft.subject.trim() || !emailDraft.message.trim()) {
+      setError("Add an email subject and message before sending.");
+      return;
+    }
+
+    setActionId(followUp.appointmentId);
+    setError("");
+    try {
+      await sendTengaAgentOwnerFollowUpEmail({
+        appointmentId: followUp.appointmentId,
+        subject: emailDraft.subject,
+        message: emailDraft.message,
+      });
+      setEmailDraft({ subject: "", message: "" });
+      setWorkspace({ appointmentId: followUp.appointmentId, mode: "activity" });
+      await loadActivity(followUp);
+    } catch (requestError) {
+      setError(requestError?.message || "TengaAgent could not send that email.");
+      if (requestError?.status === 502) {
+        setWorkspace({ appointmentId: followUp.appointmentId, mode: "activity" });
+        await loadActivity(followUp);
+      }
+    } finally {
+      setActionId("");
+    }
+  };
+
+  const logContact = async (followUp) => {
+    if (!followUp?.appointmentId || actionId) return;
+    if (!contactDraft.notes.trim()) {
+      setError("Add contact notes before saving the activity.");
+      return;
+    }
+
+    setActionId(followUp.appointmentId);
+    setError("");
+    try {
+      await logTengaAgentOwnerFollowUpContact({
+        appointmentId: followUp.appointmentId,
+        channel: contactDraft.channel,
+        direction: contactDraft.direction,
+        notes: contactDraft.notes,
+      });
+      setContactDraft({ channel: "phone", direction: "outbound", notes: "" });
+      setWorkspace({ appointmentId: followUp.appointmentId, mode: "activity" });
+      await loadActivity(followUp);
+    } catch (requestError) {
+      setError(
+        requestError?.message || "TengaAgent could not save that contact activity."
+      );
+    } finally {
+      setActionId("");
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -144,7 +281,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
           <h3 id="tengaagent-follow-up-title">Follow-ups that need attention</h3>
           <p>
             Work the next customer action from one tenant-isolated queue, with
-            reminder delivery state kept visible for audit and troubleshooting.
+            reminder delivery and owner contact activity kept separately auditable.
           </p>
         </div>
         <button
@@ -211,6 +348,11 @@ export default function TengaAgentFollowUpInbox({ user }) {
           {followUps.map((followUp) => {
             const isActing = actionId === followUp.appointmentId;
             const isRescheduling = rescheduleId === followUp.appointmentId;
+            const isWorkspaceOpen = workspace.appointmentId === followUp.appointmentId;
+            const activities = activitiesByAppointment[followUp.appointmentId] || [];
+            const emailAllowed = Boolean(
+              followUp.email && followUp.consentToContact
+            );
 
             return (
               <article
@@ -256,6 +398,36 @@ export default function TengaAgentFollowUpInbox({ user }) {
                 <div className="tengaagent-follow-up__actions">
                   <button
                     type="button"
+                    onClick={() => openWorkspace(followUp, "email")}
+                    disabled={Boolean(actionId) || !emailAllowed}
+                    title={
+                      !followUp.email
+                        ? "Customer email is not available"
+                        : !followUp.consentToContact
+                          ? "Customer contact consent is required"
+                          : "Send a follow-up email"
+                    }
+                  >
+                    Send email
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => openWorkspace(followUp, "log")}
+                    disabled={Boolean(actionId)}
+                  >
+                    Log contact
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => openWorkspace(followUp, "activity")}
+                    disabled={Boolean(actionId)}
+                  >
+                    Activity
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => completeFollowUp(followUp)}
                     disabled={Boolean(actionId)}
                   >
@@ -275,6 +447,14 @@ export default function TengaAgentFollowUpInbox({ user }) {
                   </button>
                 </div>
 
+                {!emailAllowed ? (
+                  <div className="tengaagent-follow-up__contact-guard">
+                    {!followUp.email
+                      ? "Email outreach unavailable: no customer email address is stored."
+                      : "Email outreach unavailable: customer contact consent is not recorded."}
+                  </div>
+                ) : null}
+
                 {isRescheduling ? (
                   <div className="tengaagent-follow-up__reschedule">
                     <label>
@@ -292,6 +472,189 @@ export default function TengaAgentFollowUpInbox({ user }) {
                     >
                       Save new due time
                     </button>
+                  </div>
+                ) : null}
+
+                {isWorkspaceOpen ? (
+                  <div className="tengaagent-follow-up__workspace">
+                    {workspace.mode === "email" ? (
+                      <div className="tengaagent-follow-up__form">
+                        <div>
+                          <strong>Send follow-up email</strong>
+                          <span>
+                            Delivery is attempted only after you explicitly press Send.
+                          </span>
+                        </div>
+                        <label>
+                          Email subject
+                          <input
+                            value={emailDraft.subject}
+                            maxLength={200}
+                            onChange={(event) =>
+                              setEmailDraft((current) => ({
+                                ...current,
+                                subject: event.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                        <label>
+                          Email message
+                          <textarea
+                            value={emailDraft.message}
+                            maxLength={5000}
+                            rows={6}
+                            onChange={(event) =>
+                              setEmailDraft((current) => ({
+                                ...current,
+                                message: event.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                        <div className="tengaagent-follow-up__form-actions">
+                          <button
+                            type="button"
+                            disabled={Boolean(actionId)}
+                            onClick={() => sendEmail(followUp)}
+                          >
+                            {isActing ? "Sending…" : `Send to ${followUp.email}`}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary"
+                            disabled={Boolean(actionId)}
+                            onClick={() =>
+                              setWorkspace({ appointmentId: "", mode: "" })
+                            }
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {workspace.mode === "log" ? (
+                      <div className="tengaagent-follow-up__form">
+                        <div>
+                          <strong>Log owner contact</strong>
+                          <span>Record a call or another manually completed contact.</span>
+                        </div>
+                        <div className="tengaagent-follow-up__form-grid">
+                          <label>
+                            Contact channel
+                            <select
+                              value={contactDraft.channel}
+                              onChange={(event) =>
+                                setContactDraft((current) => ({
+                                  ...current,
+                                  channel: event.target.value,
+                                }))
+                              }
+                            >
+                              <option value="phone">Phone</option>
+                              <option value="manual">Manual / other</option>
+                            </select>
+                          </label>
+                          <label>
+                            Contact direction
+                            <select
+                              value={contactDraft.direction}
+                              onChange={(event) =>
+                                setContactDraft((current) => ({
+                                  ...current,
+                                  direction: event.target.value,
+                                }))
+                              }
+                            >
+                              <option value="outbound">Outbound</option>
+                              <option value="inbound">Inbound</option>
+                            </select>
+                          </label>
+                        </div>
+                        <label>
+                          Contact notes
+                          <textarea
+                            value={contactDraft.notes}
+                            maxLength={4000}
+                            rows={4}
+                            onChange={(event) =>
+                              setContactDraft((current) => ({
+                                ...current,
+                                notes: event.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                        <div className="tengaagent-follow-up__form-actions">
+                          <button
+                            type="button"
+                            disabled={Boolean(actionId)}
+                            onClick={() => logContact(followUp)}
+                          >
+                            {isActing ? "Saving…" : "Save contact activity"}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary"
+                            disabled={Boolean(actionId)}
+                            onClick={() =>
+                              setWorkspace({ appointmentId: "", mode: "" })
+                            }
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="tengaagent-follow-up__activity">
+                      <div className="tengaagent-follow-up__activity-heading">
+                        <strong>Contact activity</strong>
+                        <button
+                          type="button"
+                          className="secondary"
+                          disabled={activityLoadingId === followUp.appointmentId}
+                          onClick={() => loadActivity(followUp)}
+                        >
+                          {activityLoadingId === followUp.appointmentId
+                            ? "Loading…"
+                            : "Refresh activity"}
+                        </button>
+                      </div>
+
+                      {activityLoadingId === followUp.appointmentId && !activities.length ? (
+                        <div className="tengaagent-follow-up__activity-empty">
+                          Loading contact history…
+                        </div>
+                      ) : activities.length === 0 ? (
+                        <div className="tengaagent-follow-up__activity-empty">
+                          No contact activity has been recorded yet.
+                        </div>
+                      ) : (
+                        <div className="tengaagent-follow-up__timeline">
+                          {activities.map((activity) => (
+                            <article key={activity.id}>
+                              <div>
+                                <strong>{activityLabel(activity)}</strong>
+                                <span>{formatDate(activity.occurredAt)}</span>
+                              </div>
+                              {activity.subject ? <b>{activity.subject}</b> : null}
+                              {activity.message ? <p>{activity.message}</p> : null}
+                              {activity.notes ? <p>{activity.notes}</p> : null}
+                              {activity.recipient ? (
+                                <span>Recipient: {activity.recipient}</span>
+                              ) : null}
+                              {activity.lastError ? (
+                                <span className="activity-error">
+                                  Delivery error: {activity.lastError}
+                                </span>
+                              ) : null}
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ) : null}
               </article>

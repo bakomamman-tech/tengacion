@@ -7,7 +7,8 @@ import {
 
 import {
   getTengaAgentOwnerPilotReadiness,
-} from "../../services/tengaAgentApi";
+} from "../../services/tengaAgentPilotReadinessApi";
+import "./tengaagent-pilot-readiness.css";
 
 const STATUS_LABELS = {
   workspace: "Workspace created",

@@ -1,0 +1,113 @@
+.tengaagent-owner__pilot-readiness {
+  margin-top: 1.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.tengaagent-owner__pilot-readiness-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.tengaagent-owner__pilot-readiness-header h3 {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.tengaagent-owner__pilot-readiness-header p,
+.tengaagent-owner__pilot-note {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.tengaagent-owner__pilot-channels {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.tengaagent-owner__pilot-channels article {
+  padding: 0.9rem;
+  border-radius: 0.8rem;
+  background: rgba(30, 41, 59, 0.72);
+}
+
+.tengaagent-owner__pilot-channels span,
+.tengaagent-owner__pilot-channels strong {
+  display: block;
+}
+
+.tengaagent-owner__pilot-channels span {
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+.tengaagent-owner__pilot-channels strong {
+  margin-top: 0.3rem;
+}
+
+.tengaagent-owner__pilot-checks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+
+.tengaagent-owner__pilot-check {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.8rem;
+  border-radius: 0.75rem;
+  background: rgba(30, 41, 59, 0.52);
+}
+
+.tengaagent-owner__pilot-check > span {
+  width: 1.6rem;
+  height: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.tengaagent-owner__pilot-check--pass > span {
+  background: rgba(34, 197, 94, 0.16);
+}
+
+.tengaagent-owner__pilot-check--fail > span {
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.tengaagent-owner__pilot-check strong,
+.tengaagent-owner__pilot-check small {
+  display: block;
+}
+
+.tengaagent-owner__pilot-check small {
+  margin-top: 0.15rem;
+  color: #94a3b8;
+}
+
+@media (max-width: 900px) {
+  .tengaagent-owner__pilot-channels,
+  .tengaagent-owner__pilot-checks {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .tengaagent-owner__pilot-readiness-header {
+    flex-direction: column;
+  }
+
+  .tengaagent-owner__pilot-channels,
+  .tengaagent-owner__pilot-checks {
+    grid-template-columns: 1fr;
+  }
+}

@@ -9,12 +9,17 @@ const {
   isAutoReplyEnabled,
   queueWhatsAppAutoReply,
 } = require("./whatsappOutboundService");
+const {
+  isWhatsAppVoiceEnabled,
+} = require("./whatsappVoiceService");
 
 const PROVIDER = "meta_cloud";
 const MESSAGE_PROVIDER = "meta_whatsapp";
 const MAX_TEXT_LENGTH = 6000;
 const MAX_EXTERNAL_ID_LENGTH = 160;
 const MAX_PROVIDER_MESSAGE_ID_LENGTH = 300;
+const MAX_PROVIDER_MEDIA_ID_LENGTH = 300;
+const VOICE_PENDING_CONTENT = "Voice note received. Transcription pending.";
 
 const clean = (value, max = 300) =>
   String(value || "")
@@ -71,7 +76,10 @@ const parseProviderTimestamp = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const extractInboundTextEvents = (payload = {}) => {
+const extractInboundEvents = (
+  payload = {},
+  { voiceEnabled = isWhatsAppVoiceEnabled() } = {}
+) => {
   const events = [];
   let ignored = 0;
 
@@ -84,31 +92,66 @@ const extractInboundTextEvents = (payload = {}) => {
       for (const message of messages) {
         const providerMessageId = clean(message?.id, MAX_PROVIDER_MESSAGE_ID_LENGTH);
         const externalSenderId = clean(message?.from, MAX_EXTERNAL_ID_LENGTH);
-        const content = clean(message?.text?.body, MAX_TEXT_LENGTH);
+        const providerTimestamp = parseProviderTimestamp(message?.timestamp);
 
-        if (
-          message?.type !== "text" ||
-          !phoneNumberId ||
-          !providerMessageId ||
-          !externalSenderId ||
-          !content
-        ) {
+        if (!phoneNumberId || !providerMessageId || !externalSenderId) {
           ignored += 1;
           continue;
         }
 
-        events.push({
-          phoneNumberId,
-          providerMessageId,
-          externalSenderId,
-          content,
-          providerTimestamp: parseProviderTimestamp(message?.timestamp),
-        });
+        if (message?.type === "text") {
+          const content = clean(message?.text?.body, MAX_TEXT_LENGTH);
+          if (!content) {
+            ignored += 1;
+            continue;
+          }
+
+          events.push({
+            sourceType: "text",
+            phoneNumberId,
+            providerMessageId,
+            externalSenderId,
+            content,
+            providerTimestamp,
+          });
+          continue;
+        }
+
+        if (message?.type === "audio" && voiceEnabled) {
+          const mediaId = clean(message?.audio?.id, MAX_PROVIDER_MEDIA_ID_LENGTH);
+          if (!mediaId) {
+            ignored += 1;
+            continue;
+          }
+
+          events.push({
+            sourceType: "voice_note",
+            phoneNumberId,
+            providerMessageId,
+            externalSenderId,
+            content: VOICE_PENDING_CONTENT,
+            providerTimestamp,
+            providerMediaId: mediaId,
+            providerMediaMimeType: clean(message?.audio?.mime_type, 160),
+            providerMediaSha256: clean(message?.audio?.sha256, 200),
+          });
+          continue;
+        }
+
+        ignored += 1;
       }
     }
   }
 
   return { events, ignored };
+};
+
+const extractInboundTextEvents = (payload = {}) => {
+  const { events, ignored } = extractInboundEvents(payload, { voiceEnabled: false });
+  return {
+    events: events.filter((event) => event.sourceType === "text"),
+    ignored,
+  };
 };
 
 const resolveTenantForPhoneNumber = async (phoneNumberId) => {
@@ -196,11 +239,11 @@ const findOrCreateConversation = async ({ organization, agent, sessionKey }) => 
   return conversation;
 };
 
-const persistInboundTextEvent = async (event) => {
+const persistInboundEvent = async (event) => {
   const tenant = await resolveTenantForPhoneNumber(event.phoneNumberId);
 
   if (!tenant) {
-    return { status: "unrouted" };
+    return { status: "unrouted", sourceType: event.sourceType };
   }
 
   const { organization, agent } = tenant;
@@ -210,7 +253,7 @@ const persistInboundTextEvent = async (event) => {
     provider: MESSAGE_PROVIDER,
     providerMessageId: event.providerMessageId,
   })
-    .select("_id conversationId")
+    .select("_id conversationId sourceType transcriptionStatus")
     .lean();
 
   if (existing) {
@@ -218,6 +261,8 @@ const persistInboundTextEvent = async (event) => {
       status: "duplicate",
       messageId: existing._id,
       conversationId: existing.conversationId,
+      sourceType: existing.sourceType || event.sourceType,
+      transcriptionStatus: existing.transcriptionStatus || null,
     };
   }
 
@@ -231,16 +276,23 @@ const persistInboundTextEvent = async (event) => {
   let message;
 
   try {
+    const isVoiceNote = event.sourceType === "voice_note";
     message = await Message.create({
       organizationId: organization._id,
       conversationId: conversation._id,
       agentId: agent._id,
       sender: "customer",
       type: "text",
+      sourceType: isVoiceNote ? "voice_note" : "text",
       content: event.content,
       provider: MESSAGE_PROVIDER,
       providerMessageId: event.providerMessageId,
       externalSenderId: event.externalSenderId,
+      providerPhoneNumberId: event.phoneNumberId,
+      providerMediaId: isVoiceNote ? event.providerMediaId : null,
+      providerMediaMimeType: isVoiceNote ? event.providerMediaMimeType || null : null,
+      providerMediaSha256: isVoiceNote ? event.providerMediaSha256 || null : null,
+      transcriptionStatus: isVoiceNote ? "pending" : "not_required",
       providerTimestamp: event.providerTimestamp,
     });
   } catch (error) {
@@ -253,13 +305,15 @@ const persistInboundTextEvent = async (event) => {
       provider: MESSAGE_PROVIDER,
       providerMessageId: event.providerMessageId,
     })
-      .select("_id conversationId")
+      .select("_id conversationId sourceType transcriptionStatus")
       .lean();
 
     return {
       status: "duplicate",
       messageId: duplicate?._id || null,
       conversationId: duplicate?.conversationId || conversation._id,
+      sourceType: duplicate?.sourceType || event.sourceType,
+      transcriptionStatus: duplicate?.transcriptionStatus || null,
     };
   }
 
@@ -272,8 +326,13 @@ const persistInboundTextEvent = async (event) => {
     conversationId: conversation._id,
     organizationId: organization._id,
     agentId: agent._id,
+    sourceType: message.sourceType,
+    transcriptionStatus: message.transcriptionStatus,
   };
 };
+
+const persistInboundTextEvent = async (event) =>
+  persistInboundEvent({ ...event, sourceType: "text" });
 
 const updateReplyQueueSummary = (summary, replyResult = {}) => {
   if (replyResult.status === "queued") summary.repliesQueued += 1;
@@ -285,6 +344,7 @@ const processWhatsAppWebhook = async (
   payload = {},
   {
     autoReply = isAutoReplyEnabled(),
+    voiceEnabled = isWhatsAppVoiceEnabled(),
     replyProcessor = queueWhatsAppAutoReply,
   } = {}
 ) => {
@@ -299,10 +359,12 @@ const processWhatsAppWebhook = async (
       repliesAlreadyQueued: 0,
       repliesSuppressed: 0,
       replyQueueFailures: 0,
+      voiceNotesQueued: 0,
+      voiceNotesAlreadyQueued: 0,
     };
   }
 
-  const { events, ignored } = extractInboundTextEvents(payload);
+  const { events, ignored } = extractInboundEvents(payload, { voiceEnabled });
   const summary = {
     received: events.length,
     stored: 0,
@@ -313,13 +375,28 @@ const processWhatsAppWebhook = async (
     repliesAlreadyQueued: 0,
     repliesSuppressed: 0,
     replyQueueFailures: 0,
+    voiceNotesQueued: 0,
+    voiceNotesAlreadyQueued: 0,
   };
 
   for (const event of events) {
-    const result = await persistInboundTextEvent(event);
+    const result = await persistInboundEvent(event);
     if (result.status === "stored") summary.stored += 1;
     if (result.status === "duplicate") summary.duplicates += 1;
     if (result.status === "unrouted") summary.unrouted += 1;
+
+    if (result.sourceType === "voice_note") {
+      if (result.status === "stored" && result.transcriptionStatus === "pending") {
+        summary.voiceNotesQueued += 1;
+      }
+      if (
+        result.status === "duplicate" &&
+        ["pending", "processing"].includes(result.transcriptionStatus)
+      ) {
+        summary.voiceNotesAlreadyQueued += 1;
+      }
+      continue;
+    }
 
     if (
       autoReply &&
@@ -345,8 +422,11 @@ const processWhatsAppWebhook = async (
 module.exports = {
   MESSAGE_PROVIDER,
   PROVIDER,
+  VOICE_PENDING_CONTENT,
   buildSessionKey,
+  extractInboundEvents,
   extractInboundTextEvents,
+  persistInboundEvent,
   persistInboundTextEvent,
   processWhatsAppWebhook,
   resolveTenantForPhoneNumber,

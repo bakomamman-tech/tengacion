@@ -129,7 +129,8 @@ app.use("/api", (req, res, next) => {
     req.path.startsWith("/analytics/route-views") ||
     req.path.startsWith("/assistant") ||
     req.path.startsWith("/akuso") ||
-    req.path.startsWith("/tengaagent/whatsapp/webhook")
+    req.path.startsWith("/tengaagent/whatsapp/webhook") ||
+    req.path.startsWith("/tengaagent/billing/webhook")
   ) {
     return next();
   }
@@ -162,7 +163,9 @@ app.use(
         normalizedUrl === "/api/payments/paystack/transfers/webhook" ||
         normalizedUrl === "/api/payments/stripe/webhook" ||
         normalizedUrl === "/api/marketplace/orders/webhook/paystack" ||
-        normalizedUrl === "/api/tengaagent/whatsapp/webhook"
+        normalizedUrl === "/api/tengaagent/whatsapp/webhook" ||
+        normalizedUrl === "/api/tengaagent/billing/webhook/paystack" ||
+        normalizedUrl === "/api/tengaagent/billing/webhook/stripe"
       ) {
         req.rawBody = Buffer.from(buf);
       }
@@ -270,6 +273,7 @@ app.use("/api/schools", require("./routes/schools"));
 app.use("/api/teacher-training", require("./routes/teacherTraining"));
 app.use("/api/tengaharvest", require("./routes/tengaharvest"));
 app.use("/api/tengaagent/whatsapp", require("./routes/tengaAgentWhatsApp"));
+app.use("/api/tengaagent/billing", require("./routes/tengaAgentBilling"));
 app.use("/api/tengaagent/owner", require("./routes/tengaAgentOwner"));
 app.use("/api/tengaagent/public", require("./routes/tengaAgentPublic"));
 app.use("/api/tengaagent", require("./routes/tengaAgent"));

@@ -55,6 +55,15 @@ export const getTengaAgentOwnerFollowUpActivity = ({
     `/follow-ups/${encodeURIComponent(appointmentId)}/activity?limit=${encodeURIComponent(limit)}`
   );
 
+export const draftTengaAgentOwnerFollowUpEmail = ({
+  appointmentId,
+  instruction = "",
+}) =>
+  request(`/follow-ups/${encodeURIComponent(appointmentId)}/draft-email`, {
+    method: "POST",
+    body: instruction ? { instruction } : {},
+  });
+
 export const sendTengaAgentOwnerFollowUpEmail = ({
   appointmentId,
   subject,

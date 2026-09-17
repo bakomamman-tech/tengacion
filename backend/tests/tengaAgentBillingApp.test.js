@@ -5,18 +5,17 @@ process.env.JWT_SECRET =
   process.env.JWT_SECRET ||
   "tengaagent-billing-app-test-secret-not-for-production";
 
-const mockInitializeOwnerPlanCheckout = jest.fn();
-const mockVerifyOwnerPlanCheckout = jest.fn();
-const mockHandlePaystackWebhook = jest.fn(async () => ({ handled: true }));
-const mockHandleStripeWebhook = jest.fn(async () => ({ handled: true }));
-
 jest.mock("../services/tengaAgent/subscriptionCheckoutService", () => ({
-  initializeOwnerPlanCheckout: mockInitializeOwnerPlanCheckout,
-  verifyOwnerPlanCheckout: mockVerifyOwnerPlanCheckout,
-  handlePaystackWebhook: mockHandlePaystackWebhook,
-  handleStripeWebhook: mockHandleStripeWebhook,
+  initializeOwnerPlanCheckout: jest.fn(),
+  verifyOwnerPlanCheckout: jest.fn(),
+  handlePaystackWebhook: jest.fn(async () => ({ handled: true })),
+  handleStripeWebhook: jest.fn(async () => ({ handled: true })),
 }));
 
+const {
+  handlePaystackWebhook: mockHandlePaystackWebhook,
+  handleStripeWebhook: mockHandleStripeWebhook,
+} = require("../services/tengaAgent/subscriptionCheckoutService");
 const app = require("../app");
 
 describe("TengaAgent billing app wiring", () => {

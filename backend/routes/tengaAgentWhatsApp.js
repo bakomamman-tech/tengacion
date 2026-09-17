@@ -4,6 +4,10 @@ const {
   processWhatsAppWebhook,
   verifyMetaWebhookSignature,
 } = require("../services/tengaAgent/whatsappInboundService");
+const {
+  drainQueuedWhatsAppReplies,
+  isAutoReplyEnabled,
+} = require("../services/tengaAgent/whatsappOutboundService");
 
 const router = express.Router();
 
@@ -63,6 +67,16 @@ router.post("/webhook", async (req, res, next) => {
     }
 
     const summary = await processWhatsAppWebhook(req.body || {});
+
+    if (isAutoReplyEnabled() && summary.repliesQueued > 0) {
+      setImmediate(() => {
+        drainQueuedWhatsAppReplies().catch((error) => {
+          console.error("[TengaAgent WhatsApp] queued reply delivery failed", {
+            message: error?.message || String(error),
+          });
+        });
+      });
+    }
 
     return res.status(200).json({
       ok: true,

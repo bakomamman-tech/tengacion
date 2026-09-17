@@ -53,8 +53,8 @@ const TengaAgentWhatsAppReplySchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["processing", "accepted", "failed", "skipped"],
-      default: "processing",
+      enum: ["queued", "processing", "accepted", "failed", "skipped"],
+      default: "queued",
       index: true,
     },
 

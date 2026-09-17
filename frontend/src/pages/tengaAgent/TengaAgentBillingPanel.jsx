@@ -6,35 +6,13 @@ import {
 } from "react";
 
 import {
+  getTengaAgentBillingPlans,
   getTengaAgentOwnerBilling,
   redirectToTengaAgentCheckout,
   startTengaAgentPlanCheckout,
   verifyTengaAgentPlanCheckout,
 } from "../../services/tengaAgentBillingApi";
 import TengaAgentPilotReadinessPanel from "./TengaAgentPilotReadinessPanel";
-
-const SELF_SERVICE_PLANS = [
-  {
-    code: "solo",
-    label: "Solo",
-    prices: { NGN: 9900 },
-  },
-  {
-    code: "starter",
-    label: "Starter",
-    prices: { NGN: 19900, USD: 49 },
-  },
-  {
-    code: "growth",
-    label: "Growth",
-    prices: { NGN: 59900, USD: 149 },
-  },
-  {
-    code: "business",
-    label: "Business",
-    prices: { NGN: 149900, USD: 399 },
-  },
-];
 
 const formatLimit = (value) =>
   value === null || value === undefined
@@ -82,8 +60,11 @@ const clearBillingReturnParams = () => {
 
 export default function TengaAgentBillingPanel({ user }) {
   const [billing, setBilling] = useState(null);
+  const [plans, setPlans] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPlansLoading, setIsPlansLoading] = useState(false);
   const [error, setError] = useState("");
+  const [plansError, setPlansError] = useState("");
   const [selectedCurrency, setSelectedCurrency] = useState("NGN");
   const [selectedPlan, setSelectedPlan] = useState("starter");
   const [isCheckoutStarting, setIsCheckoutStarting] = useState(false);
@@ -111,19 +92,46 @@ export default function TengaAgentBillingPanel({ user }) {
     }
   }, [user]);
 
-  useEffect(() => {
-    loadBilling();
-  }, [loadBilling]);
+  const loadPlans = useCallback(async () => {
+    if (!user) return;
+
+    setIsPlansLoading(true);
+    setPlansError("");
+
+    try {
+      const response = await getTengaAgentBillingPlans();
+      const nextPlans = Array.isArray(response?.plans) ? response.plans : [];
+      if (!nextPlans.length) {
+        throw new Error("No TengaAgent self-service plans are available.");
+      }
+      setPlans(nextPlans);
+    } catch (requestError) {
+      setPlans([]);
+      setPlansError(
+        requestError?.message ||
+          "TengaAgent plan pricing could not be loaded."
+      );
+    } finally {
+      setIsPlansLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
-    const available = SELF_SERVICE_PLANS.filter(
-      (plan) => Number.isFinite(Number(plan.prices[selectedCurrency]))
+    loadBilling();
+    loadPlans();
+  }, [loadBilling, loadPlans]);
+
+  useEffect(() => {
+    if (!plans.length) return;
+
+    const available = plans.filter(
+      (plan) => Number.isFinite(Number(plan.prices?.[selectedCurrency]))
     );
 
     if (!available.some((plan) => plan.code === selectedPlan)) {
-      setSelectedPlan(available[0]?.code || "starter");
+      setSelectedPlan(available[0]?.code || "");
     }
-  }, [selectedCurrency, selectedPlan]);
+  }, [plans, selectedCurrency, selectedPlan]);
 
   useEffect(() => {
     if (!user || typeof window === "undefined") return;
@@ -178,7 +186,7 @@ export default function TengaAgentBillingPanel({ user }) {
   }, [loadBilling, user]);
 
   const startCheckout = async () => {
-    const plan = SELF_SERVICE_PLANS.find(
+    const plan = plans.find(
       (candidate) => candidate.code === selectedPlan
     );
     const amount = plan?.prices?.[selectedCurrency];
@@ -213,10 +221,10 @@ export default function TengaAgentBillingPanel({ user }) {
     return null;
   }
 
-  if (isLoading && !billing) {
+  if ((isLoading && !billing) || (isPlansLoading && !plans.length)) {
     return (
       <div className="tengaagent-owner__loading">
-        Loading plan usage…
+        Loading plan usage and pricing…
       </div>
     );
   }
@@ -242,16 +250,19 @@ export default function TengaAgentBillingPanel({ user }) {
     billing.entitlements?.monthlyConversations ?? null;
   const agentsUsed = Number(billing.usage?.agentsUsed || 0);
   const agentLimit = billing.entitlements?.agents ?? null;
-  const availablePlans = SELF_SERVICE_PLANS.filter(
-    (plan) => Number.isFinite(Number(plan.prices[selectedCurrency]))
+  const availablePlans = plans.filter(
+    (plan) => Number.isFinite(Number(plan.prices?.[selectedCurrency]))
   );
-  const selectedPlanRecord = SELF_SERVICE_PLANS.find(
+  const selectedPlanRecord = plans.find(
     (plan) => plan.code === selectedPlan
   );
   const selectedAmount = selectedPlanRecord?.prices?.[selectedCurrency];
   const sameActivePlan =
-    billing.allowed === true && billing.planCode === selectedPlan;
+    billing.allowed === true &&
+    billing.renewalMode === "prepaid" &&
+    billing.planCode === selectedPlan;
   const checkoutBusy = isCheckoutStarting || isCheckoutVerifying;
+  const checkoutUnavailable = !availablePlans.length || Boolean(plansError);
 
   return (
     <>
@@ -317,6 +328,15 @@ export default function TengaAgentBillingPanel({ user }) {
             </div>
           ) : null}
 
+          {plansError ? (
+            <div
+              className="tengaagent-owner__notice tengaagent-owner__notice--error"
+              role="alert"
+            >
+              {plansError} Checkout is disabled until current pricing is available.
+            </div>
+          ) : null}
+
           <div className="tengaagent-owner__lead-meta">
             <label>
               Billing currency
@@ -324,7 +344,7 @@ export default function TengaAgentBillingPanel({ user }) {
                 aria-label="Billing currency"
                 value={selectedCurrency}
                 onChange={(event) => setSelectedCurrency(event.target.value)}
-                disabled={checkoutBusy}
+                disabled={checkoutBusy || checkoutUnavailable}
               >
                 <option value="NGN">NGN · Paystack</option>
                 <option value="USD">USD · Stripe</option>
@@ -337,7 +357,7 @@ export default function TengaAgentBillingPanel({ user }) {
                 aria-label="30-day prepaid plan"
                 value={selectedPlan}
                 onChange={(event) => setSelectedPlan(event.target.value)}
-                disabled={checkoutBusy}
+                disabled={checkoutBusy || checkoutUnavailable}
               >
                 {availablePlans.map((plan) => (
                   <option key={plan.code} value={plan.code}>
@@ -350,14 +370,15 @@ export default function TengaAgentBillingPanel({ user }) {
 
           <p>
             One checkout activates 30 days of prepaid TengaAgent access. NGN uses
-            Paystack and USD uses Stripe.
+            Paystack and USD uses Stripe. Prices shown here come from the same
+            backend catalog used to validate checkout amounts.
           </p>
 
           {sameActivePlan ? (
             <p>
-              Your selected plan is already active. Choose a different plan to
-              change immediately, or renew this plan after its current paid period
-              expires.
+              Your selected prepaid plan is already active. Choose a different plan
+              to change immediately, or renew this plan after its current paid
+              period expires.
             </p>
           ) : null}
         </div>
@@ -366,7 +387,7 @@ export default function TengaAgentBillingPanel({ user }) {
           <button
             type="button"
             onClick={startCheckout}
-            disabled={checkoutBusy || sameActivePlan}
+            disabled={checkoutBusy || sameActivePlan || checkoutUnavailable}
           >
             {isCheckoutVerifying
               ? "Verifying payment…"

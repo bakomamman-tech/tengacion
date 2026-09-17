@@ -49,6 +49,32 @@ const TengaAgentMessageSchema = new mongoose.Schema(
       trim: true,
       maxlength: 6000,
     },
+
+    provider: {
+      type: String,
+      enum: ["meta_whatsapp"],
+      default: null,
+      index: true,
+    },
+
+    providerMessageId: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: 300,
+    },
+
+    externalSenderId: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: 160,
+    },
+
+    providerTimestamp: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -64,6 +90,20 @@ TengaAgentMessageSchema.index({
   organizationId: 1,
   createdAt: -1,
 });
+
+TengaAgentMessageSchema.index(
+  {
+    organizationId: 1,
+    provider: 1,
+    providerMessageId: 1,
+  },
+  {
+    unique: true,
+    partialFilterExpression: {
+      providerMessageId: { $type: "string" },
+    },
+  }
+);
 
 module.exports = mongoose.model(
   "TengaAgentMessage",

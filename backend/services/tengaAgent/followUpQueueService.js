@@ -6,6 +6,9 @@ const Organization = require("../../models/tengaAgent/Organization");
 const {
   supersedeOpenFollowUpReminders,
 } = require("./followUpReminderService");
+const {
+  recommendationsForAppointments,
+} = require("./followUpIntelligenceService");
 
 const TERMINAL_APPOINTMENT_STATUSES = ["completed", "no_show"];
 const FOLLOW_UP_FILTERS = ["all", "overdue", "upcoming"];
@@ -51,7 +54,7 @@ const serializeReminder = (reminder) =>
       }
     : null;
 
-const serializeFollowUp = (appointment, reminder, now = new Date()) => {
+const serializeFollowUp = (appointment, reminder, now = new Date(), recommendation = null) => {
   const followUpAt = appointment.followUpAt || null;
   const dueAt = followUpAt ? new Date(followUpAt) : null;
   const overdue = Boolean(
@@ -78,6 +81,7 @@ const serializeFollowUp = (appointment, reminder, now = new Date()) => {
     overdue,
     dueState: followUpAt ? (overdue ? "overdue" : "upcoming") : "completed",
     reminder: serializeReminder(reminder),
+    recommendation,
     updatedAt: appointment.updatedAt,
   };
 };
@@ -160,14 +164,21 @@ const listOwnerFollowUps = async ({
     .limit(safeLimit)
     .lean();
 
-  const latestReminders = await latestRemindersByAppointment({
-    organizationId: organization._id,
-    appointmentIds: appointments.map((appointment) => appointment._id),
-  });
-  const metrics = await followUpMetricsForOrganization({
-    organizationId: organization._id,
-    now,
-  });
+  const [latestReminders, metrics, recommendations] = await Promise.all([
+    latestRemindersByAppointment({
+      organizationId: organization._id,
+      appointmentIds: appointments.map((appointment) => appointment._id),
+    }),
+    followUpMetricsForOrganization({
+      organizationId: organization._id,
+      now,
+    }),
+    recommendationsForAppointments({
+      organizationId: organization._id,
+      appointments,
+      now,
+    }),
+  ]);
 
   return {
     organization,
@@ -177,7 +188,8 @@ const listOwnerFollowUps = async ({
       serializeFollowUp(
         appointment,
         latestReminders.get(String(appointment._id)) || null,
-        now
+        now,
+        recommendations.get(String(appointment._id)) || null
       )
     ),
   };
@@ -207,15 +219,23 @@ const findOwnerAppointment = async ({ userId, appointmentId }) => {
 };
 
 const serializeUpdatedFollowUp = async ({ organization, appointment, now }) => {
-  const reminders = await latestRemindersByAppointment({
-    organizationId: organization._id,
-    appointmentIds: [appointment._id],
-  });
+  const [reminders, recommendations] = await Promise.all([
+    latestRemindersByAppointment({
+      organizationId: organization._id,
+      appointmentIds: [appointment._id],
+    }),
+    recommendationsForAppointments({
+      organizationId: organization._id,
+      appointments: [appointment.toObject ? appointment.toObject() : appointment],
+      now,
+    }),
+  ]);
 
   return serializeFollowUp(
     appointment,
     reminders.get(String(appointment._id)) || null,
-    now
+    now,
+    recommendations.get(String(appointment._id)) || null
   );
 };
 

@@ -16,6 +16,11 @@ const {
 const {
   captureAppointmentRequest,
 } = require("../services/tengaAgent/appointmentService");
+const {
+  recordUsage,
+  releaseConversationStart,
+  reserveConversationStart,
+} = require("../services/tengaAgent/billingService");
 
 const router = express.Router();
 router.use("/", require("./tengaAgentPublicAvailability"));
@@ -222,16 +227,38 @@ router.post(
         });
 
       if (!conversation) {
-        conversation =
-          await Conversation.create({
-            organizationId:
-              organization._id,
-            agentId: agent._id,
-            sessionKey: sessionId,
-            channel: "web",
-            status: "ai_active",
-            lastMessageAt: new Date(),
+        await reserveConversationStart({ organization });
+
+        try {
+          conversation =
+            await Conversation.create({
+              organizationId:
+                organization._id,
+              agentId: agent._id,
+              sessionKey: sessionId,
+              channel: "web",
+              status: "ai_active",
+              lastMessageAt: new Date(),
+            });
+        } catch (error) {
+          await releaseConversationStart({
+            organizationId: organization._id,
+          }).catch(() => null);
+
+          if (error?.code !== 11000) {
+            throw error;
+          }
+
+          conversation = await findConversation({
+            organization,
+            agent,
+            sessionId,
           });
+
+          if (!conversation) {
+            throw error;
+          }
+        }
       } else if (conversation.status === "closed") {
         conversation.status = "ai_active";
         conversation.assignedToUser = null;
@@ -249,6 +276,11 @@ router.post(
         type: "text",
         content: message,
       });
+
+      await recordUsage({
+        organizationId: organization._id,
+        metric: "customerMessages",
+      }).catch(() => null);
 
       if (conversation.status === "human_active") {
         conversation.lastMessageAt = customerMessage.createdAt;
@@ -301,6 +333,11 @@ router.post(
           type: "text",
           content: result.reply,
         });
+
+      await recordUsage({
+        organizationId: organization._id,
+        metric: "aiReplies",
+      }).catch(() => null);
 
       conversation.lastMessageAt =
         agentMessage.createdAt;

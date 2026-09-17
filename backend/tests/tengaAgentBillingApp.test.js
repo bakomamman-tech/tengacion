@@ -1,6 +1,9 @@
 const request = require("supertest");
 
 process.env.NODE_ENV = "test";
+process.env.MONGO_URI =
+  process.env.MONGO_URI ||
+  "mongodb://127.0.0.1:27017/tengaagent-billing-app-test";
 process.env.JWT_SECRET =
   process.env.JWT_SECRET ||
   "tengaagent-billing-app-test-secret-not-for-production";

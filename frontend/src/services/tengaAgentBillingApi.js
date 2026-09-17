@@ -50,6 +50,9 @@ const requestBillingJson = async (path, options = {}) => {
   return data;
 };
 
+export const getTengaAgentBillingPlans = () =>
+  requestBillingJson("/tengaagent/billing/plans");
+
 export const getTengaAgentOwnerBilling = () =>
   requestBillingJson("/tengaagent/owner/billing");
 

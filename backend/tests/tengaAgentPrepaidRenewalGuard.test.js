@@ -1,4 +1,7 @@
 process.env.NODE_ENV = "test";
+process.env.MONGO_URI =
+  process.env.MONGO_URI ||
+  "mongodb://127.0.0.1:27017/tengaagent-prepaid-renewal-guard-test";
 process.env.JWT_SECRET =
   process.env.JWT_SECRET ||
   "tengaagent-prepaid-renewal-guard-test-secret-not-for-production";

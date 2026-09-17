@@ -12,6 +12,10 @@ const MESSAGE_PROVIDER = "meta_whatsapp";
 const MAX_REPLY_LENGTH = 4096;
 const MAX_HISTORY_MESSAGES = 12;
 const META_TIMEOUT_MS = 15000;
+const REPLY_SWEEP_INTERVAL_MS = 60 * 1000;
+const REPLY_SWEEP_LIMIT = 10;
+
+let replySweepTimer = null;
 
 const clean = (value, max = 4096) =>
   String(value || "")
@@ -184,46 +188,7 @@ const buildChannelSafeReply = ({ organization, result }) => {
   };
 };
 
-const claimReply = async ({
-  inboundMessage,
-  conversation,
-  phoneNumberId,
-  recipientId,
-}) => {
-  try {
-    const reply = await WhatsAppReply.create({
-      organizationId: inboundMessage.organizationId,
-      agentId: inboundMessage.agentId,
-      conversationId: conversation._id,
-      inboundMessageId: inboundMessage._id,
-      inboundProviderMessageId: inboundMessage.providerMessageId,
-      phoneNumberId,
-      recipientId,
-      status: "processing",
-      attempts: 0,
-    });
-
-    return { claimed: true, reply };
-  } catch (error) {
-    if (error?.code !== 11000) {
-      throw error;
-    }
-
-    const existing = await WhatsAppReply.findOne({
-      inboundMessageId: inboundMessage._id,
-    });
-
-    return { claimed: false, reply: existing };
-  }
-};
-
-const processWhatsAppAutoReply = async ({
-  inboundMessageId,
-  phoneNumberId,
-  recipientId,
-  sendText = sendMetaWhatsAppText,
-  responseBuilder = respondToPublishedAgent,
-}) => {
+const loadReplyContext = async (inboundMessageId) => {
   const inboundMessage = await Message.findById(inboundMessageId);
   if (
     !inboundMessage ||
@@ -231,11 +196,14 @@ const processWhatsAppAutoReply = async ({
     inboundMessage.provider !== MESSAGE_PROVIDER ||
     !inboundMessage.providerMessageId
   ) {
-    return { status: "skipped_invalid" };
+    return null;
   }
 
   const [organization, agent, conversation] = await Promise.all([
-    Organization.findById(inboundMessage.organizationId),
+    Organization.findOne({
+      _id: inboundMessage.organizationId,
+      status: { $in: ["pilot", "active"] },
+    }),
     Agent.findOne({
       _id: inboundMessage.agentId,
       organizationId: inboundMessage.organizationId,
@@ -245,13 +213,28 @@ const processWhatsAppAutoReply = async ({
       _id: inboundMessage.conversationId,
       organizationId: inboundMessage.organizationId,
       agentId: inboundMessage.agentId,
+      channel: "whatsapp",
     }),
   ]);
 
   if (!organization || !agent || !conversation) {
-    return { status: "skipped_tenant" };
+    return null;
   }
 
+  return { inboundMessage, organization, agent, conversation };
+};
+
+const queueWhatsAppAutoReply = async ({
+  inboundMessageId,
+  phoneNumberId,
+  recipientId,
+}) => {
+  const context = await loadReplyContext(inboundMessageId);
+  if (!context) {
+    return { status: "skipped_invalid" };
+  }
+
+  const { inboundMessage, conversation } = context;
   if (conversation.status === "human_active") {
     return { status: "suppressed_human" };
   }
@@ -262,22 +245,78 @@ const processWhatsAppAutoReply = async ({
     return { status: "skipped_invalid" };
   }
 
-  const claim = await claimReply({
-    inboundMessage,
-    conversation,
-    phoneNumberId: phone,
-    recipientId: recipient,
-  });
+  try {
+    const reply = await WhatsAppReply.create({
+      organizationId: inboundMessage.organizationId,
+      agentId: inboundMessage.agentId,
+      conversationId: conversation._id,
+      inboundMessageId: inboundMessage._id,
+      inboundProviderMessageId: inboundMessage.providerMessageId,
+      phoneNumberId: phone,
+      recipientId: recipient,
+      status: "queued",
+      attempts: 0,
+    });
 
-  if (!claim.claimed) {
+    return { status: "queued", replyId: reply._id };
+  } catch (error) {
+    if (error?.code !== 11000) {
+      throw error;
+    }
+
+    const existing = await WhatsAppReply.findOne({
+      inboundMessageId: inboundMessage._id,
+    }).lean();
+
+    return {
+      status: "already_queued",
+      replyId: existing?._id || null,
+      existingStatus: existing?.status || null,
+    };
+  }
+};
+
+const deliverWhatsAppReply = async ({
+  replyId,
+  sendText = sendMetaWhatsAppText,
+  responseBuilder = respondToPublishedAgent,
+}) => {
+  const replyRecord = await WhatsAppReply.findOneAndUpdate(
+    { _id: replyId, status: "queued" },
+    {
+      $set: { status: "processing", lastError: "" },
+      $inc: { attempts: 1 },
+    },
+    { returnDocument: "after" }
+  );
+
+  if (!replyRecord) {
+    const existing = await WhatsAppReply.findById(replyId).lean();
     return {
       status: "already_claimed",
-      replyId: claim.reply?._id || null,
-      existingStatus: claim.reply?.status || null,
+      replyId,
+      existingStatus: existing?.status || null,
     };
   }
 
-  const replyRecord = claim.reply;
+  const context = await loadReplyContext(replyRecord.inboundMessageId);
+  if (!context) {
+    replyRecord.status = "skipped";
+    replyRecord.completedAt = new Date();
+    replyRecord.lastError = "Inbound WhatsApp reply context is no longer valid.";
+    await replyRecord.save();
+    return { status: "skipped_invalid", replyId: replyRecord._id };
+  }
+
+  const { inboundMessage, organization, agent, conversation } = context;
+
+  if (conversation.status === "human_active") {
+    replyRecord.status = "skipped";
+    replyRecord.completedAt = new Date();
+    replyRecord.lastError = "Human handoff owns this conversation.";
+    await replyRecord.save();
+    return { status: "suppressed_human", replyId: replyRecord._id };
+  }
 
   try {
     const conversationHistory = await buildConversationHistory(conversation._id);
@@ -298,12 +337,11 @@ const processWhatsAppAutoReply = async ({
     }
 
     replyRecord.replyText = channelReply.reply;
-    replyRecord.attempts += 1;
     await replyRecord.save();
 
     const delivery = await sendText({
-      phoneNumberId: phone,
-      recipientId: recipient,
+      phoneNumberId: replyRecord.phoneNumberId,
+      recipientId: replyRecord.recipientId,
       text: channelReply.reply,
     });
 
@@ -350,11 +388,103 @@ const processWhatsAppAutoReply = async ({
   }
 };
 
+const processWhatsAppAutoReply = async ({
+  inboundMessageId,
+  phoneNumberId,
+  recipientId,
+  sendText = sendMetaWhatsAppText,
+  responseBuilder = respondToPublishedAgent,
+}) => {
+  const queued = await queueWhatsAppAutoReply({
+    inboundMessageId,
+    phoneNumberId,
+    recipientId,
+  });
+
+  if (queued.status === "already_queued") {
+    return {
+      status: "already_claimed",
+      replyId: queued.replyId,
+      existingStatus: queued.existingStatus,
+    };
+  }
+
+  if (queued.status !== "queued") {
+    return queued;
+  }
+
+  return deliverWhatsAppReply({
+    replyId: queued.replyId,
+    sendText,
+    responseBuilder,
+  });
+};
+
+const drainQueuedWhatsAppReplies = async ({
+  limit = REPLY_SWEEP_LIMIT,
+  sendText = sendMetaWhatsAppText,
+  responseBuilder = respondToPublishedAgent,
+} = {}) => {
+  if (!isAutoReplyEnabled()) {
+    return { processed: 0, accepted: 0, failed: 0, suppressed: 0 };
+  }
+
+  const queued = await WhatsAppReply.find({ status: "queued" })
+    .sort({ createdAt: 1 })
+    .limit(Math.max(1, Math.min(Number(limit) || REPLY_SWEEP_LIMIT, 50)))
+    .select("_id")
+    .lean();
+
+  const summary = { processed: 0, accepted: 0, failed: 0, suppressed: 0 };
+
+  for (const entry of queued) {
+    const result = await deliverWhatsAppReply({
+      replyId: entry._id,
+      sendText,
+      responseBuilder,
+    });
+    summary.processed += 1;
+    if (result.status === "accepted") summary.accepted += 1;
+    if (result.status === "failed") summary.failed += 1;
+    if (result.status === "suppressed_human") summary.suppressed += 1;
+  }
+
+  return summary;
+};
+
+const startWhatsAppReplyScheduler = ({ logger = console } = {}) => {
+  if (
+    process.env.NODE_ENV === "test" ||
+    !isAutoReplyEnabled() ||
+    replySweepTimer
+  ) {
+    return replySweepTimer;
+  }
+
+  const runSweep = () =>
+    drainQueuedWhatsAppReplies().catch((error) => {
+      logger.error?.("[TengaAgent WhatsApp] reply sweep failed", {
+        message: error?.message || String(error),
+      });
+    });
+
+  const initialTimer = setTimeout(runSweep, 1500);
+  initialTimer.unref?.();
+
+  replySweepTimer = setInterval(runSweep, REPLY_SWEEP_INTERVAL_MS);
+  replySweepTimer.unref?.();
+  return replySweepTimer;
+};
+
 module.exports = {
   MESSAGE_PROVIDER,
   buildChannelSafeReply,
   buildMetaConfig,
+  deliverWhatsAppReply,
+  drainQueuedWhatsAppReplies,
   isAutoReplyEnabled,
   processWhatsAppAutoReply,
+  queueWhatsAppAutoReply,
   sendMetaWhatsAppText,
+  startWhatsAppReplyScheduler,
 };

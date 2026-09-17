@@ -15,11 +15,13 @@ import {
 
 const {
   getBillingMock,
+  getPlansMock,
   redirectMock,
   startCheckoutMock,
   verifyCheckoutMock,
 } = vi.hoisted(() => ({
   getBillingMock: vi.fn(),
+  getPlansMock: vi.fn(),
   redirectMock: vi.fn(),
   startCheckoutMock: vi.fn(),
   verifyCheckoutMock: vi.fn(),
@@ -28,6 +30,8 @@ const {
 vi.mock(
   "../../../services/tengaAgentBillingApi",
   () => ({
+    getTengaAgentBillingPlans: (...args) =>
+      getPlansMock(...args),
     getTengaAgentOwnerBilling: (...args) =>
       getBillingMock(...args),
     redirectToTengaAgentCheckout: (...args) =>
@@ -71,11 +75,24 @@ const RESPONSE = {
   },
 };
 
+const PLAN_RESPONSE = {
+  ok: true,
+  billingMode: "prepaid_30_day",
+  prepaidPeriodDays: 30,
+  plans: [
+    { code: "solo", label: "Solo", prices: { NGN: 9900 } },
+    { code: "starter", label: "Starter", prices: { NGN: 19900, USD: 49 } },
+    { code: "growth", label: "Growth", prices: { NGN: 59900, USD: 149 } },
+    { code: "business", label: "Business", prices: { NGN: 149900, USD: 399 } },
+  ],
+};
+
 describe("TengaAgentBillingPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.history.replaceState({}, "", "/tengaagent");
     getBillingMock.mockResolvedValue(RESPONSE);
+    getPlansMock.mockResolvedValue(PLAN_RESPONSE);
     startCheckoutMock.mockResolvedValue({
       ok: true,
       billingMode: "prepaid_30_day",
@@ -146,8 +163,17 @@ describe("TengaAgentBillingPanel", () => {
     });
   });
 
-  it("starts a prepaid Paystack checkout from the owner dashboard", async () => {
+  it("starts a prepaid Paystack checkout from backend-supplied pricing", async () => {
     const user = userEvent.setup();
+
+    getPlansMock.mockResolvedValue({
+      ...PLAN_RESPONSE,
+      plans: PLAN_RESPONSE.plans.map((plan) =>
+        plan.code === "starter"
+          ? { ...plan, prices: { ...plan.prices, NGN: 20500 } }
+          : plan
+      ),
+    });
 
     render(
       <TengaAgentBillingPanel
@@ -156,8 +182,8 @@ describe("TengaAgentBillingPanel", () => {
     );
 
     await screen.findByText(/growth · active/i);
-    const checkoutButton = screen.getByRole("button", {
-      name: /pay.*19,900/i,
+    const checkoutButton = await screen.findByRole("button", {
+      name: /pay.*20,500/i,
     });
 
     await user.click(checkoutButton);
@@ -171,6 +197,23 @@ describe("TengaAgentBillingPanel", () => {
     expect(redirectMock).toHaveBeenCalledWith(
       "https://checkout.example/paystack"
     );
+  });
+
+  it("disables checkout when current pricing cannot be loaded", async () => {
+    getPlansMock.mockRejectedValue(new Error("Pricing unavailable"));
+
+    render(
+      <TengaAgentBillingPanel
+        user={{ _id: "owner-1" }}
+      />
+    );
+
+    expect(
+      await screen.findByText(/pricing unavailable/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /pay unavailable/i })
+    ).toBeDisabled();
   });
 
   it("verifies a provider return and refreshes the paid billing period", async () => {

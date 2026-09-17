@@ -2,9 +2,7 @@ const express = require("express");
 
 const auth = require("../middleware/auth");
 const {
-  TENGAAGENT_PLAN_ENTITLEMENTS,
-  TENGAAGENT_PLAN_PRICING,
-  TENGAAGENT_SELF_SERVICE_PLAN_CODES,
+  getTengaAgentSelfServicePlanCatalog,
 } = require("../config/tengaAgentPlans");
 const {
   handlePaystackWebhook,
@@ -15,27 +13,13 @@ const {
 
 const router = express.Router();
 
-const toPlanLabel = (planCode) =>
-  String(planCode || "")
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-
 router.get("/plans", auth, (_req, res) => {
-  const plans = TENGAAGENT_SELF_SERVICE_PLAN_CODES.map((code) => ({
-    code,
-    label: toPlanLabel(code),
-    prices: { ...(TENGAAGENT_PLAN_PRICING[code] || {}) },
-    entitlements: { ...(TENGAAGENT_PLAN_ENTITLEMENTS[code] || {}) },
-  }));
-
   res.set("Cache-Control", "private, max-age=300");
   return res.json({
     ok: true,
     billingMode: "prepaid_30_day",
     prepaidPeriodDays: 30,
-    plans,
+    plans: getTengaAgentSelfServicePlanCatalog(),
   });
 });
 

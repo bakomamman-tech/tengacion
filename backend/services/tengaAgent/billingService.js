@@ -25,15 +25,38 @@ class TengaAgentBillingError extends Error {
   }
 }
 
-const getPeriodKey = (date = new Date()) => {
-  const value = date instanceof Date ? date : new Date(date);
-  if (Number.isNaN(value.getTime())) {
-    throw new Error("Invalid TengaAgent usage date.");
+const normalizeDate = (value, label) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid ${label}.`);
   }
+  return date;
+};
+
+const getPeriodKey = (date = new Date()) => {
+  const value = normalizeDate(date, "TengaAgent usage date");
 
   return `${value.getUTCFullYear()}-${String(
     value.getUTCMonth() + 1
   ).padStart(2, "0")}`;
+};
+
+const isPrepaidPeriodExpired = (subscription, at = new Date()) => {
+  if (subscription?.renewalMode !== "prepaid") {
+    return false;
+  }
+
+  const now = normalizeDate(at, "TengaAgent billing date");
+  if (!subscription.currentPeriodEnd) {
+    return true;
+  }
+
+  const periodEnd = new Date(subscription.currentPeriodEnd);
+  if (Number.isNaN(periodEnd.getTime())) {
+    return true;
+  }
+
+  return periodEnd.getTime() <= now.getTime();
 };
 
 const resolveOrganization = async (organizationOrId) => {
@@ -87,7 +110,7 @@ const ensureSubscriptionForOrganization = async (organizationOrId) => {
   return subscription;
 };
 
-const getBillingAccess = async (organizationOrId) => {
+const getBillingAccess = async (organizationOrId, at = new Date()) => {
   const organization = await resolveOrganization(organizationOrId);
   if (!organization) {
     return {
@@ -121,21 +144,35 @@ const getBillingAccess = async (organizationOrId) => {
   }
 
   const entitlements = getTengaAgentPlanEntitlements(subscription.planCode);
-  const allowed =
-    organization.plan === "internal" || ACCESS_STATUSES.has(subscription.status);
+  const internalAccess = organization.plan === "internal";
+  const prepaidExpired =
+    !internalAccess && isPrepaidPeriodExpired(subscription, at);
+  const statusAllowed = ACCESS_STATUSES.has(subscription.status);
+  const allowed = internalAccess || (statusAllowed && !prepaidExpired);
 
   return {
     allowed,
     organization,
     subscription,
     entitlements,
-    reason: allowed ? null : `subscription_${subscription.status}`,
+    reason: allowed
+      ? null
+      : prepaidExpired
+        ? "subscription_expired"
+        : `subscription_${subscription.status}`,
   };
 };
 
 const assertSubscriptionAccess = async (organizationOrId) => {
   const access = await getBillingAccess(organizationOrId);
   if (!access.allowed) {
+    if (access.reason === "subscription_expired") {
+      throw new TengaAgentBillingError(
+        "TengaAgent prepaid access has expired. Renew the plan to continue using the agent.",
+        "TENGAAGENT_SUBSCRIPTION_EXPIRED"
+      );
+    }
+
     throw new TengaAgentBillingError(
       "TengaAgent is unavailable because this subscription is not active.",
       "TENGAAGENT_SUBSCRIPTION_INACTIVE"
@@ -354,9 +391,11 @@ const getBillingSummary = async (organizationOrId) => {
     planCode: access.subscription.planCode,
     subscriptionStatus: access.subscription.status,
     billingProvider: access.subscription.billingProvider,
+    renewalMode: access.subscription.renewalMode,
     currentPeriodStart: access.subscription.currentPeriodStart,
     currentPeriodEnd: access.subscription.currentPeriodEnd,
     cancelAtPeriodEnd: access.subscription.cancelAtPeriodEnd,
+    expired: access.reason === "subscription_expired",
     entitlements: access.entitlements,
     usage: {
       periodKey: usage.periodKey,
@@ -384,6 +423,7 @@ module.exports = {
   getBillingSummary,
   getCurrentUsage,
   getPeriodKey,
+  isPrepaidPeriodExpired,
   recordUsage,
   releaseConversationStart,
   reserveConversationStart,

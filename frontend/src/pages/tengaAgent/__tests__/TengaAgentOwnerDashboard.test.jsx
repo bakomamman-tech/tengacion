@@ -61,6 +61,14 @@ vi.mock("../TengaAgentHandoffInbox", () => ({
   default: () => <div data-testid="handoff-inbox" />,
 }));
 
+vi.mock("../TengaAgentNextBestActionPanel", () => ({
+  default: ({ user }) => (
+    <div data-testid="next-best-action-panel">
+      {user?._id || "no-user"}
+    </div>
+  ),
+}));
+
 import TengaAgentOwnerDashboard from "../TengaAgentOwnerDashboard";
 
 const USER = {
@@ -170,6 +178,9 @@ describe("TengaAgentOwnerDashboard", () => {
     expect(
       screen.getByTestId("handoff-inbox")
     ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("next-best-action-panel")
+    ).toHaveTextContent(USER._id);
     expect(
       screen.getByText("Ada Customer")
     ).toBeInTheDocument();

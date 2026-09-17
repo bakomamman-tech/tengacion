@@ -5,6 +5,10 @@ const Conversation = require("../../models/tengaAgent/Conversation");
 const Message = require("../../models/tengaAgent/Message");
 const Organization = require("../../models/tengaAgent/Organization");
 const WhatsAppConnection = require("../../models/tengaAgent/WhatsAppConnection");
+const {
+  isAutoReplyEnabled,
+  processWhatsAppAutoReply,
+} = require("./whatsappOutboundService");
 
 const PROVIDER = "meta_cloud";
 const MESSAGE_PROVIDER = "meta_whatsapp";
@@ -271,7 +275,20 @@ const persistInboundTextEvent = async (event) => {
   };
 };
 
-const processWhatsAppWebhook = async (payload = {}) => {
+const updateReplySummary = (summary, replyResult = {}) => {
+  if (replyResult.status === "accepted") summary.repliesAccepted += 1;
+  if (replyResult.status === "failed") summary.repliesFailed += 1;
+  if (replyResult.status === "suppressed_human") summary.repliesSuppressed += 1;
+  if (replyResult.status === "already_claimed") summary.repliesAlreadyClaimed += 1;
+};
+
+const processWhatsAppWebhook = async (
+  payload = {},
+  {
+    autoReply = isAutoReplyEnabled(),
+    replyProcessor = processWhatsAppAutoReply,
+  } = {}
+) => {
   if (payload?.object && payload.object !== "whatsapp_business_account") {
     return {
       received: 0,
@@ -279,6 +296,10 @@ const processWhatsAppWebhook = async (payload = {}) => {
       duplicates: 0,
       unrouted: 0,
       ignored: 0,
+      repliesAccepted: 0,
+      repliesFailed: 0,
+      repliesSuppressed: 0,
+      repliesAlreadyClaimed: 0,
     };
   }
 
@@ -289,6 +310,10 @@ const processWhatsAppWebhook = async (payload = {}) => {
     duplicates: 0,
     unrouted: 0,
     ignored,
+    repliesAccepted: 0,
+    repliesFailed: 0,
+    repliesSuppressed: 0,
+    repliesAlreadyClaimed: 0,
   };
 
   for (const event of events) {
@@ -296,6 +321,23 @@ const processWhatsAppWebhook = async (payload = {}) => {
     if (result.status === "stored") summary.stored += 1;
     if (result.status === "duplicate") summary.duplicates += 1;
     if (result.status === "unrouted") summary.unrouted += 1;
+
+    if (
+      autoReply &&
+      result.messageId &&
+      (result.status === "stored" || result.status === "duplicate")
+    ) {
+      try {
+        const replyResult = await replyProcessor({
+          inboundMessageId: result.messageId,
+          phoneNumberId: event.phoneNumberId,
+          recipientId: event.externalSenderId,
+        });
+        updateReplySummary(summary, replyResult);
+      } catch {
+        summary.repliesFailed += 1;
+      }
+    }
   }
 
   return summary;
@@ -308,5 +350,6 @@ module.exports = {
   extractInboundTextEvents,
   persistInboundTextEvent,
   processWhatsAppWebhook,
+  resolveTenantForPhoneNumber,
   verifyMetaWebhookSignature,
 };

@@ -8,6 +8,10 @@ const Lead = require("../../models/tengaAgent/Lead");
 const {
   syncKnowledgeSource,
 } = require("./knowledgeIngestionService");
+const {
+  assertAgentCapacity,
+  ensureSubscriptionForOrganization,
+} = require("./billingService");
 
 const OWNER_AGENT_KEY = "receptionist";
 
@@ -69,8 +73,19 @@ const findOwnerWorkspace = async (userId) => {
   return { organization, agent };
 };
 
-const ensureOwnerAgent = async ({ organization }) =>
-  Agent.findOneAndUpdate(
+const ensureOwnerAgent = async ({ organization }) => {
+  const existing = await Agent.findOne({
+    organizationId: organization._id,
+    key: OWNER_AGENT_KEY,
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  await assertAgentCapacity({ organization });
+
+  return Agent.findOneAndUpdate(
     {
       organizationId: organization._id,
       key: OWNER_AGENT_KEY,
@@ -98,6 +113,7 @@ const ensureOwnerAgent = async ({ organization }) =>
       setDefaultsOnInsert: true,
     }
   );
+};
 
 const createOrUpdateOwnerWorkspace = async ({
   userId,
@@ -189,6 +205,7 @@ const createOrUpdateOwnerWorkspace = async ({
     await organization.save();
   }
 
+  await ensureSubscriptionForOrganization(organization);
   const agent = await ensureOwnerAgent({ organization });
 
   return { organization, agent };

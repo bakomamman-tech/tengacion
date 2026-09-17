@@ -8,6 +8,10 @@ const {
   drainQueuedWhatsAppReplies,
   isAutoReplyEnabled,
 } = require("../services/tengaAgent/whatsappOutboundService");
+const {
+  drainPendingWhatsAppVoiceNotes,
+  isWhatsAppVoiceEnabled,
+} = require("../services/tengaAgent/whatsappVoiceService");
 
 const router = express.Router();
 
@@ -67,6 +71,16 @@ router.post("/webhook", async (req, res, next) => {
     }
 
     const summary = await processWhatsAppWebhook(req.body || {});
+
+    if (isWhatsAppVoiceEnabled() && summary.voiceNotesQueued > 0) {
+      setImmediate(() => {
+        drainPendingWhatsAppVoiceNotes().catch((error) => {
+          console.error("[TengaAgent WhatsApp] queued voice-note processing failed", {
+            message: error?.message || String(error),
+          });
+        });
+      });
+    }
 
     if (isAutoReplyEnabled() && summary.repliesQueued > 0) {
       setImmediate(() => {

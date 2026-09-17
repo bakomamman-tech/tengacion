@@ -10,6 +10,9 @@ const {
   logOwnerFollowUpContact,
   sendOwnerFollowUpEmail,
 } = require("../services/tengaAgent/followUpActivityService");
+const {
+  composeOwnerFollowUpEmail,
+} = require("../services/tengaAgent/followUpComposerService");
 
 const router = express.Router();
 
@@ -37,6 +40,22 @@ const respondActivityValidationError = (res, error) => {
     ok: false,
     message: error.message,
   });
+};
+
+const respondComposerError = (res, error) => {
+  if (error?.code === "TENGAAGENT_FOLLOW_UP_COMPOSER_VALIDATION") {
+    return res.status(400).json({ ok: false, message: error.message });
+  }
+  if (error?.code === "TENGAAGENT_FOLLOW_UP_COMPOSER_UNAVAILABLE") {
+    return res.status(503).json({ ok: false, message: error.message });
+  }
+  if (
+    error?.code === "TENGAAGENT_FOLLOW_UP_COMPOSER_FAILED" ||
+    error?.code === "TENGAAGENT_FOLLOW_UP_COMPOSER_INVALID_OUTPUT"
+  ) {
+    return res.status(502).json({ ok: false, message: error.message });
+  }
+  return null;
 };
 
 router.get("/follow-ups", async (req, res, next) => {
@@ -89,6 +108,29 @@ router.get("/follow-ups/:appointmentId/activity", async (req, res, next) => {
       activities: result.activities,
     });
   } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/follow-ups/:appointmentId/draft-email", async (req, res, next) => {
+  try {
+    const result = await composeOwnerFollowUpEmail({
+      userId: req.user._id,
+      appointmentId: req.params.appointmentId,
+      instruction: req.body?.instruction,
+    });
+
+    const notFoundResponse = respondNotFound(res, result);
+    if (notFoundResponse) return notFoundResponse;
+
+    res.set("Cache-Control", "no-store");
+    return res.json({
+      ok: true,
+      draft: result.draft,
+    });
+  } catch (error) {
+    const composerResponse = respondComposerError(res, error);
+    if (composerResponse) return composerResponse;
     return next(error);
   }
 });

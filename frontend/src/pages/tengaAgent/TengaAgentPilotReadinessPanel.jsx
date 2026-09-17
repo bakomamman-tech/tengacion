@@ -19,6 +19,15 @@ const STATUS_LABELS = {
   whatsappEnvironment: "WhatsApp server configuration",
   whatsappTenantConnection: "WhatsApp tenant connection",
   voiceEnvironment: "Voice-note transcription configuration",
+  emailEnvironment: "Email notification configuration",
+};
+
+const REQUIREMENT_STATUS_LABELS = {
+  configured: "Configured",
+  missing: "Missing",
+  invalid: "Invalid",
+  disabled: "Disabled",
+  not_in_plan: "Not in plan",
 };
 
 const formatLimit = (value) =>
@@ -34,9 +43,7 @@ export default function TengaAgentPilotReadinessPanel({
   const [error, setError] = useState("");
 
   const loadReadiness = useCallback(async () => {
-    if (!user) {
-      return;
-    }
+    if (!user) return;
 
     setIsLoading(true);
     setError("");
@@ -64,9 +71,12 @@ export default function TengaAgentPilotReadinessPanel({
     [readiness]
   );
 
-  if (!user) {
-    return null;
-  }
+  const requirementGroups = useMemo(
+    () => Object.entries(readiness?.requirements || {}),
+    [readiness]
+  );
+
+  if (!user) return null;
 
   return (
     <section
@@ -83,8 +93,8 @@ export default function TengaAgentPilotReadinessPanel({
           </h3>
           <p>
             This view checks configuration without exposing
-            secret values. A failed item stays closed until
-            its server-side requirement is satisfied.
+            secret values. Missing or invalid requirements
+            remain closed until their server-side setup is complete.
           </p>
         </div>
         <button
@@ -110,39 +120,37 @@ export default function TengaAgentPilotReadinessPanel({
           <div className="tengaagent-owner__pilot-channels">
             <article>
               <span>Web pilot</span>
-              <strong>
-                {readiness.channelReady?.web
-                  ? "Ready"
-                  : "Blocked"}
-              </strong>
+              <strong>{readiness.channelReady?.web ? "Ready" : "Blocked"}</strong>
             </article>
             <article>
               <span>WhatsApp</span>
               <strong>
-                {readiness.channelReady?.whatsapp
-                  ? "Ready"
-                  : "Blocked"}
+                {readiness.billing?.entitlements?.whatsapp
+                  ? readiness.channelReady?.whatsapp
+                    ? "Ready"
+                    : "Blocked"
+                  : "Not in plan"}
               </strong>
             </article>
             <article>
               <span>Voice notes</span>
               <strong>
-                {readiness.channelReady?.voiceNotes
-                  ? "Ready"
-                  : "Blocked"}
+                {readiness.billing?.entitlements?.voice
+                  ? readiness.channelReady?.voiceNotes
+                    ? "Ready"
+                    : "Blocked"
+                  : "Not in plan"}
               </strong>
             </article>
             <article>
               <span>Monthly conversations</span>
               <strong>
                 {Number(
-                  readiness.billing?.usage
-                    ?.conversationsStarted || 0
+                  readiness.billing?.usage?.conversationsStarted || 0
                 ).toLocaleString()}
                 {" / "}
                 {formatLimit(
-                  readiness.billing?.entitlements
-                    ?.monthlyConversations
+                  readiness.billing?.entitlements?.monthlyConversations
                 )}
               </strong>
             </article>
@@ -158,26 +166,41 @@ export default function TengaAgentPilotReadinessPanel({
                 }`}
                 key={key}
               >
-                <span aria-hidden="true">
-                  {passed ? "✓" : "!"}
-                </span>
+                <span aria-hidden="true">{passed ? "✓" : "!"}</span>
                 <div>
-                  <strong>
-                    {STATUS_LABELS[key] || key}
-                  </strong>
+                  <strong>{STATUS_LABELS[key] || key}</strong>
                   <small>
-                    {passed
-                      ? "Ready"
-                      : "Configuration required"}
+                    {passed ? "Ready" : "Configuration required"}
                   </small>
                 </div>
               </div>
             ))}
           </div>
 
+          {requirementGroups.map(([group, requirements]) => (
+            <div
+              className="tengaagent-owner__pilot-requirements"
+              key={group}
+            >
+              <strong>{group.toUpperCase()} ENVIRONMENT</strong>
+              <div>
+                {(Array.isArray(requirements) ? requirements : []).map(
+                  (requirement) => (
+                    <span key={`${group}-${requirement.key}`}>
+                      <code>{requirement.key}</code>
+                      {" — "}
+                      {REQUIREMENT_STATUS_LABELS[requirement.status] ||
+                        requirement.status}
+                    </span>
+                  )
+                )}
+              </div>
+            </div>
+          ))}
+
           <p className="tengaagent-owner__pilot-note">
-            No API keys, tokens, secrets, or credentials are
-            returned to the browser by this check.
+            Only environment-variable names and readiness states are returned.
+            API keys, tokens, passwords, and secret values never reach the browser.
           </p>
         </>
       ) : null}

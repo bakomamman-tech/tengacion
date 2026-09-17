@@ -37,8 +37,30 @@ const TENGAAGENT_PLAN_ENTITLEMENTS = Object.freeze({
   }),
 });
 
+const TENGAAGENT_PLAN_PRICING = Object.freeze({
+  solo: Object.freeze({
+    NGN: 9900,
+  }),
+  starter: Object.freeze({
+    NGN: 19900,
+    USD: 49,
+  }),
+  growth: Object.freeze({
+    NGN: 59900,
+    USD: 149,
+  }),
+  business: Object.freeze({
+    NGN: 149900,
+    USD: 399,
+  }),
+});
+
 const TENGAAGENT_PLAN_CODES = Object.freeze(
   Object.keys(TENGAAGENT_PLAN_ENTITLEMENTS)
+);
+
+const TENGAAGENT_SELF_SERVICE_PLAN_CODES = Object.freeze(
+  Object.keys(TENGAAGENT_PLAN_PRICING)
 );
 
 const getTengaAgentPlanEntitlements = (planCode) => {
@@ -57,8 +79,42 @@ const getTengaAgentPlanEntitlements = (planCode) => {
   return entitlements;
 };
 
+const getTengaAgentPlanPrice = (planCode, currency) => {
+  const normalizedPlan = String(planCode || "")
+    .trim()
+    .toLowerCase();
+  const normalizedCurrency = String(currency || "")
+    .trim()
+    .toUpperCase();
+
+  const planPricing = TENGAAGENT_PLAN_PRICING[normalizedPlan];
+  if (!planPricing) {
+    const error = new Error(
+      "This TengaAgent plan is not available for self-service checkout."
+    );
+    error.code = "TENGAAGENT_PLAN_NOT_SELF_SERVICE";
+    error.status = 400;
+    throw error;
+  }
+
+  const amount = planPricing[normalizedCurrency];
+  if (!Number.isFinite(amount) || amount <= 0) {
+    const error = new Error(
+      `The ${normalizedPlan} TengaAgent plan is not available in ${normalizedCurrency || "that currency"}.`
+    );
+    error.code = "TENGAAGENT_PLAN_CURRENCY_UNAVAILABLE";
+    error.status = 400;
+    throw error;
+  }
+
+  return amount;
+};
+
 module.exports = {
   TENGAAGENT_PLAN_CODES,
   TENGAAGENT_PLAN_ENTITLEMENTS,
+  TENGAAGENT_PLAN_PRICING,
+  TENGAAGENT_SELF_SERVICE_PLAN_CODES,
   getTengaAgentPlanEntitlements,
+  getTengaAgentPlanPrice,
 };

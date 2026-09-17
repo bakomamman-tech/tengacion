@@ -14,7 +14,7 @@ import {
 const readinessMock = vi.fn();
 
 vi.mock(
-  "../../../services/tengaAgentApi",
+  "../../../services/tengaAgentPilotReadinessApi",
   () => ({
     getTengaAgentOwnerPilotReadiness: (...args) =>
       readinessMock(...args),
@@ -48,6 +48,8 @@ beforeEach(() => {
       billing: {
         entitlements: {
           monthlyConversations: 300,
+          whatsapp: true,
+          voice: true,
         },
         usage: {
           conversationsStarted: 17,
@@ -65,13 +67,14 @@ describe("TengaAgentPilotReadinessPanel", () => {
       await screen.findByText("Deployment and channel readiness")
     ).toBeInTheDocument();
 
-    expect(screen.getByText("17 / 300")).toBeInTheDocument();
+    expect(await screen.findByText("17 / 300")).toBeInTheDocument();
     expect(screen.getByText("Web pilot")).toBeInTheDocument();
     expect(screen.getByText("WhatsApp")).toBeInTheDocument();
     expect(screen.getByText("Voice notes")).toBeInTheDocument();
     expect(screen.getAllByText("Blocked")).toHaveLength(2);
     expect(
-      screen.getByText(/No API keys, tokens, secrets/i)
+      screen.getByText(/API keys, tokens, passwords, and secret values never reach the browser/i)
     ).toBeInTheDocument();
+    expect(readinessMock).toHaveBeenCalledTimes(1);
   });
 });

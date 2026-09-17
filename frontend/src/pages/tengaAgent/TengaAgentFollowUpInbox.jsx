@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   completeTengaAgentOwnerFollowUp,
+  draftTengaAgentOwnerFollowUpEmail,
   getTengaAgentOwnerFollowUpActivity,
   getTengaAgentOwnerFollowUps,
   logTengaAgentOwnerFollowUpContact,
@@ -62,6 +63,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
   const [metrics, setMetrics] = useState(EMPTY_METRICS);
   const [isLoading, setIsLoading] = useState(true);
   const [actionId, setActionId] = useState("");
+  const [draftingId, setDraftingId] = useState("");
   const [rescheduleId, setRescheduleId] = useState("");
   const [rescheduleAt, setRescheduleAt] = useState("");
   const [workspace, setWorkspace] = useState({ appointmentId: "", mode: "" });
@@ -134,7 +136,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
   }, [loadFollowUps]);
 
   const openWorkspace = async (followUp, mode) => {
-    if (!followUp?.appointmentId || actionId) return;
+    if (!followUp?.appointmentId || actionId || draftingId) return;
 
     const isSame =
       workspace.appointmentId === followUp.appointmentId && workspace.mode === mode;
@@ -162,7 +164,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
   };
 
   const completeFollowUp = async (followUp) => {
-    if (!followUp?.appointmentId || actionId) return;
+    if (!followUp?.appointmentId || actionId || draftingId) return;
 
     setActionId(followUp.appointmentId);
     setError("");
@@ -184,7 +186,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
   };
 
   const rescheduleFollowUp = async (followUp) => {
-    if (!followUp?.appointmentId || actionId) return;
+    if (!followUp?.appointmentId || actionId || draftingId) return;
 
     const parsed = new Date(rescheduleAt);
     if (!rescheduleAt || Number.isNaN(parsed.getTime())) {
@@ -211,8 +213,32 @@ export default function TengaAgentFollowUpInbox({ user }) {
     }
   };
 
+  const draftEmail = async (followUp) => {
+    if (!followUp?.appointmentId || actionId || draftingId) return;
+
+    setDraftingId(followUp.appointmentId);
+    setError("");
+    try {
+      const response = await draftTengaAgentOwnerFollowUpEmail({
+        appointmentId: followUp.appointmentId,
+      });
+      const subject = String(response?.draft?.subject || "").trim();
+      const message = String(response?.draft?.message || "").trim();
+      if (!subject || !message) {
+        throw new Error("TengaAgent returned an incomplete email draft.");
+      }
+      setEmailDraft({ subject, message });
+    } catch (requestError) {
+      setError(
+        requestError?.message || "TengaAgent could not generate that follow-up draft."
+      );
+    } finally {
+      setDraftingId("");
+    }
+  };
+
   const sendEmail = async (followUp) => {
-    if (!followUp?.appointmentId || actionId) return;
+    if (!followUp?.appointmentId || actionId || draftingId) return;
     if (!emailDraft.subject.trim() || !emailDraft.message.trim()) {
       setError("Add an email subject and message before sending.");
       return;
@@ -241,7 +267,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
   };
 
   const logContact = async (followUp) => {
-    if (!followUp?.appointmentId || actionId) return;
+    if (!followUp?.appointmentId || actionId || draftingId) return;
     if (!contactDraft.notes.trim()) {
       setError("Add contact notes before saving the activity.");
       return;
@@ -287,7 +313,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
         <button
           type="button"
           onClick={loadFollowUps}
-          disabled={isLoading || Boolean(actionId)}
+          disabled={isLoading || Boolean(actionId) || Boolean(draftingId)}
         >
           {isLoading ? "Refreshing…" : "Refresh queue"}
         </button>
@@ -329,7 +355,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
             type="button"
             className={filter === value ? "active" : ""}
             onClick={() => setFilter(value)}
-            disabled={Boolean(actionId)}
+            disabled={Boolean(actionId) || Boolean(draftingId)}
           >
             {value.replaceAll("_", " ")}
           </button>
@@ -347,12 +373,14 @@ export default function TengaAgentFollowUpInbox({ user }) {
         <div className="tengaagent-follow-up__list">
           {followUps.map((followUp) => {
             const isActing = actionId === followUp.appointmentId;
+            const isDrafting = draftingId === followUp.appointmentId;
             const isRescheduling = rescheduleId === followUp.appointmentId;
             const isWorkspaceOpen = workspace.appointmentId === followUp.appointmentId;
             const activities = activitiesByAppointment[followUp.appointmentId] || [];
             const emailAllowed = Boolean(
               followUp.email && followUp.consentToContact
             );
+            const isBusy = Boolean(actionId) || Boolean(draftingId);
 
             return (
               <article
@@ -399,7 +427,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
                   <button
                     type="button"
                     onClick={() => openWorkspace(followUp, "email")}
-                    disabled={Boolean(actionId) || !emailAllowed}
+                    disabled={isBusy || !emailAllowed}
                     title={
                       !followUp.email
                         ? "Customer email is not available"
@@ -414,7 +442,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
                     type="button"
                     className="secondary"
                     onClick={() => openWorkspace(followUp, "log")}
-                    disabled={Boolean(actionId)}
+                    disabled={isBusy}
                   >
                     Log contact
                   </button>
@@ -422,21 +450,21 @@ export default function TengaAgentFollowUpInbox({ user }) {
                     type="button"
                     className="secondary"
                     onClick={() => openWorkspace(followUp, "activity")}
-                    disabled={Boolean(actionId)}
+                    disabled={isBusy}
                   >
                     Activity
                   </button>
                   <button
                     type="button"
                     onClick={() => completeFollowUp(followUp)}
-                    disabled={Boolean(actionId)}
+                    disabled={isBusy}
                   >
                     {isActing ? "Saving…" : "Mark follow-up done"}
                   </button>
                   <button
                     type="button"
                     className="secondary"
-                    disabled={Boolean(actionId)}
+                    disabled={isBusy}
                     onClick={() => {
                       setError("");
                       setRescheduleId(isRescheduling ? "" : followUp.appointmentId);
@@ -467,7 +495,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
                     </label>
                     <button
                       type="button"
-                      disabled={Boolean(actionId)}
+                      disabled={isBusy}
                       onClick={() => rescheduleFollowUp(followUp)}
                     >
                       Save new due time
@@ -482,8 +510,14 @@ export default function TengaAgentFollowUpInbox({ user }) {
                         <div>
                           <strong>Send follow-up email</strong>
                           <span>
-                            Delivery is attempted only after you explicitly press Send.
+                            Draft with TengaAgent or write your own. Nothing is sent until
+                            you review the editable draft and explicitly press Send.
                           </span>
+                        </div>
+                        <div className="tengaagent-follow-up__composer-note">
+                          TengaAgent drafts from this appointment, its conversation, outcome
+                          notes, and tenant-scoped business knowledge. Generated copy is a
+                          suggestion for owner review.
                         </div>
                         <label>
                           Email subject
@@ -515,7 +549,15 @@ export default function TengaAgentFollowUpInbox({ user }) {
                         <div className="tengaagent-follow-up__form-actions">
                           <button
                             type="button"
-                            disabled={Boolean(actionId)}
+                            className="secondary"
+                            disabled={isBusy}
+                            onClick={() => draftEmail(followUp)}
+                          >
+                            {isDrafting ? "Drafting…" : "Draft with TengaAgent"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isBusy}
                             onClick={() => sendEmail(followUp)}
                           >
                             {isActing ? "Sending…" : `Send to ${followUp.email}`}
@@ -523,7 +565,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
                           <button
                             type="button"
                             className="secondary"
-                            disabled={Boolean(actionId)}
+                            disabled={isBusy}
                             onClick={() =>
                               setWorkspace({ appointmentId: "", mode: "" })
                             }
@@ -589,7 +631,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
                         <div className="tengaagent-follow-up__form-actions">
                           <button
                             type="button"
-                            disabled={Boolean(actionId)}
+                            disabled={isBusy}
                             onClick={() => logContact(followUp)}
                           >
                             {isActing ? "Saving…" : "Save contact activity"}
@@ -597,7 +639,7 @@ export default function TengaAgentFollowUpInbox({ user }) {
                           <button
                             type="button"
                             className="secondary"
-                            disabled={Boolean(actionId)}
+                            disabled={isBusy}
                             onClick={() =>
                               setWorkspace({ appointmentId: "", mode: "" })
                             }
@@ -614,7 +656,9 @@ export default function TengaAgentFollowUpInbox({ user }) {
                         <button
                           type="button"
                           className="secondary"
-                          disabled={activityLoadingId === followUp.appointmentId}
+                          disabled={
+                            activityLoadingId === followUp.appointmentId || isBusy
+                          }
                           onClick={() => loadActivity(followUp)}
                         >
                           {activityLoadingId === followUp.appointmentId

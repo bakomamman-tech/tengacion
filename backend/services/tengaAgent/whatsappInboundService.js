@@ -7,7 +7,7 @@ const Organization = require("../../models/tengaAgent/Organization");
 const WhatsAppConnection = require("../../models/tengaAgent/WhatsAppConnection");
 const {
   isAutoReplyEnabled,
-  processWhatsAppAutoReply,
+  queueWhatsAppAutoReply,
 } = require("./whatsappOutboundService");
 
 const PROVIDER = "meta_cloud";
@@ -275,18 +275,17 @@ const persistInboundTextEvent = async (event) => {
   };
 };
 
-const updateReplySummary = (summary, replyResult = {}) => {
-  if (replyResult.status === "accepted") summary.repliesAccepted += 1;
-  if (replyResult.status === "failed") summary.repliesFailed += 1;
+const updateReplyQueueSummary = (summary, replyResult = {}) => {
+  if (replyResult.status === "queued") summary.repliesQueued += 1;
+  if (replyResult.status === "already_queued") summary.repliesAlreadyQueued += 1;
   if (replyResult.status === "suppressed_human") summary.repliesSuppressed += 1;
-  if (replyResult.status === "already_claimed") summary.repliesAlreadyClaimed += 1;
 };
 
 const processWhatsAppWebhook = async (
   payload = {},
   {
     autoReply = isAutoReplyEnabled(),
-    replyProcessor = processWhatsAppAutoReply,
+    replyProcessor = queueWhatsAppAutoReply,
   } = {}
 ) => {
   if (payload?.object && payload.object !== "whatsapp_business_account") {
@@ -296,10 +295,10 @@ const processWhatsAppWebhook = async (
       duplicates: 0,
       unrouted: 0,
       ignored: 0,
-      repliesAccepted: 0,
-      repliesFailed: 0,
+      repliesQueued: 0,
+      repliesAlreadyQueued: 0,
       repliesSuppressed: 0,
-      repliesAlreadyClaimed: 0,
+      replyQueueFailures: 0,
     };
   }
 
@@ -310,10 +309,10 @@ const processWhatsAppWebhook = async (
     duplicates: 0,
     unrouted: 0,
     ignored,
-    repliesAccepted: 0,
-    repliesFailed: 0,
+    repliesQueued: 0,
+    repliesAlreadyQueued: 0,
     repliesSuppressed: 0,
-    repliesAlreadyClaimed: 0,
+    replyQueueFailures: 0,
   };
 
   for (const event of events) {
@@ -333,9 +332,9 @@ const processWhatsAppWebhook = async (
           phoneNumberId: event.phoneNumberId,
           recipientId: event.externalSenderId,
         });
-        updateReplySummary(summary, replyResult);
+        updateReplyQueueSummary(summary, replyResult);
       } catch {
-        summary.repliesFailed += 1;
+        summary.replyQueueFailures += 1;
       }
     }
   }

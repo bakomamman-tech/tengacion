@@ -19,6 +19,9 @@ const { normalizeUserMediaDocument } = require("./utils/userMedia");
 const {
   startAppointmentNotificationScheduler,
 } = require("./services/tengaAgent/appointmentNotificationService");
+const {
+  startWhatsAppReplyScheduler,
+} = require("./services/tengaAgent/whatsappOutboundService");
 
 const app = express();
 const isProduction = config.isProduction;
@@ -269,6 +272,7 @@ app.use("/api/tengaagent/public", require("./routes/tengaAgentPublic"));
 app.use("/api/tengaagent", require("./routes/tengaAgent"));
 
 startAppointmentNotificationScheduler({ logger: console });
+startWhatsAppReplyScheduler({ logger: console });
 
 app.get(
   [

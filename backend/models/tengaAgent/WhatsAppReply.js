@@ -27,7 +27,6 @@ const TengaAgentWhatsAppReplySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "TengaAgentMessage",
       required: true,
-      index: true,
     },
 
     inboundProviderMessageId: {

@@ -7,6 +7,7 @@ import {
 import {
   getTengaAgentOwnerBilling,
 } from "../../services/tengaAgentBillingApi";
+import TengaAgentPilotReadinessPanel from "./TengaAgentPilotReadinessPanel";
 
 const formatLimit = (value) =>
   value === null || value === undefined
@@ -76,46 +77,50 @@ export default function TengaAgentBillingPanel({ user }) {
   const agentLimit = billing.entitlements?.agents ?? null;
 
   return (
-    <section
-      className="tengaagent-owner__publication"
-      aria-labelledby="tengaagent-billing-title"
-    >
-      <div>
-        <span className="tengaagent-owner__publication-label">
-          PLAN & USAGE
-        </span>
-        <strong id="tengaagent-billing-title">
-          {billing.planCode} · {billing.subscriptionStatus}
-        </strong>
-        <p>
-          Monthly limits are enforced by the backend before a new
-          conversation or gated channel is accepted.
-        </p>
-        <div className="tengaagent-owner__lead-meta">
-          <span>
-            Conversations: {conversationsUsed.toLocaleString()} / {formatLimit(
-              conversationLimit
-            )}
-          </span>
-          <span>
-            Agents: {agentsUsed.toLocaleString()} / {formatLimit(agentLimit)}
-          </span>
-          <span>
-            WhatsApp: {billing.entitlements?.whatsapp ? "included" : "not included"}
-          </span>
-          <span>
-            Voice notes: {billing.entitlements?.voice ? "included" : "not included"}
-          </span>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={loadBilling}
-        disabled={isLoading}
+    <>
+      <section
+        className="tengaagent-owner__publication"
+        aria-labelledby="tengaagent-billing-title"
       >
-        {isLoading ? "Refreshing…" : "Refresh usage"}
-      </button>
-    </section>
+        <div>
+          <span className="tengaagent-owner__publication-label">
+            PLAN & USAGE
+          </span>
+          <strong id="tengaagent-billing-title">
+            {billing.planCode} · {billing.subscriptionStatus}
+          </strong>
+          <p>
+            Monthly limits are enforced by the backend before a new
+            conversation or gated channel is accepted.
+          </p>
+          <div className="tengaagent-owner__lead-meta">
+            <span>
+              Conversations: {conversationsUsed.toLocaleString()} / {formatLimit(
+                conversationLimit
+              )}
+            </span>
+            <span>
+              Agents: {agentsUsed.toLocaleString()} / {formatLimit(agentLimit)}
+            </span>
+            <span>
+              WhatsApp: {billing.entitlements?.whatsapp ? "included" : "not included"}
+            </span>
+            <span>
+              Voice notes: {billing.entitlements?.voice ? "included" : "not included"}
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={loadBilling}
+          disabled={isLoading}
+        >
+          {isLoading ? "Refreshing…" : "Refresh usage"}
+        </button>
+      </section>
+
+      <TengaAgentPilotReadinessPanel user={user} />
+    </>
   );
 }

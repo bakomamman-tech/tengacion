@@ -5,6 +5,11 @@ const Organization = require("../../models/tengaAgent/Organization");
 const WhatsAppReply = require("../../models/tengaAgent/WhatsAppReply");
 
 const {
+  assertFeatureAccess,
+  recordUsage,
+  TengaAgentBillingError,
+} = require("./billingService");
+const {
   respondToPublishedAgent,
 } = require("./publicAgentService");
 
@@ -234,7 +239,17 @@ const queueWhatsAppAutoReply = async ({
     return { status: "skipped_invalid" };
   }
 
-  const { inboundMessage, conversation } = context;
+  const { inboundMessage, conversation, organization } = context;
+
+  try {
+    await assertFeatureAccess({ organization, feature: "whatsapp" });
+  } catch (error) {
+    if (error instanceof TengaAgentBillingError) {
+      return { status: "blocked_plan", code: error.code };
+    }
+    throw error;
+  }
+
   if (conversation.status === "human_active") {
     return { status: "suppressed_human" };
   }
@@ -310,6 +325,23 @@ const deliverWhatsAppReply = async ({
 
   const { inboundMessage, organization, agent, conversation } = context;
 
+  try {
+    await assertFeatureAccess({ organization, feature: "whatsapp" });
+  } catch (error) {
+    if (error instanceof TengaAgentBillingError) {
+      replyRecord.status = "skipped";
+      replyRecord.completedAt = new Date();
+      replyRecord.lastError = error.message;
+      await replyRecord.save();
+      return {
+        status: "blocked_plan",
+        replyId: replyRecord._id,
+        code: error.code,
+      };
+    }
+    throw error;
+  }
+
   if (conversation.status === "human_active") {
     replyRecord.status = "skipped";
     replyRecord.completedAt = new Date();
@@ -361,6 +393,17 @@ const deliverWhatsAppReply = async ({
     }
     conversation.lastMessageAt = agentMessage.createdAt || new Date();
     await conversation.save();
+
+    await Promise.all([
+      recordUsage({
+        organizationId: organization._id,
+        metric: "aiReplies",
+      }),
+      recordUsage({
+        organizationId: organization._id,
+        metric: "whatsappOutboundMessages",
+      }),
+    ]).catch(() => null);
 
     replyRecord.status = "accepted";
     replyRecord.providerMessageId = delivery.providerMessageId;

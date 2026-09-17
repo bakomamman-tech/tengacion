@@ -5,6 +5,9 @@ const {
   respondToAgent,
   wantsHumanFollowUp,
 } = require("./agentRuntimeService");
+const {
+  getBillingAccess,
+} = require("./billingService");
 
 const cleanKey = (value, max = 120) =>
   String(value || "")
@@ -81,6 +84,11 @@ const resolvePublishedAgent = async ({
   });
 
   if (!agent) {
+    return null;
+  }
+
+  const billing = await getBillingAccess(organization);
+  if (!billing.allowed) {
     return null;
   }
 

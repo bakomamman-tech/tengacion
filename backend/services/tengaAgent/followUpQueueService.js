@@ -66,6 +66,7 @@ const serializeFollowUp = (appointment, reminder, now = new Date()) => {
     phone: appointment.phone,
     company: appointment.company,
     purpose: appointment.purpose,
+    consentToContact: Boolean(appointment.consentToContact),
     appointmentStatus: appointment.status,
     preferredStartAt: appointment.preferredStartAt,
     timezone: appointment.timezone,
@@ -75,7 +76,7 @@ const serializeFollowUp = (appointment, reminder, now = new Date()) => {
     followUpUpdatedAt: appointment.followUpUpdatedAt || null,
     followUpCompletedAt: appointment.followUpCompletedAt || null,
     overdue,
-    dueState: overdue ? "overdue" : "upcoming",
+    dueState: followUpAt ? (overdue ? "overdue" : "upcoming") : "completed",
     reminder: serializeReminder(reminder),
     updatedAt: appointment.updatedAt,
   };
@@ -88,7 +89,7 @@ const latestRemindersByAppointment = async ({ organizationId, appointmentIds }) 
     organizationId,
     appointmentId: { $in: appointmentIds },
   })
-    .sort({ createdAt: -1 })
+    .sort({ createdAt: -1, _id: -1 })
     .lean();
 
   const latestByAppointment = new Map();

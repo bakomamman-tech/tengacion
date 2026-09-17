@@ -23,6 +23,9 @@ const { findOwnerWorkspace } = require("./ownerWorkspaceService");
 
 const PREPAID_PERIOD_DAYS = 30;
 const PREPAID_PERIOD_MS = PREPAID_PERIOD_DAYS * 24 * 60 * 60 * 1000;
+const PENDING_CHECKOUT_REUSE_MINUTES = 15;
+const PENDING_CHECKOUT_REUSE_MS =
+  PENDING_CHECKOUT_REUSE_MINUTES * 60 * 1000;
 const SUPPORTED_CURRENCIES = new Set(["NGN", "USD"]);
 const PAID_STRIPE_EVENTS = new Set([
   "checkout.session.completed",
@@ -147,6 +150,49 @@ const markCheckoutFailed = async (checkout, error) => {
   ).catch(() => null);
 };
 
+const getReusablePendingCheckout = async ({
+  organizationId,
+  userId,
+  planCode,
+  provider,
+  currency,
+  amount,
+  now = new Date(),
+}) => {
+  const currentTime = now instanceof Date ? now : new Date(now);
+  if (Number.isNaN(currentTime.getTime())) {
+    return null;
+  }
+
+  const reusableAfter = new Date(
+    currentTime.getTime() - PENDING_CHECKOUT_REUSE_MS
+  );
+
+  const checkout = await BillingCheckout.findOne({
+    organizationId,
+    requestedByUserId: userId,
+    planCode,
+    provider,
+    currency,
+    amount: Number(amount),
+    status: "pending",
+    createdAt: { $gte: reusableAfter },
+    providerCheckoutUrl: {
+      $exists: true,
+      $type: "string",
+      $ne: "",
+    },
+  })
+    .select("+providerSessionId +providerCheckoutUrl")
+    .sort({ createdAt: -1 });
+
+  if (!String(checkout?.providerCheckoutUrl || "").trim()) {
+    return null;
+  }
+
+  return checkout;
+};
+
 const initializeOwnerPlanCheckout = async ({
   userId,
   userEmail,
@@ -193,6 +239,25 @@ const initializeOwnerPlanCheckout = async ({
   }
 
   const provider = providerForCurrency(normalizedCurrency);
+  const reusableCheckout = await getReusablePendingCheckout({
+    organizationId: workspace.organization._id,
+    userId,
+    planCode: normalizedPlan,
+    provider,
+    currency: normalizedCurrency,
+    amount,
+  });
+
+  if (reusableCheckout) {
+    return {
+      reused: true,
+      checkout: serializeCheckout(
+        reusableCheckout,
+        String(reusableCheckout.providerCheckoutUrl || "").trim()
+      ),
+    };
+  }
+
   const reference =
     provider === "stripe"
       ? generateStripeReference(`tengaagent_${normalizedPlan}`)
@@ -227,12 +292,21 @@ const initializeOwnerPlanCheckout = async ({
         callbackUrl: buildReturnUrl(),
         metadata,
       });
+      const checkoutUrl = String(payment?.authorization_url || "").trim();
+      if (!checkoutUrl) {
+        throw new TengaAgentCheckoutError(
+          "Paystack did not return a TengaAgent checkout URL.",
+          "TENGAAGENT_PAYSTACK_CHECKOUT_URL_MISSING",
+          502
+        );
+      }
+
+      checkout.providerCheckoutUrl = checkoutUrl;
+      await checkout.save();
 
       return {
-        checkout: serializeCheckout(
-          checkout,
-          String(payment?.authorization_url || "")
-        ),
+        reused: false,
+        checkout: serializeCheckout(checkout, checkoutUrl),
       };
     }
 
@@ -248,15 +322,24 @@ const initializeOwnerPlanCheckout = async ({
       returnUrl: buildReturnUrl(),
       metadata,
     });
+    const checkoutUrl = String(
+      session?.authorization_url || session?.url || ""
+    ).trim();
+    if (!checkoutUrl) {
+      throw new TengaAgentCheckoutError(
+        "Stripe did not return a TengaAgent checkout URL.",
+        "TENGAAGENT_STRIPE_CHECKOUT_URL_MISSING",
+        502
+      );
+    }
 
     checkout.providerSessionId = String(session?.id || "");
+    checkout.providerCheckoutUrl = checkoutUrl;
     await checkout.save();
 
     return {
-      checkout: serializeCheckout(
-        checkout,
-        String(session?.authorization_url || session?.url || "")
-      ),
+      reused: false,
+      checkout: serializeCheckout(checkout, checkoutUrl),
     };
   } catch (error) {
     await markCheckoutFailed(checkout, error);
@@ -265,7 +348,9 @@ const initializeOwnerPlanCheckout = async ({
 };
 
 const getCheckoutWithProviderState = async (query) =>
-  BillingCheckout.findOne(query).select("+providerSessionId");
+  BillingCheckout.findOne(query).select(
+    "+providerSessionId +providerCheckoutUrl"
+  );
 
 const assertProviderPaymentMatchesCheckout = ({ checkout, payment }) => {
   const paymentAmount = Number(payment?.amount || 0);
@@ -520,9 +605,11 @@ const handleStripeWebhook = async ({ rawBody, signature }) => {
 };
 
 module.exports = {
+  PENDING_CHECKOUT_REUSE_MINUTES,
   PREPAID_PERIOD_DAYS,
   TengaAgentCheckoutError,
   activatePaidCheckout,
+  getReusablePendingCheckout,
   handlePaystackWebhook,
   handleStripeWebhook,
   hasProtectedActivePrepaidPeriod,

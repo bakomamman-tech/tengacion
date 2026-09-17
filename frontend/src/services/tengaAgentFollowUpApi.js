@@ -35,6 +35,7 @@ const request = async (path, { method = "GET", body } = {}) => {
       data?.message || data?.error || "TengaAgent could not complete the follow-up request."
     );
     error.status = response.status;
+    error.data = data;
     throw error;
   }
 
@@ -45,6 +46,41 @@ export const getTengaAgentOwnerFollowUps = ({ filter = "all", limit = 100 } = {}
   request(
     `/follow-ups?filter=${encodeURIComponent(filter)}&limit=${encodeURIComponent(limit)}`
   );
+
+export const getTengaAgentOwnerFollowUpActivity = ({
+  appointmentId,
+  limit = 100,
+}) =>
+  request(
+    `/follow-ups/${encodeURIComponent(appointmentId)}/activity?limit=${encodeURIComponent(limit)}`
+  );
+
+export const sendTengaAgentOwnerFollowUpEmail = ({
+  appointmentId,
+  subject,
+  message,
+}) =>
+  request(`/follow-ups/${encodeURIComponent(appointmentId)}/send-email`, {
+    method: "POST",
+    body: { subject, message },
+  });
+
+export const logTengaAgentOwnerFollowUpContact = ({
+  appointmentId,
+  channel,
+  direction,
+  notes,
+  occurredAt,
+}) =>
+  request(`/follow-ups/${encodeURIComponent(appointmentId)}/log-contact`, {
+    method: "POST",
+    body: {
+      channel,
+      direction,
+      notes,
+      ...(occurredAt ? { occurredAt } : {}),
+    },
+  });
 
 export const completeTengaAgentOwnerFollowUp = ({ appointmentId }) =>
   request(`/follow-ups/${encodeURIComponent(appointmentId)}/complete`, {

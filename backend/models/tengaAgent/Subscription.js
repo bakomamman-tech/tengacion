@@ -59,6 +59,23 @@ const TengaAgentSubscriptionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    renewalMode: {
+      type: String,
+      enum: ["manual", "prepaid", "recurring"],
+      default: "manual",
+      index: true,
+    },
+    lastPaymentReference: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 180,
+      index: true,
+    },
+    lastPaymentAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

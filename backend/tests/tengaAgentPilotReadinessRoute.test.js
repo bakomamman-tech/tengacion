@@ -69,9 +69,11 @@ afterAll(async () => {
 });
 
 const createOwner = async () => {
+  const userId = new mongoose.Types.ObjectId();
   const user = await User.create({
     name: "Pilot Owner",
-    email: `pilot-${new mongoose.Types.ObjectId()}@example.com`,
+    username: `pilotowner${userId.toString().slice(-8)}`,
+    email: `pilot-${userId}@example.com`,
     password: "StrongPass123!",
   });
 

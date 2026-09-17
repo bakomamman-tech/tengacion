@@ -78,6 +78,49 @@ const assertTargetPlanCapacity = async ({ organizationId, planCode }) => {
   return entitlements;
 };
 
+const hasProtectedActivePrepaidPeriod = ({
+  subscription,
+  planCode,
+  now = new Date(),
+}) => {
+  if (!subscription || subscription.status !== "active") {
+    return false;
+  }
+  if (subscription.renewalMode !== "prepaid") {
+    return false;
+  }
+  if (normalizePlanCode(subscription.planCode) !== normalizePlanCode(planCode)) {
+    return false;
+  }
+
+  const periodEnd = new Date(subscription.currentPeriodEnd || "");
+  const currentTime = now instanceof Date ? now : new Date(now);
+  if (
+    Number.isNaN(periodEnd.getTime()) ||
+    Number.isNaN(currentTime.getTime())
+  ) {
+    return false;
+  }
+
+  return periodEnd.getTime() > currentTime.getTime();
+};
+
+const assertNoProtectedActivePrepaidPeriod = async ({
+  organizationId,
+  planCode,
+}) => {
+  const subscription = await Subscription.findOne({ organizationId });
+  if (!hasProtectedActivePrepaidPeriod({ subscription, planCode })) {
+    return subscription;
+  }
+
+  throw new TengaAgentCheckoutError(
+    "This TengaAgent plan is already prepaid and active. Renew it after the current paid period ends so remaining paid days are not lost.",
+    "TENGAAGENT_PREPAID_PERIOD_ACTIVE",
+    409
+  );
+};
+
 const serializeCheckout = (checkout, checkoutUrl = "") => ({
   id: String(checkout?._id || ""),
   planCode: checkout?.planCode || "",
@@ -133,6 +176,10 @@ const initializeOwnerPlanCheckout = async ({
 
   const amount = getTengaAgentPlanPrice(normalizedPlan, normalizedCurrency);
   await assertTargetPlanCapacity({
+    organizationId: workspace.organization._id,
+    planCode: normalizedPlan,
+  });
+  await assertNoProtectedActivePrepaidPeriod({
     organizationId: workspace.organization._id,
     planCode: normalizedPlan,
   });
@@ -478,6 +525,7 @@ module.exports = {
   activatePaidCheckout,
   handlePaystackWebhook,
   handleStripeWebhook,
+  hasProtectedActivePrepaidPeriod,
   initializeOwnerPlanCheckout,
   serializeCheckout,
   verifyOwnerPlanCheckout,

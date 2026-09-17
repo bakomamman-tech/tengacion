@@ -6,6 +6,13 @@ const Message = require("../../models/tengaAgent/Message");
 const Organization = require("../../models/tengaAgent/Organization");
 const WhatsAppConnection = require("../../models/tengaAgent/WhatsAppConnection");
 const {
+  assertFeatureAccess,
+  recordUsage,
+  releaseConversationStart,
+  reserveConversationStart,
+  TengaAgentBillingError,
+} = require("./billingService");
+const {
   isAutoReplyEnabled,
   queueWhatsAppAutoReply,
 } = require("./whatsappOutboundService");
@@ -169,7 +176,7 @@ const resolveTenantForPhoneNumber = async (phoneNumberId) => {
     Organization.findOne({
       _id: connection.organizationId,
       status: { $in: ["pilot", "active"] },
-    }).lean(),
+    }),
     Agent.findOne({
       _id: connection.agentId,
       organizationId: connection.organizationId,
@@ -199,6 +206,8 @@ const findOrCreateConversation = async ({ organization, agent, sessionKey }) => 
   });
 
   if (!conversation) {
+    await reserveConversationStart({ organization });
+
     try {
       conversation = await Conversation.create({
         organizationId: organization._id,
@@ -209,6 +218,10 @@ const findOrCreateConversation = async ({ organization, agent, sessionKey }) => 
         lastMessageAt: new Date(),
       });
     } catch (error) {
+      await releaseConversationStart({
+        organizationId: organization._id,
+      }).catch(() => null);
+
       if (error?.code !== 11000) {
         throw error;
       }
@@ -248,6 +261,22 @@ const persistInboundEvent = async (event) => {
 
   const { organization, agent } = tenant;
 
+  try {
+    await assertFeatureAccess({ organization, feature: "whatsapp" });
+    if (event.sourceType === "voice_note") {
+      await assertFeatureAccess({ organization, feature: "voice" });
+    }
+  } catch (error) {
+    if (error instanceof TengaAgentBillingError) {
+      return {
+        status: "blocked_plan",
+        sourceType: event.sourceType,
+        code: error.code,
+      };
+    }
+    throw error;
+  }
+
   const existing = await Message.findOne({
     organizationId: organization._id,
     provider: MESSAGE_PROVIDER,
@@ -266,12 +295,24 @@ const persistInboundEvent = async (event) => {
     };
   }
 
-  const sessionKey = buildSessionKey(event);
-  const conversation = await findOrCreateConversation({
-    organization,
-    agent,
-    sessionKey,
-  });
+  let conversation;
+  try {
+    const sessionKey = buildSessionKey(event);
+    conversation = await findOrCreateConversation({
+      organization,
+      agent,
+      sessionKey,
+    });
+  } catch (error) {
+    if (error instanceof TengaAgentBillingError) {
+      return {
+        status: "blocked_plan",
+        sourceType: event.sourceType,
+        code: error.code,
+      };
+    }
+    throw error;
+  }
 
   let message;
 
@@ -320,6 +361,26 @@ const persistInboundEvent = async (event) => {
   conversation.lastMessageAt = message.createdAt || new Date();
   await conversation.save();
 
+  const usageWrites = [
+    recordUsage({
+      organizationId: organization._id,
+      metric: "customerMessages",
+    }),
+    recordUsage({
+      organizationId: organization._id,
+      metric: "whatsappInboundMessages",
+    }),
+  ];
+  if (message.sourceType === "voice_note") {
+    usageWrites.push(
+      recordUsage({
+        organizationId: organization._id,
+        metric: "voiceNotes",
+      })
+    );
+  }
+  await Promise.all(usageWrites).catch(() => null);
+
   return {
     status: "stored",
     messageId: message._id,
@@ -354,6 +415,7 @@ const processWhatsAppWebhook = async (
       stored: 0,
       duplicates: 0,
       unrouted: 0,
+      blockedByPlan: 0,
       ignored: 0,
       repliesQueued: 0,
       repliesAlreadyQueued: 0,
@@ -370,6 +432,7 @@ const processWhatsAppWebhook = async (
     stored: 0,
     duplicates: 0,
     unrouted: 0,
+    blockedByPlan: 0,
     ignored,
     repliesQueued: 0,
     repliesAlreadyQueued: 0,
@@ -384,6 +447,7 @@ const processWhatsAppWebhook = async (
     if (result.status === "stored") summary.stored += 1;
     if (result.status === "duplicate") summary.duplicates += 1;
     if (result.status === "unrouted") summary.unrouted += 1;
+    if (result.status === "blocked_plan") summary.blockedByPlan += 1;
 
     if (result.sourceType === "voice_note") {
       if (result.status === "stored" && result.transcriptionStatus === "pending") {

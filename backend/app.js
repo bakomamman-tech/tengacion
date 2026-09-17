@@ -22,6 +22,9 @@ const {
 const {
   startWhatsAppReplyScheduler,
 } = require("./services/tengaAgent/whatsappOutboundService");
+const {
+  startWhatsAppVoiceScheduler,
+} = require("./services/tengaAgent/whatsappVoiceService");
 
 const app = express();
 const isProduction = config.isProduction;
@@ -273,6 +276,7 @@ app.use("/api/tengaagent", require("./routes/tengaAgent"));
 
 startAppointmentNotificationScheduler({ logger: console });
 startWhatsAppReplyScheduler({ logger: console });
+startWhatsAppVoiceScheduler({ logger: console });
 
 app.get(
   [

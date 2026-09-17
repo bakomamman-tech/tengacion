@@ -17,6 +17,7 @@ import {
 
 const {
   completeFollowUpMock,
+  draftEmailMock,
   getActivityMock,
   getFollowUpsMock,
   logContactMock,
@@ -24,6 +25,7 @@ const {
   sendEmailMock,
 } = vi.hoisted(() => ({
   completeFollowUpMock: vi.fn(),
+  draftEmailMock: vi.fn(),
   getActivityMock: vi.fn(),
   getFollowUpsMock: vi.fn(),
   logContactMock: vi.fn(),
@@ -37,6 +39,7 @@ vi.mock(
     getTengaAgentOwnerFollowUps: (...args) => getFollowUpsMock(...args),
     getTengaAgentOwnerFollowUpActivity: (...args) => getActivityMock(...args),
     completeTengaAgentOwnerFollowUp: (...args) => completeFollowUpMock(...args),
+    draftTengaAgentOwnerFollowUpEmail: (...args) => draftEmailMock(...args),
     logTengaAgentOwnerFollowUpContact: (...args) => logContactMock(...args),
     rescheduleTengaAgentOwnerFollowUp: (...args) => rescheduleFollowUpMock(...args),
     sendTengaAgentOwnerFollowUpEmail: (...args) => sendEmailMock(...args),
@@ -100,6 +103,13 @@ describe("TengaAgentFollowUpInbox", () => {
     getFollowUpsMock.mockResolvedValue(RESPONSE);
     getActivityMock.mockResolvedValue({ ok: true, activities: [] });
     completeFollowUpMock.mockResolvedValue({ ok: true });
+    draftEmailMock.mockResolvedValue({
+      ok: true,
+      draft: {
+        subject: "AI revised implementation scope",
+        message: "Hello, thank you for the conversation. Here is the proposed next step.",
+      },
+    });
     logContactMock.mockResolvedValue({ ok: true });
     rescheduleFollowUpMock.mockResolvedValue({ ok: true });
     sendEmailMock.mockResolvedValue({ ok: true, activity: SENT_ACTIVITY });
@@ -157,6 +167,60 @@ describe("TengaAgentFollowUpInbox", () => {
         followUpAt: new Date("2026-09-19T12:30").toISOString(),
       });
     });
+  });
+
+  it("generates an editable AI draft without sending, then sends only after owner approval", async () => {
+    const user = userEvent.setup();
+
+    render(<TengaAgentFollowUpInbox user={{ id: "owner-1" }} />);
+    await screen.findByText("Follow Up Visitor");
+    await user.click(screen.getByRole("button", { name: "Send email" }));
+    await screen.findByText("Send follow-up email");
+
+    await user.click(screen.getByRole("button", { name: "Draft with TengaAgent" }));
+
+    await waitFor(() => {
+      expect(draftEmailMock).toHaveBeenCalledWith({
+        appointmentId: FOLLOW_UP.appointmentId,
+      });
+    });
+    expect(screen.getByLabelText("Email subject")).toHaveValue(
+      "AI revised implementation scope"
+    );
+    expect(screen.getByLabelText("Email message")).toHaveValue(
+      "Hello, thank you for the conversation. Here is the proposed next step."
+    );
+    expect(sendEmailMock).not.toHaveBeenCalled();
+
+    const messageInput = screen.getByLabelText("Email message");
+    await user.clear(messageInput);
+    await user.type(messageInput, "Owner-reviewed wording with the confirmed next step.");
+    await user.click(
+      screen.getByRole("button", { name: `Send to ${FOLLOW_UP.email}` })
+    );
+
+    await waitFor(() => {
+      expect(sendEmailMock).toHaveBeenCalledWith({
+        appointmentId: FOLLOW_UP.appointmentId,
+        subject: "AI revised implementation scope",
+        message: "Owner-reviewed wording with the confirmed next step.",
+      });
+    });
+  });
+
+  it("surfaces AI drafting failure without invoking email delivery", async () => {
+    const user = userEvent.setup();
+    draftEmailMock.mockRejectedValue(new Error("AI drafting is temporarily unavailable."));
+
+    render(<TengaAgentFollowUpInbox user={{ id: "owner-1" }} />);
+    await screen.findByText("Follow Up Visitor");
+    await user.click(screen.getByRole("button", { name: "Send email" }));
+    await user.click(screen.getByRole("button", { name: "Draft with TengaAgent" }));
+
+    expect(
+      await screen.findByRole("alert")
+    ).toHaveTextContent("AI drafting is temporarily unavailable.");
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
   it("sends an explicit owner-approved email and refreshes contact history", async () => {

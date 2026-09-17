@@ -3,6 +3,10 @@ const {
   OWNER_AGENT_KEY,
   findOwnerWorkspace,
 } = require("./ownerWorkspaceService");
+const {
+  assertAgentCapacity,
+  assertSubscriptionAccess,
+} = require("./billingService");
 
 const SUPPORTED_OWNER_TOOLS = new Set([
   "lead_capture",
@@ -56,8 +60,19 @@ const normalizeTools = (value) => {
   return normalized;
 };
 
-const ensureOwnerAgent = async (organization) =>
-  Agent.findOneAndUpdate(
+const ensureOwnerAgent = async (organization) => {
+  const existing = await Agent.findOne({
+    organizationId: organization._id,
+    key: OWNER_AGENT_KEY,
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  await assertAgentCapacity({ organization });
+
+  return Agent.findOneAndUpdate(
     {
       organizationId: organization._id,
       key: OWNER_AGENT_KEY,
@@ -85,6 +100,7 @@ const ensureOwnerAgent = async (organization) =>
       setDefaultsOnInsert: true,
     }
   );
+};
 
 const getOwnerAgent = async (workspace) =>
   workspace.agent || ensureOwnerAgent(workspace.organization);
@@ -97,6 +113,10 @@ const setOwnerAgentPublicationPreservingTools = async ({
 
   if (!workspace) {
     return null;
+  }
+
+  if (published) {
+    await assertSubscriptionAccess(workspace.organization);
   }
 
   const agent = await getOwnerAgent(workspace);
@@ -131,6 +151,7 @@ const updateOwnerAgentConfiguration = async ({
     return null;
   }
 
+  await assertSubscriptionAccess(workspace.organization);
   const agent = await getOwnerAgent(workspace);
   const wasPublished = agent.status === "active";
 

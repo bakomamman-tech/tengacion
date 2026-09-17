@@ -34,6 +34,7 @@ beforeEach(async () => {
   process.env.TENGAAGENT_WHATSAPP_APP_SECRET = "app-secret";
   process.env.TENGAAGENT_WHATSAPP_ACCESS_TOKEN = "access-token";
   process.env.TENGAAGENT_WHATSAPP_GRAPH_VERSION = "v23.0";
+  process.env.TENGAAGENT_WHATSAPP_AUTO_REPLY_ENABLED = "true";
 });
 
 afterAll(async () => {

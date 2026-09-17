@@ -5,6 +5,10 @@ const request = require("supertest");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 
 process.env.NODE_ENV = "test";
+process.env.MONGO_URI =
+  process.env.MONGO_URI || "mongodb://127.0.0.1:27017/tengaagent-whatsapp-test";
+process.env.JWT_SECRET =
+  process.env.JWT_SECRET || "tengaagent-whatsapp-test-jwt-secret-not-for-production";
 process.env.TENGAAGENT_WHATSAPP_VERIFY_TOKEN = "tengaagent-test-verify-token";
 process.env.TENGAAGENT_WHATSAPP_APP_SECRET = "tengaagent-test-app-secret";
 

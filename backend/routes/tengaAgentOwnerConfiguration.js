@@ -12,6 +12,12 @@ const {
 const {
   syncOwnerWebsiteKnowledge,
 } = require("../services/tengaAgent/ownerWebsiteKnowledgeService");
+const {
+  findOwnerWorkspace,
+} = require("../services/tengaAgent/ownerWorkspaceService");
+const {
+  getBillingSummary,
+} = require("../services/tengaAgent/billingService");
 
 const router = express.Router();
 
@@ -58,6 +64,34 @@ const serializeSource = (source) => ({
   status: source.status,
   chunkCount: source.chunkCount,
   updatedAt: source.updatedAt,
+});
+
+router.get("/billing", async (req, res, next) => {
+  try {
+    const workspace = await findOwnerWorkspace(req.user._id);
+    if (!workspace) {
+      return res.status(404).json({
+        ok: false,
+        message: "TengaAgent workspace not found.",
+      });
+    }
+
+    const billing = await getBillingSummary(workspace.organization);
+    if (!billing) {
+      return res.status(503).json({
+        ok: false,
+        message: "TengaAgent billing state is unavailable.",
+      });
+    }
+
+    res.set("Cache-Control", "no-store");
+    return res.json({
+      ok: true,
+      billing,
+    });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 router.patch(

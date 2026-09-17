@@ -14,6 +14,7 @@ import {
 } from "../../services/tengaAgentApi";
 
 import TengaAgentAppointmentInbox from "./TengaAgentAppointmentInbox";
+import TengaAgentBillingPanel from "./TengaAgentBillingPanel";
 import TengaAgentFollowUpInbox from "./TengaAgentFollowUpInbox";
 import TengaAgentKnowledgeWorkspace from "./TengaAgentKnowledgeWorkspace";
 import TengaAgentNextBestActionPanel from "./TengaAgentNextBestActionPanel";
@@ -430,6 +431,8 @@ export default function TengaAgentOwnerDashboard({
               <strong>{counts.all}</strong>
             </article>
           </div>
+
+          <TengaAgentBillingPanel user={user} />
 
           <div className="tengaagent-owner__publication">
             <div>

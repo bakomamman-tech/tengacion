@@ -47,6 +47,9 @@ export const getTengaAgentOwnerFollowUps = ({ filter = "all", limit = 100 } = {}
     `/follow-ups?filter=${encodeURIComponent(filter)}&limit=${encodeURIComponent(limit)}`
   );
 
+export const getTengaAgentOwnerFollowUpRecommendation = ({ appointmentId }) =>
+  request(`/follow-ups/${encodeURIComponent(appointmentId)}/recommendation`);
+
 export const getTengaAgentOwnerFollowUpActivity = ({
   appointmentId,
   limit = 100,

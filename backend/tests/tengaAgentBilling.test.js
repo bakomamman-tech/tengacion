@@ -90,8 +90,8 @@ describe("TengaAgent billing foundation", () => {
         subscriptionStatus: "trialing",
         entitlements: expect.objectContaining({
           agents: 1,
-          monthlyConversations: 500,
-          whatsapp: true,
+          monthlyConversations: 300,
+          whatsapp: false,
           voice: false,
         }),
       })
@@ -128,10 +128,29 @@ describe("TengaAgent billing foundation", () => {
       plan: "starter",
       status: "active",
     });
+    const growth = await createOrganization({
+      slug: "growth-features",
+      plan: "growth",
+      status: "active",
+    });
 
     await expect(
       assertFeatureAccess({
         organization: starter,
+        feature: "whatsapp",
+      })
+    ).rejects.toBeInstanceOf(TengaAgentBillingError);
+
+    await expect(
+      assertFeatureAccess({
+        organization: starter,
+        feature: "voice",
+      })
+    ).rejects.toBeInstanceOf(TengaAgentBillingError);
+
+    await expect(
+      assertFeatureAccess({
+        organization: growth,
         feature: "whatsapp",
       })
     ).resolves.toEqual(
@@ -140,10 +159,12 @@ describe("TengaAgent billing foundation", () => {
 
     await expect(
       assertFeatureAccess({
-        organization: starter,
+        organization: growth,
         feature: "voice",
       })
-    ).rejects.toBeInstanceOf(TengaAgentBillingError);
+    ).resolves.toEqual(
+      expect.objectContaining({ allowed: true })
+    );
   });
 
   it("reserves monthly conversation capacity atomically at the plan limit", async () => {
@@ -236,7 +257,7 @@ describe("TengaAgent billing foundation", () => {
         whatsappInboundMessages: 2,
         voiceNotes: 1,
         conversationsStarted: 0,
-        conversationsRemaining: 3000,
+        conversationsRemaining: 1500,
       })
     );
   });

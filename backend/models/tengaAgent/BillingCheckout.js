@@ -55,6 +55,13 @@ const TengaAgentBillingCheckoutSchema = new mongoose.Schema(
       maxlength: 255,
       select: false,
     },
+    providerCheckoutUrl: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 2048,
+      select: false,
+    },
     status: {
       type: String,
       enum: ["pending", "paid", "failed", "cancelled"],
@@ -88,6 +95,16 @@ TengaAgentBillingCheckoutSchema.index({
 
 TengaAgentBillingCheckoutSchema.index({
   provider: 1,
+  status: 1,
+  createdAt: -1,
+});
+
+TengaAgentBillingCheckoutSchema.index({
+  organizationId: 1,
+  requestedByUserId: 1,
+  planCode: 1,
+  provider: 1,
+  currency: 1,
   status: 1,
   createdAt: -1,
 });

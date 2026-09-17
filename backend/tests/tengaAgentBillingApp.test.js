@@ -5,16 +5,16 @@ process.env.JWT_SECRET =
   process.env.JWT_SECRET ||
   "tengaagent-billing-app-test-secret-not-for-production";
 
-const initializeOwnerPlanCheckout = jest.fn();
-const verifyOwnerPlanCheckout = jest.fn();
-const handlePaystackWebhook = jest.fn(async () => ({ handled: true }));
-const handleStripeWebhook = jest.fn(async () => ({ handled: true }));
+const mockInitializeOwnerPlanCheckout = jest.fn();
+const mockVerifyOwnerPlanCheckout = jest.fn();
+const mockHandlePaystackWebhook = jest.fn(async () => ({ handled: true }));
+const mockHandleStripeWebhook = jest.fn(async () => ({ handled: true }));
 
 jest.mock("../services/tengaAgent/subscriptionCheckoutService", () => ({
-  initializeOwnerPlanCheckout,
-  verifyOwnerPlanCheckout,
-  handlePaystackWebhook,
-  handleStripeWebhook,
+  initializeOwnerPlanCheckout: mockInitializeOwnerPlanCheckout,
+  verifyOwnerPlanCheckout: mockVerifyOwnerPlanCheckout,
+  handlePaystackWebhook: mockHandlePaystackWebhook,
+  handleStripeWebhook: mockHandleStripeWebhook,
 }));
 
 const app = require("../app");
@@ -38,9 +38,9 @@ describe("TengaAgent billing app wiring", () => {
       .expect(200);
 
     expect(response.body).toEqual({ ok: true, handled: true });
-    expect(handlePaystackWebhook).toHaveBeenCalledTimes(1);
+    expect(mockHandlePaystackWebhook).toHaveBeenCalledTimes(1);
 
-    const call = handlePaystackWebhook.mock.calls[0][0];
+    const call = mockHandlePaystackWebhook.mock.calls[0][0];
     expect(Buffer.isBuffer(call.rawBody)).toBe(true);
     expect(call.rawBody.toString("utf8")).toBe(rawPayload);
     expect(call.signature).toBe("test-signature");
@@ -61,9 +61,9 @@ describe("TengaAgent billing app wiring", () => {
       .expect(200);
 
     expect(response.body).toEqual({ ok: true, handled: true });
-    expect(handleStripeWebhook).toHaveBeenCalledTimes(1);
+    expect(mockHandleStripeWebhook).toHaveBeenCalledTimes(1);
 
-    const call = handleStripeWebhook.mock.calls[0][0];
+    const call = mockHandleStripeWebhook.mock.calls[0][0];
     expect(Buffer.isBuffer(call.rawBody)).toBe(true);
     expect(call.rawBody.toString("utf8")).toBe(rawPayload);
     expect(call.signature).toBe("stripe-test-signature");

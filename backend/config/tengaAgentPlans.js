@@ -63,6 +63,13 @@ const TENGAAGENT_SELF_SERVICE_PLAN_CODES = Object.freeze(
   Object.keys(TENGAAGENT_PLAN_PRICING)
 );
 
+const toPlanLabel = (planCode) =>
+  String(planCode || "")
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
 const getTengaAgentPlanEntitlements = (planCode) => {
   const normalized = String(planCode || "")
     .trim()
@@ -110,6 +117,14 @@ const getTengaAgentPlanPrice = (planCode, currency) => {
   return amount;
 };
 
+const getTengaAgentSelfServicePlanCatalog = () =>
+  TENGAAGENT_SELF_SERVICE_PLAN_CODES.map((code) => ({
+    code,
+    label: toPlanLabel(code),
+    prices: { ...TENGAAGENT_PLAN_PRICING[code] },
+    entitlements: { ...TENGAAGENT_PLAN_ENTITLEMENTS[code] },
+  }));
+
 module.exports = {
   TENGAAGENT_PLAN_CODES,
   TENGAAGENT_PLAN_ENTITLEMENTS,
@@ -117,4 +132,5 @@ module.exports = {
   TENGAAGENT_SELF_SERVICE_PLAN_CODES,
   getTengaAgentPlanEntitlements,
   getTengaAgentPlanPrice,
+  getTengaAgentSelfServicePlanCatalog,
 };

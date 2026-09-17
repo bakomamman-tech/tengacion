@@ -13,19 +13,19 @@ const TENGAAGENT_PLAN_ENTITLEMENTS = Object.freeze({
   }),
   starter: Object.freeze({
     agents: 1,
-    monthlyConversations: 500,
-    whatsapp: true,
+    monthlyConversations: 300,
+    whatsapp: false,
     voice: false,
   }),
   growth: Object.freeze({
     agents: 3,
-    monthlyConversations: 3000,
+    monthlyConversations: 1500,
     whatsapp: true,
     voice: true,
   }),
   business: Object.freeze({
     agents: 10,
-    monthlyConversations: 15000,
+    monthlyConversations: 5000,
     whatsapp: true,
     voice: true,
   }),

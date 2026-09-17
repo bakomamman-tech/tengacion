@@ -13,6 +13,9 @@ const {
 const {
   composeOwnerFollowUpEmail,
 } = require("../services/tengaAgent/followUpComposerService");
+const {
+  getOwnerFollowUpRecommendation,
+} = require("../services/tengaAgent/followUpIntelligenceService");
 
 const router = express.Router();
 
@@ -87,6 +90,26 @@ router.get("/follow-ups", async (req, res, next) => {
         message: error.message,
       });
     }
+    return next(error);
+  }
+});
+
+router.get("/follow-ups/:appointmentId/recommendation", async (req, res, next) => {
+  try {
+    const result = await getOwnerFollowUpRecommendation({
+      userId: req.user._id,
+      appointmentId: req.params.appointmentId,
+    });
+
+    const notFoundResponse = respondNotFound(res, result);
+    if (notFoundResponse) return notFoundResponse;
+
+    res.set("Cache-Control", "no-store");
+    return res.json({
+      ok: true,
+      recommendation: result.recommendation,
+    });
+  } catch (error) {
     return next(error);
   }
 });

@@ -14,6 +14,7 @@ import InFeedPeopleCarousel from "../components/feed/InFeedPeopleCarousel";
 import InFeedReelsCarousel from "../components/feed/InFeedReelsCarousel";
 import InFeedStoriesCarousel from "../components/feed/InFeedStoriesCarousel";
 
+import CanexVotingBanner from "../components/CanexVotingBanner";
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 import Messenger from "../Messenger";
@@ -1808,6 +1809,7 @@ export default function Home({ user }) {
         </aside>
 
         <main className="feed">
+          <CanexVotingBanner />
           {isBirthdayToday(currentUser?.birthday) && (
             <section className="card birthday-banner">
               <img src="/assets/birthday-cake.svg" alt="Birthday cake" />

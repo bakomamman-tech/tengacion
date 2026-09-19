@@ -5,6 +5,10 @@ on:
     branches:
       - fix/tengaagent-security-deps-20260920
 
+concurrency:
+  group: tengaagent-dependency-remediation-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -29,6 +33,7 @@ jobs:
             echo "::group::Remediate $project"
             (
               cd "$project" || exit 1
+              npm install --package-lock-only --ignore-scripts || exit 1
               npm ci || exit 1
               npm audit fix
               result=$?
@@ -74,6 +79,14 @@ jobs:
             echo "::group::Audit $project (production dependencies)"
             ( cd "$project" && npm audit --omit=dev --audit-level=high ) || true
             echo "::endgroup::"
+          done
+
+      - name: Reject high-severity dependency vulnerabilities in all three projects
+        shell: bash
+        run: |
+          set -euo pipefail
+          for project in . backend frontend; do
+            ( cd "$project" && npm audit --audit-level=high )
           done
 
       - name: Commit only tested dependency manifest and lockfile changes

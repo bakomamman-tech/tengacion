@@ -8,6 +8,7 @@ import { useAuth } from "../../context/AuthContext";
 import { API_BASE } from "../../config/apiBase";
 import {
   sendTengaAgentMessage,
+  getTengaAgentPilotVisitorReplies,
   submitTengaAgentAppointment,
   submitTengaAgentLead,
 } from "../../services/tengaAgentApi";
@@ -190,7 +191,7 @@ function ChatMessage({ sender, content }) {
       className={`tengaagent-message tengaagent-message--${sender}`}
     >
       <div className="tengaagent-message-avatar">
-        {sender === "agent" ? "TA" : "You"}
+        {sender === "human" ? "Rep" : sender === "agent" ? "TA" : "You"}
       </div>
       <div className="tengaagent-message-bubble">
         {content}
@@ -270,6 +271,32 @@ export default function TengaAgentLandingPage() {
   const [bookingError, setBookingError] = useState("");
 
   const chatEndRef = useRef(null);
+
+  // Visitor session IDs are high-entropy bearer capabilities; the server returns
+  // only the human replies for this visitor's own demo conversation.
+  useEffect(() => {
+    if (!pilotMode) return undefined;
+    let active = true;
+    const poll = async () => {
+      if (document.visibilityState === "hidden") return;
+      try {
+        const result = await getTengaAgentPilotVisitorReplies({ agentId: AGENT_ID, sessionId });
+        if (!active || !Array.isArray(result?.messages)) return;
+        setMessages((current) => {
+          const known = new Set(current.map((message) => message.id));
+          const incoming = result.messages
+            .map((entry) => ({ id: "human-" + entry.id, sender: "human", content: entry.content }))
+            .filter((entry) => !known.has(entry.id));
+          return incoming.length ? [...current, ...incoming] : current;
+        });
+      } catch {
+        // Polling is an enhancement; do not interrupt ordinary conversations.
+      }
+    };
+    poll();
+    const interval = window.setInterval(poll, 10000);
+    return () => { active = false; window.clearInterval(interval); };
+  }, [pilotMode, sessionId]);
 
   useEffect(() => {
     const chatEnd = chatEndRef.current;

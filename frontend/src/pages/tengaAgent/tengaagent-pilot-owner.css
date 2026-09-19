@@ -48,3 +48,38 @@
   padding: 10px 16px; border: 1px solid rgba(98,230,189,.5); border-radius: 10px;
   color: #62e6bd; background: #122640; cursor: pointer; font-weight: 700;
 }
+
+.tengaagent-pilot-owner__actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 18px;
+}
+.tengaagent-pilot-owner__actions label,
+.tengaagent-pilot-owner__reschedule label {
+  display: grid; gap: 6px; font-size: .88rem; color: #b9c9d9;
+}
+.tengaagent-pilot-owner__actions select,
+.tengaagent-pilot-owner__reschedule select,
+.tengaagent-pilot-owner__reschedule input,
+.tengaagent-pilot-owner__conversation textarea {
+  min-width: 0; max-width: 100%; border-radius: 10px; border: 1px solid #8798a9;
+  padding: 10px; color: #08111b; background: #fdfbf4; font: inherit;
+}
+.tengaagent-pilot-owner__actions button { padding: 9px 12px; }
+.tengaagent-pilot-owner__actions button:disabled { opacity: .5; cursor: not-allowed; }
+.tengaagent-pilot-owner__reschedule {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-top: 16px;
+}
+.tengaagent-pilot-owner__conversation {
+  margin-top: 20px; border-top: 1px solid rgba(255,255,255,.15); padding-top: 15px;
+}
+.tengaagent-pilot-owner__conversation h4 { margin: 0; }
+.tengaagent-pilot-owner__conversation .tengaagent-pilot-owner__claim { max-width: none; }
+.tengaagent-pilot-owner__conversation textarea { width: 100%; resize: vertical; }
+.tengaagent-pilot-owner__thread {
+  max-height: 310px; overflow-y: auto; padding: 10px 14px; margin-bottom: 12px;
+  background: #07111f; border-radius: 12px;
+}
+.tengaagent-pilot-owner__thread p { margin: 6px 0; white-space: pre-wrap; }
+@media (max-width: 650px) {
+  .tengaagent-pilot-owner__reschedule { display: grid; }
+  .tengaagent-pilot-owner__actions { align-items: stretch; }
+}

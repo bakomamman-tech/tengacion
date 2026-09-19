@@ -23,6 +23,7 @@ const {
 } = require("../services/tengaAgent/appointmentService");
 
 const router = express.Router();
+const SESSION_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_SESSION_LENGTH = 160;
@@ -81,6 +82,34 @@ router.get("/health", (_req, res) => {
     stage: "mvp",
     pilotMode: isTengaAgentPilotMode(),
   });
+});
+
+// A visitor's cryptographically random session ID is the sole capability for reading
+// replies in that visitor's own pilot demo chat. Never accept weak legacy session IDs.
+router.get("/chat/:agentId/conversation", async (req, res, next) => {
+  try {
+    if (!isTengaAgentPilotMode()) return res.status(404).json({ message: "Not found." });
+    const sessionId = String(req.query?.sessionId || "");
+    if (!SESSION_UUID.test(sessionId)) return res.status(400).json({ message: "Invalid demo session." });
+    const context = await resolveCustomerZeroAgent(req.params.agentId);
+    if (!context) return res.status(404).json({ message: "Demo agent not found." });
+    const conversation = await Conversation.findOne({
+      organizationId: context.organization._id,
+      agentId: context.agent._id, sessionKey: sessionId, channel: "web",
+    });
+    res.set("Cache-Control", "no-store");
+    if (!conversation) return res.json({ ok: true, status: "ai_active", messages: [] });
+    const messages = await Message.find({
+      organizationId: context.organization._id, agentId: context.agent._id,
+      conversationId: conversation._id, sender: "human",
+    }).sort({ createdAt: -1, _id: -1 }).limit(40).lean();
+    return res.json({
+      ok: true, status: conversation.status,
+      messages: messages.reverse().map((item) => ({
+        id: item._id, sender: "human", content: item.content, createdAt: item.createdAt,
+      })),
+    });
+  } catch (error) { return next(error); }
 });
 
 router.post(
@@ -168,6 +197,17 @@ router.post(
         content: message,
       });
 
+      if (isTengaAgentPilotMode() && conversation.status === "human_active") {
+        conversation.lastMessageAt = new Date();
+        await conversation.save();
+        res.set("Cache-Control", "no-store");
+        return res.json({
+          ok: true, conversationId: conversation._id, sessionId,
+          reply: "A Tengacion representative is handling this chat. Your message was received; please wait for a reply here.",
+          actions: [], agent: { key: agent.key, name: agent.name, role: agent.role },
+        });
+      }
+
       const recentMessages =
         await Message.find({
           conversationId:
@@ -199,7 +239,18 @@ router.post(
           conversationHistory,
         });
 
-      if (
+      // Human takeover may occur while the AI request is in flight.
+      let humanTookOver = false;
+      if (isTengaAgentPilotMode()) {
+        const current = await Conversation.findById(conversation._id).select("status").lean();
+        if (current?.status === "human_active") {
+          humanTookOver = true;
+          result.reply = "A Tengacion representative has taken over this chat. Your message was received; please wait for their reply here.";
+          result.actions = [];
+        }
+      }
+
+      if (!humanTookOver &&
         wantsAppointmentRequest(
           message
         )

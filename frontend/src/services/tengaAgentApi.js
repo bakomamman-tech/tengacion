@@ -468,3 +468,24 @@ export const claimTengaAgentPilotDemo = (claimSecret) =>
   pilotDemoRequest("/claim", { method: "POST", body: { claimSecret } });
 export const getTengaAgentPilotLeads = () => pilotDemoRequest("/leads");
 export const getTengaAgentPilotAppointments = () => pilotDemoRequest("/appointments");
+
+export const updateTengaAgentPilotLeadStatus = (leadId, status) =>
+  pilotDemoRequest("/leads/" + encodeURIComponent(leadId) + "/status", {
+    method: "PATCH", body: { status },
+  });
+export const updateTengaAgentPilotAppointment = (appointmentId, data) =>
+  pilotDemoRequest("/appointments/" + encodeURIComponent(appointmentId), {
+    method: "PATCH", body: data,
+  });
+export const getTengaAgentPilotConversation = (conversationId) =>
+  pilotDemoRequest("/conversations/" + encodeURIComponent(conversationId));
+export const sendTengaAgentPilotHumanReply = (conversationId, content) =>
+  pilotDemoRequest("/conversations/" + encodeURIComponent(conversationId) + "/reply", {
+    method: "POST", body: { content },
+  });
+export const getTengaAgentPilotVisitorReplies = ({ agentId = "tengacion-demo", sessionId }) => {
+  const url = API_BASE + "/tengaagent/chat/" + encodeURIComponent(agentId) +
+    "/conversation?sessionId=" + encodeURIComponent(sessionId);
+  return fetch(url, { cache: "no-store" })
+    .then(async (response) => assertOk(response, await parseJson(response), "Could not load visitor replies."));
+};

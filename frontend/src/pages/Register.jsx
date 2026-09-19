@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { register as registerApi } from "../api";
 import AuthPasswordField from "../components/AuthPasswordField";
@@ -44,6 +44,9 @@ const calculateAge = (dateValue) => {
 
 export default function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnToRaw = new URLSearchParams(location.search).get("returnTo") || "";
+  const returnTo = /^\/tengaagent(?:\/|#|$)/.test(returnToRaw) ? returnToRaw : "/home";
   const { user, login } = useAuth();
 
   const [form, setForm] = useState({
@@ -88,7 +91,7 @@ export default function Register() {
   }, [form.country, matchedRegionOptions]);
 
   if (user) {
-    return <Navigate to="/home" replace />;
+    return <Navigate to={returnTo} replace />;
   }
 
   const setValue = (key, value) => {
@@ -202,7 +205,7 @@ export default function Register() {
       if (payload?.token && payload?.user) {
         login(payload.token, payload.user, payload.sessionId);
         toast.success("Account created. You are now signed in.");
-        navigate("/home", { replace: true });
+        navigate(returnTo, { replace: true });
         return;
       }
 

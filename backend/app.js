@@ -277,6 +277,7 @@ app.use("/api/teacher-training", require("./routes/teacherTraining"));
 app.use("/api/tengaharvest", require("./routes/tengaharvest"));
 app.use("/api/tengaagent/whatsapp", require("./routes/tengaAgentWhatsApp"));
 app.use("/api/tengaagent/billing", require("./routes/tengaAgentBilling"));
+app.use("/api/tengaagent/owner/pilot-demo", require("./routes/tengaAgentPilotOwner"));
 app.use("/api/tengaagent/owner", require("./routes/tengaAgentOwner"));
 app.use("/api/tengaagent/public", require("./routes/tengaAgentPublic"));
 app.use("/api/tengaagent", require("./routes/tengaAgent"));

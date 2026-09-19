@@ -447,3 +447,24 @@ export const sendTengaAgentOwnerHumanMessage = ({
       body: { content },
     }
   );
+
+// Pilot-only, read-only demo owner access. The backend enforces the owner claim.
+const pilotDemoRequest = async (path, { method = "GET", body } = {}) => {
+  const token = getSessionAccessToken();
+  if (!token) throw new Error("Please sign in to access the pilot owner inbox.");
+  const response = await fetch(API_BASE + "/tengaagent/owner/pilot-demo" + path, {
+    method,
+    headers: {
+      Authorization: "Bearer " + token,
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    cache: "no-store",
+  });
+  return assertOk(response, await parseJson(response), "Pilot owner request failed.");
+};
+export const getTengaAgentPilotOwnerStatus = () => pilotDemoRequest("/status");
+export const claimTengaAgentPilotDemo = (claimSecret) =>
+  pilotDemoRequest("/claim", { method: "POST", body: { claimSecret } });
+export const getTengaAgentPilotLeads = () => pilotDemoRequest("/leads");
+export const getTengaAgentPilotAppointments = () => pilotDemoRequest("/appointments");

@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const express = require("express");
+const { isTengaAgentPilotMode } = require("../config/tengaAgentPilotMode");
 
 const Conversation = require("../models/tengaAgent/Conversation");
 const Message = require("../models/tengaAgent/Message");
@@ -78,6 +79,7 @@ router.get("/health", (_req, res) => {
     ok: true,
     product: "TengaAgent",
     stage: "mvp",
+    pilotMode: isTengaAgentPilotMode(),
   });
 });
 

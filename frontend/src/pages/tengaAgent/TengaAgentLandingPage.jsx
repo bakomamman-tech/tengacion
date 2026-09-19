@@ -5,6 +5,7 @@ import {
 } from "react";
 
 import { useAuth } from "../../context/AuthContext";
+import { API_BASE } from "../../config/apiBase";
 import {
   sendTengaAgentMessage,
   submitTengaAgentAppointment,
@@ -14,6 +15,7 @@ import {
 import TengaAgentAppointmentForm from "./TengaAgentAppointmentForm";
 import TengaAgentLeadCaptureForm from "./TengaAgentLeadCaptureForm";
 import TengaAgentOwnerDashboard from "./TengaAgentOwnerDashboard";
+import TengaAgentPilotDemoOwner from "./TengaAgentPilotDemoOwner";
 import "./tengaagent.css";
 
 const AGENT_ID = "tengacion-demo";
@@ -239,6 +241,16 @@ function PricingCard({ plan }) {
 export default function TengaAgentLandingPage() {
   const auth = useAuth();
   const user = auth?.user || null;
+  const [pilotMode, setPilotMode] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch(API_BASE + "/tengaagent/health", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => { if (active) setPilotMode(data?.pilotMode === true); })
+      .catch(() => { if (active) setPilotMode(false); });
+    return () => { active = false; };
+  }, []);
 
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([
@@ -456,7 +468,16 @@ export default function TengaAgentLandingPage() {
         >
           <a href="#how-it-works">How it works</a>
           <a href="#pricing">Pricing</a>
-          {user ? (
+          {pilotMode ? (
+            user ? (
+              <>
+                <a href="#pilot-demo-owner">Demo owner inbox</a>
+                <a href="#pilot-demo-appointments">Demo appointments</a>
+              </>
+            ) : !auth?.loading ? (
+              <a href="/login?returnTo=%2Ftengaagent%23pilot-demo-owner">Owner sign in</a>
+            ) : null
+          ) : user ? (
             <>
               <a href="#owner-dashboard">Owner inbox</a>
               <a href="#owner-appointments">Appointments</a>
@@ -495,10 +516,17 @@ export default function TengaAgentLandingPage() {
             </a>
             {user ? (
               <a
-                href="#owner-dashboard"
+                href={pilotMode ? "#pilot-demo-owner" : "#owner-dashboard"}
                 className="tengaagent-secondary-button"
               >
                 Open owner inbox
+              </a>
+            ) : pilotMode ? (
+              <a
+                href="/login?returnTo=%2Ftengaagent%23pilot-demo-owner"
+                className="tengaagent-secondary-button"
+              >
+                Owner sign in
               </a>
             ) : (
               <a
@@ -661,7 +689,10 @@ export default function TengaAgentLandingPage() {
         </article>
       </section>
 
-      {user ? (
+      {pilotMode && user ? (
+        <TengaAgentPilotDemoOwner user={user} />
+      ) : null}
+      {!pilotMode && user ? (
         <TengaAgentOwnerDashboard user={user} />
       ) : null}
 

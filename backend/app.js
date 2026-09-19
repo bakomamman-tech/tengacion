@@ -7,6 +7,7 @@ const auth = require("./middleware/auth");
 const upload = require("./utils/upload");
 const errorHandler = require("../apps/api/middleware/errorHandler");
 const { config } = require("./config/env");
+const { tengaAgentPilotApiGuard } = require("./config/tengaAgentPilotMode");
 const { buildAndroidAssetLinksFromConfig } = require("./services/androidAssetLinksService");
 const {
   buildLivenessPayload,
@@ -52,6 +53,8 @@ app.set("trust proxy", 1);
 app.disable("x-powered-by");
 app.use(requestId);
 app.use(requestLogger());
+// Fail closed: the isolated TengaAgent pilot must not expose other Tengacion APIs.
+app.use("/api", tengaAgentPilotApiGuard);
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

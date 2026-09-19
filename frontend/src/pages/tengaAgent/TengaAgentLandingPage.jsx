@@ -5,6 +5,7 @@ import {
 } from "react";
 
 import { useAuth } from "../../context/AuthContext";
+import { readTengaAgentSessionId } from "./sessionId";
 import { API_BASE } from "../../config/apiBase";
 import {
   sendTengaAgentMessage,
@@ -145,46 +146,8 @@ const INTERNATIONAL_PRICING = [
   },
 ];
 
-const createLocalSessionId = () => {
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
-  ) {
-    return crypto.randomUUID();
-  }
-
-  return `tengaagent-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2)}`;
-};
-
-const getSessionId = () => {
-  if (typeof window === "undefined") {
-    return createLocalSessionId();
-  }
-
-  try {
-    const existing =
-      window.sessionStorage.getItem(
-        SESSION_STORAGE_KEY
-      );
-
-    if (existing) {
-      return existing;
-    }
-
-    const generated = createLocalSessionId();
-
-    window.sessionStorage.setItem(
-      SESSION_STORAGE_KEY,
-      generated
-    );
-
-    return generated;
-  } catch {
-    return createLocalSessionId();
-  }
-};
+const getSessionId = () =>
+  readTengaAgentSessionId(SESSION_STORAGE_KEY);
 
 function ChatMessage({ sender, content }) {
   return (

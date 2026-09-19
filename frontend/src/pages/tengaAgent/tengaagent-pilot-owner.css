@@ -39,3 +39,12 @@
 @media (max-width: 650px) {
   .tengaagent-pilot-owner__heading, .tengaagent-pilot-owner__card-title { flex-direction: column; gap: 8px; }
 }
+
+.tengaagent-pilot-workspace-toggle {
+  width: min(1160px, calc(100% - 40px)); margin: -40px auto 55px;
+  color: #b9c9d9; display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+}
+.tengaagent-pilot-workspace-toggle button {
+  padding: 10px 16px; border: 1px solid rgba(98,230,189,.5); border-radius: 10px;
+  color: #62e6bd; background: #122640; cursor: pointer; font-weight: 700;
+}

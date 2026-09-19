@@ -242,6 +242,7 @@ export default function TengaAgentLandingPage() {
   const auth = useAuth();
   const user = auth?.user || null;
   const [pilotMode, setPilotMode] = useState(false);
+  const [showBusinessWorkspace, setShowBusinessWorkspace] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -690,9 +691,17 @@ export default function TengaAgentLandingPage() {
       </section>
 
       {pilotMode && user ? (
-        <TengaAgentPilotDemoOwner user={user} />
+        <>
+          <TengaAgentPilotDemoOwner user={user} />
+          <div className="tengaagent-pilot-workspace-toggle">
+            <p>Your own business workspace is separate from Tengacion's demo records.</p>
+            <button type="button" onClick={() => setShowBusinessWorkspace((current) => !current)}>
+              {showBusinessWorkspace ? "Hide my business workspace" : "Open my business workspace"}
+            </button>
+          </div>
+        </>
       ) : null}
-      {!pilotMode && user ? (
+      {user && (!pilotMode || showBusinessWorkspace) ? (
         <TengaAgentOwnerDashboard user={user} />
       ) : null}
 

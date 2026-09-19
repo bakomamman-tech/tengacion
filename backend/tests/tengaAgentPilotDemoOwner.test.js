@@ -12,6 +12,10 @@ jest.mock("../models/tengaAgent/PilotDemoOwnerClaim", () => ({
 }));
 jest.mock("../models/tengaAgent/Lead", () => ({ find: jest.fn() }));
 jest.mock("../models/tengaAgent/Appointment", () => ({ find: jest.fn() }));
+jest.mock("../services/tengaAgent/pilotDemoWorkflowService", () => ({
+  updatePilotLead: jest.fn(), mutatePilotAppointment: jest.fn(),
+  listPilotMessages: jest.fn(), sendPilotHumanReply: jest.fn(),
+}));
 jest.mock("../services/tengaAgent/customerZeroService", () => ({
   ensureCustomerZeroAgent: jest.fn(),
 }));

@@ -1,6 +1,6 @@
 "use strict";
 jest.mock("../models/tengaAgent/Appointment", () => ({
-  findOne: jest.fn(),
+  findOne: jest.fn(), exists: jest.fn(),
 }));
 jest.mock("../models/tengaAgent/Lead", () => ({
   findOneAndUpdate: jest.fn(), exists: jest.fn(),

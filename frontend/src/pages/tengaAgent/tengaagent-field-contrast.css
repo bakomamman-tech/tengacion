@@ -1,0 +1,72 @@
+/*
+ * TengaAgent's shared form surface: browser-native dropdowns, text inputs,
+ * autofill and dark theme must always retain readable foreground/background.
+ * Scoped to this product page; does not affect the main Tengacion application.
+ */
+.tengaagent-page {
+  --ta-field-background: #fffaf0;
+  --ta-field-text: #101b2c;
+  --ta-field-placeholder: #526174;
+  --ta-field-border: #78899e;
+  --ta-field-focus: #137a67;
+}
+
+.tengaagent-page input:not(:is(
+  [type="checkbox"], [type="radio"], [type="file"], [type="hidden"],
+  [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"]
+)),
+.tengaagent-page textarea,
+.tengaagent-page select {
+  background-color: var(--ta-field-background) !important;
+  color: var(--ta-field-text) !important;
+  -webkit-text-fill-color: var(--ta-field-text) !important;
+  caret-color: var(--ta-field-text);
+  border-color: var(--ta-field-border) !important;
+  color-scheme: light;
+  opacity: 1;
+}
+
+/* Native menus are rendered outside the page box on some platforms. */
+.tengaagent-page select option,
+.tengaagent-page select optgroup {
+  background-color: #fffaf0 !important;
+  color: #101b2c !important;
+  -webkit-text-fill-color: #101b2c !important;
+  color-scheme: light;
+}
+.tengaagent-page :is(input, textarea)::placeholder {
+  color: var(--ta-field-placeholder) !important;
+  -webkit-text-fill-color: var(--ta-field-placeholder) !important;
+  opacity: 1;
+}
+
+/* Do not suppress keyboard focus even where local component CSS removes outline. */
+.tengaagent-page :is(input, textarea, select):focus-visible {
+  outline: 2px solid var(--ta-field-focus) !important;
+  outline-offset: 2px;
+}
+.tengaagent-page :is(input, textarea, select):disabled {
+  background-color: #e3e8ec !important;
+  color: #445267 !important;
+  -webkit-text-fill-color: #445267 !important;
+  opacity: 1;
+}
+.tengaagent-page :is(input, textarea, select)::selection {
+  color: #07111f;
+  background: #a6e9d2;
+}
+
+/* Chromium can paint an opaque yellow/orange autofill surface over normal rules. */
+.tengaagent-page :is(input, textarea, select):-webkit-autofill,
+.tengaagent-page :is(input, textarea, select):-webkit-autofill:hover,
+.tengaagent-page :is(input, textarea, select):-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ta-field-text) !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--ta-field-background) inset !important;
+  box-shadow: 0 0 0 1000px var(--ta-field-background) inset !important;
+  caret-color: var(--ta-field-text);
+}
+
+/* Preserve a visible caret and white space for the demo chat input. */
+.tengaagent-page .tengaagent-composer input {
+  min-width: 0;
+}

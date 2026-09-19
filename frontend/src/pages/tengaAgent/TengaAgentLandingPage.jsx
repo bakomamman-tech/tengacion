@@ -18,6 +18,7 @@ import TengaAgentLeadCaptureForm from "./TengaAgentLeadCaptureForm";
 import TengaAgentOwnerDashboard from "./TengaAgentOwnerDashboard";
 import TengaAgentPilotDemoOwner from "./TengaAgentPilotDemoOwner";
 import "./tengaagent.css";
+import "./tengaagent-field-contrast.css";
 
 const AGENT_ID = "tengacion-demo";
 const SESSION_STORAGE_KEY =

@@ -96,7 +96,9 @@ function PilotLeadCard({ lead, onMutate }) {
       <div className="tengaagent-pilot-owner__actions">
         <label>Lead status <select aria-label={"Status for " + (lead.name || "lead")}
           disabled={busy} value={lead.status} onChange={(event) => update(event.target.value)}>
-          {LEAD_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+          {LEAD_STATUSES.map((status) => (
+            <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+          ))}
         </select></label>
         {lead.conversationId && lead.consentToContact ? (
           <button type="button" onClick={() => setShowConversation((value) => !value)}>

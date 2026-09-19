@@ -1,0 +1,358 @@
+@import "./tengaagent-owner-publication.css";
+
+.tengaagent-owner-appointments {
+  margin-top: 34px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tengaagent-owner-appointments__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.tengaagent-owner-appointments__header > div > span {
+  color: var(--accent, #62e6bd);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.tengaagent-owner-appointments__header h3 {
+  margin: 6px 0;
+}
+
+.tengaagent-owner-appointments__header p,
+.tengaagent-owner-appointments__empty span,
+.tengaagent-owner-appointments__notes {
+  color: var(--muted, #a4b4c8);
+  line-height: 1.55;
+}
+
+.tengaagent-owner-appointments__header button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: var(--accent, #62e6bd);
+  color: #061019;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tengaagent-owner-appointments__header button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.tengaagent-owner-appointments__error,
+.tengaagent-owner-appointments__empty {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tengaagent-owner-appointments__error {
+  border-color: rgba(255, 120, 120, 0.35);
+  color: #ffd4d4;
+}
+
+.tengaagent-owner-appointments__empty {
+  display: grid;
+  gap: 4px;
+}
+
+.tengaagent-owner-appointments__filters,
+.tengaagent-owner-appointments__time-filters {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tengaagent-owner-appointments__filters button,
+.tengaagent-owner-appointments__time-filters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted, #a4b4c8);
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.tengaagent-owner-appointments__filters button.active,
+.tengaagent-owner-appointments__time-filters button.active {
+  border-color: rgba(98, 230, 189, 0.5);
+  background: rgba(98, 230, 189, 0.12);
+  color: var(--accent, #62e6bd);
+}
+
+.tengaagent-owner-appointments__filters button span {
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  text-align: center;
+  font-size: 0.72rem;
+}
+
+.tengaagent-owner-appointments__tools {
+  margin-top: 14px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  gap: 12px;
+  align-items: end;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.tengaagent-owner-appointments__search {
+  display: grid;
+  gap: 6px;
+}
+
+.tengaagent-owner-appointments__search span {
+  color: var(--muted, #a4b4c8);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.tengaagent-owner-appointments__search input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 9px;
+  background: #0b1728;
+  color: #f6f9fc;
+}
+
+.tengaagent-owner-appointments__search input::placeholder {
+  color: rgba(164, 180, 200, 0.7);
+}
+
+.tengaagent-owner-appointments__time-filters {
+  margin-top: 0;
+}
+
+.tengaagent-owner-appointments__result-count {
+  padding-bottom: 8px;
+  color: var(--muted, #a4b4c8);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.tengaagent-owner-appointments__list {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.tengaagent-owner-appointments__card {
+  padding: 17px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  background: rgba(6, 16, 25, 0.4);
+}
+
+.tengaagent-owner-appointments__topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.tengaagent-owner-appointments__topline > div > strong,
+.tengaagent-owner-appointments__topline > div > span {
+  display: block;
+}
+
+.tengaagent-owner-appointments__topline > div > span {
+  margin-top: 4px;
+  color: var(--muted, #a4b4c8);
+  overflow-wrap: anywhere;
+}
+
+.tengaagent-owner-appointments__status {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  text-transform: capitalize;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.tengaagent-owner-appointments__status--requested,
+.tengaagent-owner-appointments__status--confirmed,
+.tengaagent-owner-appointments__status--completed {
+  color: var(--accent, #62e6bd);
+}
+
+.tengaagent-owner-appointments__status--no_show {
+  color: #ffd27a;
+}
+
+.tengaagent-owner-appointments__time {
+  margin-top: 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.tengaagent-owner-appointments__time span {
+  color: var(--muted, #a4b4c8);
+  font-size: 0.76rem;
+}
+
+.tengaagent-owner-appointments__time .tengaagent-owner-appointments__completion-audit {
+  color: var(--accent, #62e6bd);
+  font-weight: 800;
+}
+
+.tengaagent-owner-appointments__time .tengaagent-owner-appointments__no-show-audit {
+  color: #ffd27a;
+  font-weight: 800;
+}
+
+.tengaagent-owner-appointments__company {
+  margin-top: 12px;
+  color: var(--accent, #62e6bd);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.tengaagent-owner-appointments__card p {
+  margin: 10px 0 0;
+  line-height: 1.55;
+}
+
+.tengaagent-owner-appointments__workflow {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tengaagent-owner-appointments__workflow label,
+.tengaagent-owner-appointments__reschedule label {
+  color: var(--muted, #a4b4c8);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.tengaagent-owner-appointments__workflow select,
+.tengaagent-owner-appointments__reschedule input {
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 9px;
+  background: #0b1728;
+  color: #f6f9fc;
+}
+
+.tengaagent-owner-appointments__workflow > span {
+  color: var(--accent, #62e6bd);
+  font-size: 0.75rem;
+}
+
+.tengaagent-owner-appointments__complete-button,
+.tengaagent-owner-appointments__no-show-button,
+.tengaagent-owner-appointments__reschedule-button,
+.tengaagent-owner-appointments__reschedule-actions button {
+  border: 1px solid rgba(98, 230, 189, 0.35);
+  border-radius: 9px;
+  padding: 8px 11px;
+  background: rgba(98, 230, 189, 0.12);
+  color: var(--accent, #62e6bd);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tengaagent-owner-appointments__complete-button {
+  background: var(--accent, #62e6bd);
+  color: #061019;
+}
+
+.tengaagent-owner-appointments__no-show-button {
+  border-color: rgba(255, 210, 122, 0.45);
+  background: rgba(255, 210, 122, 0.1);
+  color: #ffd27a;
+}
+
+.tengaagent-owner-appointments__complete-button:disabled,
+.tengaagent-owner-appointments__no-show-button:disabled,
+.tengaagent-owner-appointments__reschedule-button:disabled,
+.tengaagent-owner-appointments__reschedule-actions button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.tengaagent-owner-appointments__reschedule {
+  margin-top: 14px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px);
+  gap: 12px;
+  border: 1px solid rgba(98, 230, 189, 0.22);
+  border-radius: 12px;
+  background: rgba(98, 230, 189, 0.05);
+}
+
+.tengaagent-owner-appointments__reschedule > div:not(.tengaagent-owner-appointments__reschedule-actions) {
+  display: grid;
+  gap: 6px;
+}
+
+.tengaagent-owner-appointments__reschedule input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tengaagent-owner-appointments__reschedule-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tengaagent-owner-appointments__reschedule-actions button.secondary {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--muted, #a4b4c8);
+}
+
+.tengaagent-owner-appointments__reschedule small {
+  grid-column: 1 / -1;
+  color: var(--muted, #a4b4c8);
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .tengaagent-owner-appointments__tools {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .tengaagent-owner-appointments__result-count {
+    padding-bottom: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .tengaagent-owner-appointments__header,
+  .tengaagent-owner-appointments__topline {
+    flex-direction: column;
+  }
+
+  .tengaagent-owner-appointments__reschedule {
+    grid-template-columns: 1fr;
+  }
+}

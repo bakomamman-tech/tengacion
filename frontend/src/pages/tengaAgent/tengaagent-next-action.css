@@ -1,0 +1,177 @@
+.tengaagent-next-action {
+  margin-top: 2rem;
+  padding: 1.4rem;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  border-radius: 1.25rem;
+  background: rgba(15, 23, 42, 0.76);
+}
+
+.tengaagent-next-action__header,
+.tengaagent-next-action__topline,
+.tengaagent-next-action__footer {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tengaagent-next-action__header > div,
+.tengaagent-next-action__topline > div {
+  min-width: 0;
+}
+
+.tengaagent-next-action__header > div > span {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #93c5fd;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.tengaagent-next-action h3,
+.tengaagent-next-action strong {
+  color: #f8fafc;
+}
+
+.tengaagent-next-action__header h3 {
+  margin: 0;
+}
+
+.tengaagent-next-action__header p {
+  max-width: 66rem;
+  margin: 0.5rem 0 0;
+  color: #cbd5e1;
+  line-height: 1.55;
+}
+
+.tengaagent-next-action button {
+  border: 0;
+  border-radius: 0.75rem;
+  padding: 0.7rem 1rem;
+  background: #2563eb;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tengaagent-next-action button.secondary {
+  background: rgba(51, 65, 85, 0.72);
+  color: #e2e8f0;
+}
+
+.tengaagent-next-action button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.tengaagent-next-action__error {
+  margin-top: 1rem;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  background: rgba(127, 29, 29, 0.24);
+  color: #fecaca;
+}
+
+.tengaagent-next-action__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 1rem;
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  border-radius: 0.85rem;
+  padding: 1rem;
+  color: #cbd5e1;
+}
+
+.tengaagent-next-action__empty span {
+  color: #94a3b8;
+}
+
+.tengaagent-next-action__list {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1.1rem;
+}
+
+.tengaagent-next-action__card {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.84);
+}
+
+.tengaagent-next-action__card.action-call,
+.tengaagent-next-action__card.action-email {
+  border-color: rgba(96, 165, 250, 0.38);
+}
+
+.tengaagent-next-action__card.action-reschedule {
+  border-color: rgba(192, 132, 252, 0.4);
+}
+
+.tengaagent-next-action__card.action-close {
+  border-color: rgba(148, 163, 184, 0.38);
+}
+
+.tengaagent-next-action__card.action-wait {
+  border-color: rgba(250, 204, 21, 0.32);
+}
+
+.tengaagent-next-action__topline strong {
+  display: block;
+}
+
+.tengaagent-next-action__topline div span {
+  display: block;
+  margin-top: 0.2rem;
+  color: #94a3b8;
+}
+
+.tengaagent-next-action__badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  background: rgba(37, 99, 235, 0.2);
+  color: #bfdbfe;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.tengaagent-next-action__card > p {
+  margin: 0.85rem 0;
+  color: #dbeafe;
+  line-height: 1.55;
+}
+
+.tengaagent-next-action__signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.8rem;
+  color: #94a3b8;
+  font-size: 0.84rem;
+}
+
+.tengaagent-next-action__footer {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 760px) {
+  .tengaagent-next-action__header,
+  .tengaagent-next-action__topline,
+  .tengaagent-next-action__footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tengaagent-next-action__header button,
+  .tengaagent-next-action__footer button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,417 @@
+.tengaagent-follow-up {
+  margin-top: 2rem;
+  padding: 1.4rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 1.25rem;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.tengaagent-follow-up__header,
+.tengaagent-follow-up__topline,
+.tengaagent-follow-up__actions,
+.tengaagent-follow-up__reschedule {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tengaagent-follow-up__header > div,
+.tengaagent-follow-up__topline > div {
+  min-width: 0;
+}
+
+.tengaagent-follow-up__header span,
+.tengaagent-follow-up__topline span,
+.tengaagent-follow-up__meta span,
+.tengaagent-follow-up__empty span {
+  color: #94a3b8;
+}
+
+.tengaagent-follow-up__header > div > span {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.tengaagent-follow-up__header h3 {
+  margin: 0;
+  color: #f8fafc;
+}
+
+.tengaagent-follow-up__header p {
+  max-width: 62rem;
+  margin: 0.5rem 0 0;
+  color: #cbd5e1;
+  line-height: 1.55;
+}
+
+.tengaagent-follow-up button {
+  border: 0;
+  border-radius: 0.75rem;
+  padding: 0.7rem 1rem;
+  background: #2563eb;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tengaagent-follow-up button.secondary,
+.tengaagent-follow-up__filters button {
+  background: rgba(51, 65, 85, 0.72);
+  color: #e2e8f0;
+}
+
+.tengaagent-follow-up button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.tengaagent-follow-up__error,
+.tengaagent-follow-up__delivery-error {
+  margin-top: 1rem;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  background: rgba(127, 29, 29, 0.24);
+  color: #fecaca;
+}
+
+.tengaagent-follow-up__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+}
+
+.tengaagent-follow-up__metrics article {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 0.9rem;
+  padding: 0.9rem;
+  background: rgba(30, 41, 59, 0.58);
+}
+
+.tengaagent-follow-up__metrics article.attention {
+  border-color: rgba(251, 146, 60, 0.5);
+  background: rgba(124, 45, 18, 0.22);
+}
+
+.tengaagent-follow-up__metrics strong {
+  color: #f8fafc;
+  font-size: 1.4rem;
+}
+
+.tengaagent-follow-up__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 1rem 0;
+}
+
+.tengaagent-follow-up__filters button.active {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.tengaagent-follow-up__list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.tengaagent-follow-up__card {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.82);
+}
+
+.tengaagent-follow-up__card.is-overdue {
+  border-color: rgba(251, 146, 60, 0.55);
+}
+
+.tengaagent-follow-up__topline strong {
+  display: block;
+  color: #f8fafc;
+}
+
+.tengaagent-follow-up__topline > div > span {
+  display: block;
+  margin-top: 0.2rem;
+  overflow-wrap: anywhere;
+}
+
+.tengaagent-follow-up__card > p {
+  color: #dbeafe;
+  line-height: 1.55;
+}
+
+.tengaagent-follow-up__notes {
+  padding: 0.8rem;
+  border-radius: 0.75rem;
+  background: rgba(30, 41, 59, 0.72);
+}
+
+.tengaagent-follow-up .due-state,
+.tengaagent-follow-up .reminder {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.tengaagent-follow-up .due-state.overdue {
+  background: rgba(234, 88, 12, 0.2);
+  color: #fdba74;
+}
+
+.tengaagent-follow-up .due-state.upcoming {
+  background: rgba(37, 99, 235, 0.2);
+  color: #93c5fd;
+}
+
+.tengaagent-follow-up .reminder--failed {
+  color: #fca5a5;
+}
+
+.tengaagent-follow-up .reminder--sent {
+  color: #86efac;
+}
+
+.tengaagent-follow-up__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  margin: 0.9rem 0;
+  font-size: 0.86rem;
+}
+
+.tengaagent-follow-up__actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.tengaagent-follow-up__contact-guard {
+  margin-top: 0.8rem;
+  border-radius: 0.7rem;
+  padding: 0.7rem 0.8rem;
+  background: rgba(51, 65, 85, 0.48);
+  color: #cbd5e1;
+  font-size: 0.86rem;
+}
+
+.tengaagent-follow-up__reschedule {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.tengaagent-follow-up__reschedule label,
+.tengaagent-follow-up__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: #cbd5e1;
+  font-size: 0.86rem;
+}
+
+.tengaagent-follow-up__reschedule input,
+.tengaagent-follow-up__form input,
+.tengaagent-follow-up__form select,
+.tengaagent-follow-up__form textarea {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 0.7rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.tengaagent-follow-up__reschedule input {
+  min-width: 16rem;
+}
+
+.tengaagent-follow-up__form textarea {
+  resize: vertical;
+  min-height: 7rem;
+}
+
+.tengaagent-follow-up__workspace {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  padding-top: 1rem;
+}
+
+.tengaagent-follow-up__form {
+  display: grid;
+  gap: 0.9rem;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 0.9rem;
+  padding: 1rem;
+  background: rgba(30, 41, 59, 0.58);
+}
+
+.tengaagent-follow-up__form > div:first-child {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.tengaagent-follow-up__form > div:first-child strong {
+  color: #f8fafc;
+}
+
+.tengaagent-follow-up__form > div:first-child span {
+  color: #94a3b8;
+  font-size: 0.86rem;
+}
+
+.tengaagent-follow-up__form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.tengaagent-follow-up__form-actions,
+.tengaagent-follow-up__activity-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.tengaagent-follow-up__activity {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 0.9rem;
+  padding: 1rem;
+  background: rgba(2, 6, 23, 0.42);
+}
+
+.tengaagent-follow-up__activity-heading {
+  justify-content: space-between;
+}
+
+.tengaagent-follow-up__activity-heading strong {
+  color: #f8fafc;
+}
+
+.tengaagent-follow-up__activity-empty {
+  border: 1px dashed rgba(148, 163, 184, 0.24);
+  border-radius: 0.75rem;
+  padding: 0.9rem;
+  color: #94a3b8;
+}
+
+.tengaagent-follow-up__timeline {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.tengaagent-follow-up__timeline article {
+  display: grid;
+  gap: 0.4rem;
+  border-left: 3px solid rgba(96, 165, 250, 0.6);
+  border-radius: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  background: rgba(30, 41, 59, 0.5);
+  color: #cbd5e1;
+}
+
+.tengaagent-follow-up__timeline article > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tengaagent-follow-up__timeline strong,
+.tengaagent-follow-up__timeline b {
+  color: #f8fafc;
+}
+
+.tengaagent-follow-up__timeline p {
+  margin: 0;
+  color: #dbeafe;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tengaagent-follow-up__timeline span {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.tengaagent-follow-up__timeline .activity-error {
+  color: #fca5a5;
+}
+
+.tengaagent-follow-up__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  border-radius: 0.9rem;
+  padding: 1.1rem;
+  color: #e2e8f0;
+}
+
+@media (max-width: 760px) {
+  .tengaagent-follow-up__header,
+  .tengaagent-follow-up__topline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tengaagent-follow-up__metrics,
+  .tengaagent-follow-up__form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tengaagent-follow-up__header button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .tengaagent-follow-up {
+    padding: 1rem;
+  }
+
+  .tengaagent-follow-up__metrics,
+  .tengaagent-follow-up__form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tengaagent-follow-up__reschedule input {
+    min-width: 0;
+  }
+
+  .tengaagent-follow-up__actions button,
+  .tengaagent-follow-up__form-actions button {
+    width: 100%;
+  }
+
+  .tengaagent-follow-up__timeline article > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+}

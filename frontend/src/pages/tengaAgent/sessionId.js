@@ -1,3 +1,5 @@
+const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 const bytesToUuid = (bytes) => {
   const copy = Uint8Array.from(bytes);
 
@@ -51,7 +53,8 @@ export const readTengaAgentSessionId = (
   try {
     const existing = storage.getItem(storageKey);
 
-    if (existing) {
+    // Rotate legacy or malformed IDs: a public visitor session is a bearer capability.
+    if (existing && UUID_V4_PATTERN.test(existing)) {
       return existing;
     }
 

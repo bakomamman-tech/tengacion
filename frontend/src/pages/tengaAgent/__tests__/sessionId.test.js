@@ -47,6 +47,23 @@ describe("TengaAgent secure session IDs", () => {
     ).toThrow(/secure browser randomness/i);
   });
 
+  it("rotates weak legacy session IDs before using them as bearer capabilities", () => {
+    const storage = {
+      getItem: vi.fn(() => "tengaagent-unsafe-legacy-session"),
+      setItem: vi.fn(),
+    };
+    const randomUUID = vi.fn(() => "d401bc2a-4f7b-4fa8-8752-4d0bc8e01f3c");
+    const nextId = readTengaAgentSessionId(
+      "pilot-demo-session",
+      storage,
+      { randomUUID }
+    );
+
+    expect(nextId).toBe("d401bc2a-4f7b-4fa8-8752-4d0bc8e01f3c");
+    expect(storage.setItem).toHaveBeenCalledWith("pilot-demo-session", nextId);
+    expect(randomUUID).toHaveBeenCalledTimes(1);
+  });
+
   it("reuses a stored session and securely creates one when missing", () => {
     const store = new Map();
     const storage = {

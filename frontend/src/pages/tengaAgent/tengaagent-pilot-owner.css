@@ -83,3 +83,26 @@
   .tengaagent-pilot-owner__reschedule { display: grid; }
   .tengaagent-pilot-owner__actions { align-items: stretch; }
 }
+
+/* Keep the lead-status field and chat action on the same bottom baseline.
+   The label sits above its select without pulling the adjacent button upward. */
+.tengaagent-pilot-owner__actions.tengaagent-pilot-owner__lead-actions {
+  align-items: flex-end;
+}
+.tengaagent-pilot-owner__lead-actions > label {
+  flex: 0 1 160px;
+  min-width: 140px;
+}
+.tengaagent-pilot-owner__lead-actions > label select {
+  width: 100%;
+}
+.tengaagent-pilot-owner__lead-actions > label select,
+.tengaagent-pilot-owner__lead-actions > button {
+  box-sizing: border-box;
+  min-height: 46px;
+}
+.tengaagent-pilot-owner__lead-actions > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

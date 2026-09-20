@@ -42,7 +42,7 @@ describe("pilot visitor session-scoped transcript", () => {
     Message.find.mockImplementation(() => ({
       sort: jest.fn(() => ({
         limit: jest.fn(() => ({
-          lean: jest.fn().mockResolvedValue(entries),
+          lean: jest.fn().mockResolvedValue([...entries]),
         })),
       })),
     }));
@@ -74,7 +74,7 @@ describe("pilot visitor session-scoped transcript", () => {
   it("keeps the existing default visitor poll human-only", async () => {
     const response = await request(app).get(url).expect(200);
     expect(Message.find).toHaveBeenCalledWith(expect.objectContaining({ sender: "human" }));
-    expect(response.body.messages).toEqual(entries.reverse().map((entry) =>
+    expect(response.body.messages).toEqual(entries.slice().reverse().map((entry) =>
       expect.objectContaining({ sender: entry.sender, content: entry.content })
     ));
   });

@@ -48,8 +48,11 @@ jobs:
       - name: Install backend dependencies
         run: npm ci
 
-      - name: Reject critical backend dependency vulnerabilities
-        run: npm audit --audit-level=critical
+      - name: Reject moderate-or-higher backend dependency vulnerabilities
+        run: npm audit --audit-level=moderate
+
+      - name: Audit root production dependencies
+        run: npm audit --prefix .. --omit=dev --audit-level=moderate
 
       - name: Run full TengaAgent backend suite serially
         run: npx cross-env NODE_PATH=./node_modules jest tests/tengaAgent*.test.js --runInBand --testTimeout=60000 --hookTimeout=60000
@@ -76,8 +79,8 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Reject critical frontend dependency vulnerabilities
-        run: npm audit --audit-level=critical
+      - name: Reject moderate-or-higher frontend dependency vulnerabilities
+        run: npm audit --audit-level=moderate
 
       - name: Run TengaAgent frontend tests
         run: npx vitest run src/pages/tengaAgent/__tests__ --reporter=dot --testTimeout=20000 --hookTimeout=20000

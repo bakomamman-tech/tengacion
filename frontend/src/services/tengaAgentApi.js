@@ -483,6 +483,15 @@ export const sendTengaAgentPilotHumanReply = (conversationId, content) =>
   pilotDemoRequest("/conversations/" + encodeURIComponent(conversationId) + "/reply", {
     method: "POST", body: { content },
   });
+// Rehydrate the complete pilot chat for the same high-entropy visitor session.
+// The default conversation endpoint remains human-only for older callers.
+export const getTengaAgentPilotVisitorTranscript = ({ agentId = "tengacion-demo", sessionId }) => {
+  const url = API_BASE + "/tengaagent/chat/" + encodeURIComponent(agentId) +
+    "/conversation?sessionId=" + encodeURIComponent(sessionId) + "&view=full";
+  return fetch(url, { cache: "no-store" })
+    .then(async (response) => assertOk(response, await parseJson(response), "Could not restore the visitor conversation."));
+};
+
 export const getTengaAgentPilotVisitorReplies = ({ agentId = "tengacion-demo", sessionId }) => {
   const url = API_BASE + "/tengaagent/chat/" + encodeURIComponent(agentId) +
     "/conversation?sessionId=" + encodeURIComponent(sessionId);

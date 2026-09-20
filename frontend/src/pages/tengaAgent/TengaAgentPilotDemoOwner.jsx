@@ -93,7 +93,7 @@ function PilotLeadCard({ lead, onMutate }) {
       <p>{[lead.email, lead.phone, lead.company].filter(Boolean).join(" · ") || "No contact details"}</p>
       <p>{lead.projectSummary || "No project summary provided."}</p>
       <small>Captured: {displayDate(lead.lastCapturedAt || lead.createdAt)} · Consent to contact: {lead.consentToContact ? "Yes" : "No"}</small>
-      <div className="tengaagent-pilot-owner__actions">
+      <div className="tengaagent-pilot-owner__actions tengaagent-pilot-owner__lead-actions">
         <label>Lead status <select aria-label={"Status for " + (lead.name || "lead")}
           disabled={busy} value={lead.status} onChange={(event) => update(event.target.value)}>
           {LEAD_STATUSES.map((status) => (

@@ -99,14 +99,18 @@ router.get("/chat/:agentId/conversation", async (req, res, next) => {
     });
     res.set("Cache-Control", "no-store");
     if (!conversation) return res.json({ ok: true, status: "ai_active", messages: [] });
+    // The demo owner-inbox poll needs only human replies. An explicit transcript
+    // view lets the visitor restore their own saved conversation after refresh.
+    const fullTranscript = req.query?.view === "full";
     const messages = await Message.find({
       organizationId: context.organization._id, agentId: context.agent._id,
-      conversationId: conversation._id, sender: "human",
-    }).sort({ createdAt: -1, _id: -1 }).limit(40).lean();
+      conversationId: conversation._id,
+      sender: fullTranscript ? { $in: ["customer", "agent", "human"] } : "human",
+    }).sort({ createdAt: -1, _id: -1 }).limit(fullTranscript ? 100 : 40).lean();
     return res.json({
       ok: true, status: conversation.status,
       messages: messages.reverse().map((item) => ({
-        id: item._id, sender: "human", content: item.content, createdAt: item.createdAt,
+        id: item._id, sender: item.sender, content: item.content, createdAt: item.createdAt,
       })),
     });
   } catch (error) { return next(error); }

@@ -81,23 +81,12 @@ const formatRetrievedKnowledge = (
 };
 
 const buildAgentInstructions = ({
-  organizationName =
-    "the business",
-
-  agentName =
-    "TengaAgent",
-
-  agentRole =
-    "AI Receptionist",
-
-  agentInstructions =
-    "",
-
-  baselineKnowledge =
-    "",
-
-  retrievedKnowledge =
-    [],
+  organizationName = "the business",
+  agentName = "TengaAgent",
+  agentRole = "AI Receptionist",
+  agentInstructions = "",
+  baselineKnowledge = "",
+  retrievedKnowledge = [],
 } = {}) => {
   const cleanOrganization =
     cleanPromptValue(
@@ -175,8 +164,7 @@ ${formatRetrievedKnowledge(
 };
 
 const buildGenericAgentFallback = ({
-  organizationName =
-    "this business",
+  organizationName = "this business",
 } = {}) => ({
   reply:
     `I don't have enough verified information to answer that reliably for ${cleanPromptValue(
@@ -186,42 +174,75 @@ const buildGenericAgentFallback = ({
   actions: [],
 });
 
+const wantsHumanFollowUp = (
+  message
+) => {
+  const input =
+    normalize(message);
+
+  return [
+    "contact",
+    "talk to",
+    "speak to",
+    "speak with",
+    "human",
+    "meeting",
+    "book",
+    "call me",
+    "reach me",
+    "get in touch",
+  ].some((phrase) =>
+    input.includes(phrase)
+  );
+};
+
+const buildCustomerZeroActions = (
+  message
+) =>
+  wantsHumanFollowUp(message)
+    ? [
+        {
+          type: "capture_lead",
+          label: "Leave your details",
+        },
+      ]
+    : [];
+
 function buildCustomerZeroReply(
   message
 ) {
   const input =
     normalize(message);
 
+  const actions =
+    buildCustomerZeroActions(
+      message
+    );
+
   if (
     input.includes("price") ||
     input.includes("pricing") ||
     input.includes("cost") ||
-    input.includes(
-      "how much"
-    ) ||
+    input.includes("how much") ||
     input.includes("quote")
   ) {
     return {
       reply:
         "Tengacion prices projects according to scope, complexity, integrations, and delivery requirements. Tell me what you want to build and I can help structure the requirements for a quote.",
-      actions: [],
+      actions,
     };
   }
 
   if (
     input.includes("website") ||
     input.includes("web app") ||
-    input.includes(
-      "ecommerce"
-    ) ||
-    input.includes(
-      "e-commerce"
-    )
+    input.includes("ecommerce") ||
+    input.includes("e-commerce")
   ) {
     return {
       reply:
         "Yes. Tengacion works on web applications and digital platforms. Tell me the type of website or web product you need, the main features, and your target users.",
-      actions: [],
+      actions,
     };
   }
 
@@ -234,45 +255,32 @@ function buildCustomerZeroReply(
     return {
       reply:
         "Tengacion works on software products that can include mobile experiences. Tell me what the app should do and who will use it, and I can help turn that into a clearer project brief.",
-      actions: [],
+      actions,
     };
   }
 
   if (
     input.includes("ai") ||
-    input.includes(
-      "artificial intelligence"
-    ) ||
+    input.includes("artificial intelligence") ||
     input.includes("agent") ||
-    input.includes(
-      "automation"
-    )
+    input.includes("automation")
   ) {
     return {
       reply:
         "Tengacion develops AI-enabled software and automation solutions. If you describe the business problem you want AI to solve, I can help identify the right starting point.",
-      actions: [],
+      actions,
     };
   }
 
   if (
-    input.includes("contact") ||
-    input.includes(
-      "talk to"
-    ) ||
-    input.includes(
-      "speak to"
-    ) ||
-    input.includes("human") ||
-    input.includes(
-      "meeting"
-    ) ||
-    input.includes("book")
+    wantsHumanFollowUp(
+      message
+    )
   ) {
     return {
       reply:
-        "I can help you prepare to speak with the Tengacion team. Tell me briefly what you need help with. Lead capture and automatic booking are being added to this TengaAgent pilot.",
-      actions: [],
+        "I can help you connect with the Tengacion team. Use the contact option below to leave your details and a short summary of what you need.",
+      actions,
     };
   }
 
@@ -284,14 +292,14 @@ function buildCustomerZeroReply(
     return {
       reply:
         "Hello! I'm TengaAgent, Tengacion's AI receptionist. I can help with questions about software development, websites, mobile products, AI solutions, or starting a new project.",
-      actions: [],
+      actions,
     };
   }
 
   return {
     reply:
       "I can help you understand Tengacion's software and AI services or help you start describing a project. What would you like to build or improve?",
-    actions: [],
+    actions,
   };
 }
 
@@ -302,60 +310,32 @@ const buildCustomerZeroInstructions =
     buildAgentInstructions({
       organizationName:
         "Tengacion Technologies Limited",
-
       agentName:
         "TengaAgent",
-
       agentRole:
         "AI Receptionist",
-
       agentInstructions:
-        "Help visitors understand Tengacion, clarify software or AI project requirements, and distinguish current capabilities from planned TengaAgent capabilities. Never invent exact software-development pricing.",
-
+        "Help visitors understand Tengacion, clarify software or AI project requirements, and distinguish current capabilities from planned TengaAgent capabilities. Never invent exact software-development pricing. If a visitor asks to speak with a person, book a meeting, be contacted, or requests human follow-up, tell them to use the contact option shown in the chat rather than posting sensitive contact details into the free-text conversation.",
       baselineKnowledge:
         CUSTOMER_ZERO_KNOWLEDGE,
-
       retrievedKnowledge,
     });
 
 async function respondToAgent({
   message,
-
-  organizationId =
-    null,
-
-  agentId =
-    null,
-
-  organizationName =
-    "the business",
-
-  agentName =
-    "TengaAgent",
-
-  agentRole =
-    "AI Receptionist",
-
-  agentInstructions =
-    "",
-
-  baselineKnowledge =
-    "",
-
-  conversationHistory =
-    [],
-
-  aiResponder =
-    generateTengaAgentReply,
-
-  knowledgeRetriever =
-    retrieveKnowledge,
-
-  fallbackResponder =
-    buildGenericAgentFallback,
+  organizationId = null,
+  agentId = null,
+  organizationName = "the business",
+  agentName = "TengaAgent",
+  agentRole = "AI Receptionist",
+  agentInstructions = "",
+  baselineKnowledge = "",
+  conversationHistory = [],
+  aiResponder = generateTengaAgentReply,
+  knowledgeRetriever = retrieveKnowledge,
+  fallbackResponder = buildGenericAgentFallback,
 }) {
-  let retrievedKnowledge =
-    [];
+  let retrievedKnowledge = [];
 
   if (
     organizationId &&
@@ -365,12 +345,8 @@ async function respondToAgent({
       const results =
         await knowledgeRetriever({
           organizationId,
-
           agentId,
-
-          query:
-            message,
-
+          query: message,
           limit:
             MAX_RETRIEVED_CHUNKS,
         });
@@ -397,21 +373,14 @@ async function respondToAgent({
     const aiResult =
       await aiResponder({
         message,
-
         conversationHistory,
-
         instructions:
           buildAgentInstructions({
             organizationName,
-
             agentName,
-
             agentRole,
-
             agentInstructions,
-
             baselineKnowledge,
-
             retrievedKnowledge,
           }),
       });
@@ -442,79 +411,64 @@ async function respondToAgent({
 
   return fallbackResponder({
     message,
-
     organizationId,
-
     agentId,
-
     organizationName,
-
     agentName,
-
     agentRole,
   });
 }
 
 async function respondToCustomerZero({
   message,
-
-  organizationId =
-    null,
-
-  agentId =
-    null,
-
-  conversationHistory =
-    [],
-
-  aiResponder =
-    generateTengaAgentReply,
-
-  knowledgeRetriever =
-    retrieveKnowledge,
+  organizationId = null,
+  agentId = null,
+  conversationHistory = [],
+  aiResponder = generateTengaAgentReply,
+  knowledgeRetriever = retrieveKnowledge,
 }) {
-  return respondToAgent({
-    message,
+  const result =
+    await respondToAgent({
+      message,
+      organizationId,
+      agentId,
+      organizationName:
+        "Tengacion Technologies Limited",
+      agentName:
+        "TengaAgent",
+      agentRole:
+        "AI Receptionist",
+      agentInstructions:
+        "Help visitors understand Tengacion, clarify software or AI project requirements, and distinguish current capabilities from planned TengaAgent capabilities. Never invent exact software-development pricing. If a visitor asks for human follow-up, direct them to the contact option shown by the application.",
+      baselineKnowledge:
+        CUSTOMER_ZERO_KNOWLEDGE,
+      conversationHistory,
+      aiResponder,
+      knowledgeRetriever,
+      fallbackResponder:
+        () =>
+          buildCustomerZeroReply(
+            message
+          ),
+    });
 
-    organizationId,
-
-    agentId,
-
-    organizationName:
-      "Tengacion Technologies Limited",
-
-    agentName:
-      "TengaAgent",
-
-    agentRole:
-      "AI Receptionist",
-
-    agentInstructions:
-      "Help visitors understand Tengacion, clarify software or AI project requirements, and distinguish current capabilities from planned TengaAgent capabilities. Never invent exact software-development pricing.",
-
-    baselineKnowledge:
-      CUSTOMER_ZERO_KNOWLEDGE,
-
-    conversationHistory,
-
-    aiResponder,
-
-    knowledgeRetriever,
-
-    fallbackResponder:
-      () =>
-        buildCustomerZeroReply(
-          message
-        ),
-  });
+  return {
+    ...result,
+    actions:
+      buildCustomerZeroActions(
+        message
+      ),
+  };
 }
 
 module.exports = {
   buildAgentInstructions,
+  buildCustomerZeroActions,
   buildCustomerZeroInstructions,
   buildCustomerZeroReply,
   buildGenericAgentFallback,
   formatRetrievedKnowledge,
   respondToAgent,
   respondToCustomerZero,
+  wantsHumanFollowUp,
 };

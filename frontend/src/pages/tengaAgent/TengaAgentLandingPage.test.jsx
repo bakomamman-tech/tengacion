@@ -6,6 +6,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  afterEach,
   beforeEach,
   describe,
   expect,
@@ -15,6 +16,8 @@ import {
 
 import {
   sendTengaAgentMessage,
+  getTengaAgentPilotVisitorReplies,
+  getTengaAgentPilotVisitorTranscript,
 } from "../../services/tengaAgentApi";
 
 import TengaAgentLandingPage
@@ -25,14 +28,20 @@ vi.mock(
   () => ({
     sendTengaAgentMessage:
       vi.fn(),
+    getTengaAgentPilotVisitorReplies: vi.fn(),
+    getTengaAgentPilotVisitorTranscript: vi.fn(),
   })
 );
 
 describe(
   "TengaAgentLandingPage",
   () => {
+    afterEach(() => { vi.unstubAllGlobals(); });
     beforeEach(() => {
       vi.clearAllMocks();
+      window.sessionStorage.clear();
+      getTengaAgentPilotVisitorReplies.mockResolvedValue({ messages: [] });
+      getTengaAgentPilotVisitorTranscript.mockResolvedValue({ messages: [] });
 
       sendTengaAgentMessage
         .mockResolvedValue({
@@ -111,6 +120,9 @@ describe(
 
             message:
               "Do you build AI software?",
+            sessionId: expect.stringMatching(
+              /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+            ),
           })
         );
 
@@ -121,6 +133,35 @@ describe(
         ).toBeInTheDocument();
       }
     );
+
+    it("restores the full server transcript after a page reload with the same session", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ pilotMode: true }),
+      }));
+      getTengaAgentPilotVisitorTranscript.mockResolvedValue({
+        ok: true,
+        messages: [
+          { id: "stored-customer", sender: "customer", content: "Hello, what can you do for my business?" },
+          { id: "stored-ai", sender: "agent", content: "I can answer customer questions and help capture leads." },
+          { id: "stored-human", sender: "human", content: "Our team can help as well." },
+        ],
+      });
+      const first = render(<TengaAgentLandingPage />);
+      expect(await screen.findByText("Hello, what can you do for my business?")).toBeInTheDocument();
+      expect(screen.getByText("I can answer customer questions and help capture leads.")).toBeInTheDocument();
+      expect(screen.getByText("Our team can help as well.")).toBeInTheDocument();
+      const firstSession = window.sessionStorage.getItem("tengaagent:tengacion-demo:session");
+      expect(firstSession).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      first.unmount();
+      render(<TengaAgentLandingPage />);
+      expect(await screen.findByText("Hello, what can you do for my business?")).toBeInTheDocument();
+      expect(screen.getByText("I can answer customer questions and help capture leads.")).toBeInTheDocument();
+      expect(getTengaAgentPilotVisitorTranscript).toHaveBeenCalledTimes(2);
+      expect(getTengaAgentPilotVisitorTranscript).toHaveBeenLastCalledWith({
+        agentId: "tengacion-demo", sessionId: firstSession,
+      });
+    });
 
     it(
       "switches between Nigerian and international pricing",

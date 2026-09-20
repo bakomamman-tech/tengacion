@@ -1,4 +1,6 @@
 const { config } = require("../config/env");
+const { isTengaAgentPilotMode } = require("../config/tengaAgentPilotMode");
+const isPilot = isTengaAgentPilotMode();
 
 const getPaystackKeyMode = (value = "") => {
   const secret = String(value || "").trim();
@@ -27,8 +29,8 @@ const baseChecks = [
   {
     key: "PAYSTACK_SECRET_KEY",
     label: "Paystack live secret",
-    type: config.paystackRequireLiveKey ? "hard" : "warn",
-    paystackLiveKey: config.paystackRequireLiveKey,
+    type: config.paystackRequireLiveKey && !isPilot ? "hard" : "warn",
+    paystackLiveKey: config.paystackRequireLiveKey && !isPilot,
   },
   { key: "PLATFORM_SETTLEMENT_ACCOUNT_NAME", label: "Platform settlement account name", type: "warn" },
   { key: "PLATFORM_SETTLEMENT_BANK_NAME", label: "Platform settlement bank", type: "warn" },
@@ -146,6 +148,12 @@ const runPreflight = () => {
     } else if (check.paystackLiveKey && getPaystackKeyMode(value) !== "live") {
       status = "weak";
       note = "must start with sk_live_ for live charges";
+    }
+
+    if (isPilot && ["PAYSTACK_SECRET_KEY", "STRIPE_SECRET_KEY"].includes(check.key) && value) {
+      status = "weak";
+      note = "must be unset in the isolated TengaAgent pilot";
+      success = false;
     }
 
     if ((status === "missing" || status === "weak") && check.type === "hard") {

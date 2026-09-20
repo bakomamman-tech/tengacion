@@ -76,6 +76,16 @@ const Agent =
     "../models/tengaAgent/Agent"
   );
 
+const Lead =
+  require(
+    "../models/tengaAgent/Lead"
+  );
+
+const Conversation =
+  require(
+    "../models/tengaAgent/Conversation"
+  );
+
 const {
   createOrUpdateOwnerWorkspace,
   listOwnerKnowledge,
@@ -471,6 +481,170 @@ describe(
           serialized
         ).not.toContain(
           "PRIVATE OWNER B KNOWLEDGE"
+        );
+      }
+    );
+
+    it(
+      "updates only a lead owned by the authenticated tenant",
+      async () => {
+        const ownerA =
+          new mongoose
+            .Types
+            .ObjectId();
+        const ownerB =
+          new mongoose
+            .Types
+            .ObjectId();
+
+        const orgA =
+          await Organization.create({
+            name:
+              "Lead Owner A",
+            slug:
+              "lead-owner-a",
+            ownerUser:
+              ownerA,
+            plan:
+              "starter",
+            status:
+              "pilot",
+          });
+
+        const orgB =
+          await Organization.create({
+            name:
+              "Lead Owner B",
+            slug:
+              "lead-owner-b",
+            ownerUser:
+              ownerB,
+            plan:
+              "starter",
+            status:
+              "pilot",
+          });
+
+        const agentA =
+          await Agent.create({
+            organizationId:
+              orgA._id,
+            key:
+              "receptionist",
+            name:
+              "TengaAgent",
+            status:
+              "active",
+          });
+
+        const agentB =
+          await Agent.create({
+            organizationId:
+              orgB._id,
+            key:
+              "receptionist",
+            name:
+              "TengaAgent",
+            status:
+              "active",
+          });
+
+        const conversationA =
+          await Conversation.create({
+            organizationId:
+              orgA._id,
+            agentId:
+              agentA._id,
+            sessionKey:
+              "lead-owner-a-session",
+          });
+
+        const conversationB =
+          await Conversation.create({
+            organizationId:
+              orgB._id,
+            agentId:
+              agentB._id,
+            sessionKey:
+              "lead-owner-b-session",
+          });
+
+        const leadA =
+          await Lead.create({
+            organizationId:
+              orgA._id,
+            agentId:
+              agentA._id,
+            conversationId:
+              conversationA._id,
+            sessionKey:
+              "lead-owner-a-session",
+            email:
+              "owner-a@example.com",
+            consentToContact:
+              true,
+          });
+
+        const leadB =
+          await Lead.create({
+            organizationId:
+              orgB._id,
+            agentId:
+              agentB._id,
+            conversationId:
+              conversationB._id,
+            sessionKey:
+              "lead-owner-b-session",
+            email:
+              "owner-b@example.com",
+            consentToContact:
+              true,
+          });
+
+        const updated =
+          await request(app)
+            .patch(
+              `/api/tengaagent/owner/leads/${leadA._id}/status`
+            )
+            .set(
+              "x-test-user-id",
+              String(ownerA)
+            )
+            .send({
+              status:
+                "contacted",
+            })
+            .expect(200);
+
+        expect(
+          updated.body.lead.status
+        ).toBe(
+          "contacted"
+        );
+
+        await request(app)
+          .patch(
+            `/api/tengaagent/owner/leads/${leadB._id}/status`
+          )
+          .set(
+            "x-test-user-id",
+            String(ownerA)
+          )
+          .send({
+            status:
+              "won",
+          })
+          .expect(404);
+
+        const untouchedB =
+          await Lead.findById(
+            leadB._id
+          ).lean();
+
+        expect(
+          untouchedB.status
+        ).toBe(
+          "new"
         );
       }
     );

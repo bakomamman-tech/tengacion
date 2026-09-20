@@ -1,0 +1,89 @@
+name: TengaAgent CI
+
+on:
+  push:
+    branches:
+      - feature/tengaagent-lead-capture-multitenant
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/tengaagent-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/tengaagent-ci.yml"
+
+concurrency:
+  group: tengaagent-ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: TengaAgent backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NODE_ENV: test
+      JWT_SECRET: tengaagent-ci-jwt-secret
+      TENGAAGENT_CALENDAR_ENCRYPTION_KEY: tengaagent-ci-calendar-encryption-key-2026
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Use Node.js 20.20.2
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20.20.2
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Reject moderate-or-higher backend dependency vulnerabilities
+        run: npm audit --audit-level=moderate
+
+      - name: Audit root production dependencies
+        run: npm audit --prefix .. --omit=dev --audit-level=moderate
+
+      - name: Run full TengaAgent backend suite serially
+        run: npx cross-env NODE_PATH=./node_modules jest tests/tengaAgent*.test.js --runInBand --testTimeout=60000 --hookTimeout=60000
+
+  frontend:
+    name: TengaAgent frontend tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Use Node.js 20.20.2
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20.20.2
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Reject moderate-or-higher frontend dependency vulnerabilities
+        run: npm audit --audit-level=moderate
+
+      - name: Run TengaAgent frontend tests
+        run: npx vitest run src/pages/tengaAgent/__tests__ --reporter=dot --testTimeout=20000 --hookTimeout=20000
+
+      - name: Build production frontend
+        run: npm run build

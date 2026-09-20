@@ -324,7 +324,7 @@ export default function Login() {
 
                 <button
                   type="button"
-                  onClick={() => navigate("/register")}
+                  onClick={() => navigate("/register?returnTo=" + encodeURIComponent(returnTo))}
                   className="signup-btn"
                   disabled={loading}
                 >

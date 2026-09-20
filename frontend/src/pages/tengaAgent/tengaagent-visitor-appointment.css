@@ -1,0 +1,179 @@
+.tengaagent-visitor-appointment {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0;
+  padding: 18px;
+  border: 1px solid rgba(117, 137, 255, 0.28);
+  border-radius: 18px;
+  background: rgba(9, 17, 42, 0.72);
+  box-shadow: 0 18px 50px rgba(3, 8, 25, 0.18);
+}
+
+.tengaagent-visitor-appointment__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tengaagent-visitor-appointment__heading span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  opacity: 0.72;
+}
+
+.tengaagent-visitor-appointment__heading h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.tengaagent-visitor-appointment__heading button,
+.tengaagent-visitor-appointment__actions button {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tengaagent-visitor-appointment__heading button,
+.tengaagent-visitor-appointment__actions .secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+}
+
+.tengaagent-visitor-appointment__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tengaagent-visitor-appointment__summary > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tengaagent-visitor-appointment__summary strong {
+  font-size: 0.74rem;
+  opacity: 0.7;
+}
+
+.tengaagent-visitor-appointment__summary span {
+  overflow-wrap: anywhere;
+}
+
+.tengaagent-visitor-appointment__purpose,
+.tengaagent-visitor-appointment__editor p {
+  margin: 0;
+  line-height: 1.55;
+  opacity: 0.86;
+}
+
+.tengaagent-visitor-appointment__editor {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr);
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.tengaagent-visitor-appointment__editor label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.tengaagent-visitor-appointment__editor input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 10px 11px;
+  background: rgba(5, 11, 29, 0.7);
+  color: inherit;
+  font: inherit;
+}
+
+.tengaagent-visitor-appointment__editor p,
+.tengaagent-visitor-appointment__actions {
+  grid-column: 1 / -1;
+}
+
+.tengaagent-visitor-appointment__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.tengaagent-visitor-appointment__actions button {
+  background: #7b8cff;
+  color: #071028;
+}
+
+.tengaagent-visitor-appointment__actions .danger {
+  background: rgba(255, 93, 115, 0.16);
+  color: #ffb5c0;
+  border: 1px solid rgba(255, 93, 115, 0.3);
+}
+
+.tengaagent-visitor-appointment__actions button:disabled,
+.tengaagent-visitor-appointment__heading button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.tengaagent-visitor-appointment__notice,
+.tengaagent-visitor-appointment__error,
+.tengaagent-visitor-appointment__cancel-confirm {
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.tengaagent-visitor-appointment__notice {
+  background: rgba(75, 206, 142, 0.12);
+  border: 1px solid rgba(75, 206, 142, 0.22);
+}
+
+.tengaagent-visitor-appointment__error {
+  background: rgba(255, 93, 115, 0.12);
+  border: 1px solid rgba(255, 93, 115, 0.24);
+  color: #ffd0d7;
+}
+
+.tengaagent-visitor-appointment__cancel-confirm {
+  display: grid;
+  gap: 8px;
+  background: rgba(255, 93, 115, 0.08);
+  border: 1px solid rgba(255, 93, 115, 0.2);
+}
+
+.tengaagent-visitor-appointment small {
+  line-height: 1.45;
+  opacity: 0.7;
+}
+
+@media (max-width: 720px) {
+  .tengaagent-visitor-appointment__summary,
+  .tengaagent-visitor-appointment__editor {
+    grid-template-columns: 1fr;
+  }
+
+  .tengaagent-visitor-appointment__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tengaagent-visitor-appointment__heading button,
+  .tengaagent-visitor-appointment__actions button {
+    width: 100%;
+  }
+}

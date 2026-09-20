@@ -1,0 +1,108 @@
+.tengaagent-pilot-owner {
+  width: min(1160px, calc(100% - 40px));
+  margin: 20px auto 70px;
+  padding: clamp(20px, 4vw, 36px);
+  border: 1px solid rgba(98, 230, 189, .35);
+  border-radius: 22px;
+  background: #0d1c30;
+  color: #f6f9fc;
+  scroll-margin-top: 24px;
+}
+.tengaagent-pilot-owner__heading, .tengaagent-pilot-owner__card-title {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
+}
+.tengaagent-pilot-owner__heading span { color: #62e6bd; font-size: .75rem; font-weight: 800; letter-spacing: .1em; }
+.tengaagent-pilot-owner h2 { margin: 8px 0; font-size: clamp(1.4rem, 3vw, 2rem); }
+.tengaagent-pilot-owner h3 { margin: 26px 0 15px; }
+.tengaagent-pilot-owner p, .tengaagent-pilot-owner small { color: #b9c9d9; overflow-wrap: anywhere; }
+.tengaagent-pilot-owner button {
+  border: 0; border-radius: 10px; background: #62e6bd; color: #061019;
+  padding: 12px 18px; font-weight: 800; cursor: pointer;
+}
+.tengaagent-pilot-owner button:disabled { opacity: .5; cursor: not-allowed; }
+.tengaagent-pilot-owner__claim { display: grid; gap: 12px; max-width: 650px; }
+.tengaagent-pilot-owner__claim h3 { margin-bottom: 0; }
+.tengaagent-pilot-owner__claim input {
+  width: 100%; min-width: 0; padding: 13px; border-radius: 10px;
+  border: 1px solid #8798a9; background: #fdfbf4; color: #08111b;
+}
+.tengaagent-pilot-owner__error { padding: 13px; border: 1px solid #fca5a5; border-radius: 10px; }
+.tengaagent-pilot-owner__counts { display: flex; flex-wrap: wrap; gap: 18px; margin: 24px 0; }
+.tengaagent-pilot-owner__counts span, .tengaagent-pilot-owner__list article {
+  padding: 16px; border-radius: 12px; background: #122640; border: 1px solid rgba(255,255,255,.1);
+}
+.tengaagent-pilot-owner__list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr)); gap: 14px; }
+.tengaagent-pilot-owner__list article { min-width: 0; }
+.tengaagent-pilot-owner__list p { margin: 12px 0; }
+.tengaagent-pilot-owner__card-title span { text-transform: capitalize; color: #62e6bd; }
+.tengaagent-pilot-owner__note { margin-top: 24px; }
+@media (max-width: 650px) {
+  .tengaagent-pilot-owner__heading, .tengaagent-pilot-owner__card-title { flex-direction: column; gap: 8px; }
+}
+
+.tengaagent-pilot-workspace-toggle {
+  width: min(1160px, calc(100% - 40px)); margin: -40px auto 55px;
+  color: #b9c9d9; display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+}
+.tengaagent-pilot-workspace-toggle button {
+  padding: 10px 16px; border: 1px solid rgba(98,230,189,.5); border-radius: 10px;
+  color: #62e6bd; background: #122640; cursor: pointer; font-weight: 700;
+}
+
+.tengaagent-pilot-owner__actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 18px;
+}
+.tengaagent-pilot-owner__actions label,
+.tengaagent-pilot-owner__reschedule label {
+  display: grid; gap: 6px; font-size: .88rem; color: #b9c9d9;
+}
+.tengaagent-pilot-owner__actions select,
+.tengaagent-pilot-owner__reschedule select,
+.tengaagent-pilot-owner__reschedule input,
+.tengaagent-pilot-owner__conversation textarea {
+  min-width: 0; max-width: 100%; border-radius: 10px; border: 1px solid #8798a9;
+  padding: 10px; color: #08111b; background: #fdfbf4; font: inherit;
+}
+.tengaagent-pilot-owner__actions button { padding: 9px 12px; }
+.tengaagent-pilot-owner__actions button:disabled { opacity: .5; cursor: not-allowed; }
+.tengaagent-pilot-owner__reschedule {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-top: 16px;
+}
+.tengaagent-pilot-owner__conversation {
+  margin-top: 20px; border-top: 1px solid rgba(255,255,255,.15); padding-top: 15px;
+}
+.tengaagent-pilot-owner__conversation h4 { margin: 0; }
+.tengaagent-pilot-owner__conversation .tengaagent-pilot-owner__claim { max-width: none; }
+.tengaagent-pilot-owner__conversation textarea { width: 100%; resize: vertical; }
+.tengaagent-pilot-owner__thread {
+  max-height: 310px; overflow-y: auto; padding: 10px 14px; margin-bottom: 12px;
+  background: #07111f; border-radius: 12px;
+}
+.tengaagent-pilot-owner__thread p { margin: 6px 0; white-space: pre-wrap; }
+@media (max-width: 650px) {
+  .tengaagent-pilot-owner__reschedule { display: grid; }
+  .tengaagent-pilot-owner__actions { align-items: stretch; }
+}
+
+/* Keep the lead-status field and chat action on the same bottom baseline.
+   The label sits above its select without pulling the adjacent button upward. */
+.tengaagent-pilot-owner__actions.tengaagent-pilot-owner__lead-actions {
+  align-items: flex-end;
+}
+.tengaagent-pilot-owner__lead-actions > label {
+  flex: 0 1 160px;
+  min-width: 140px;
+}
+.tengaagent-pilot-owner__lead-actions > label select {
+  width: 100%;
+}
+.tengaagent-pilot-owner__lead-actions > label select,
+.tengaagent-pilot-owner__lead-actions > button {
+  box-sizing: border-box;
+  min-height: 46px;
+}
+.tengaagent-pilot-owner__lead-actions > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

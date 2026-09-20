@@ -1,0 +1,70 @@
+.tengaagent-owner__publication {
+  margin-top: 18px;
+  padding: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  border: 1px solid rgba(98, 230, 189, 0.22);
+  border-radius: 16px;
+  background: rgba(98, 230, 189, 0.055);
+}
+
+.tengaagent-owner__publication > div {
+  min-width: 0;
+}
+
+.tengaagent-owner__publication-label {
+  display: block;
+  color: var(--accent, #62e6bd);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+}
+
+.tengaagent-owner__publication strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 1.08rem;
+}
+
+.tengaagent-owner__publication p {
+  max-width: 720px;
+  margin: 7px 0;
+  color: var(--muted, #a4b4c8);
+  line-height: 1.55;
+}
+
+.tengaagent-owner__publication a {
+  display: inline-block;
+  max-width: 100%;
+  color: var(--accent, #62e6bd);
+  overflow-wrap: anywhere;
+}
+
+.tengaagent-owner__publication button {
+  flex: 0 0 auto;
+  border: 1px solid rgba(98, 230, 189, 0.45);
+  border-radius: 11px;
+  padding: 11px 15px;
+  background: var(--accent, #62e6bd);
+  color: #061019;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.tengaagent-owner__publication button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+@media (max-width: 760px) {
+  .tengaagent-owner__publication {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tengaagent-owner__publication button {
+    width: 100%;
+  }
+}

@@ -10,6 +10,7 @@ import { API_BASE } from "../../config/apiBase";
 import {
   sendTengaAgentMessage,
   getTengaAgentPilotVisitorReplies,
+  getTengaAgentPilotVisitorTranscript,
   submitTengaAgentAppointment,
   submitTengaAgentLead,
 } from "../../services/tengaAgentApi";
@@ -222,6 +223,7 @@ export default function TengaAgentLandingPage() {
   const [messages, setMessages] = useState([
     INITIAL_MESSAGE,
   ]);
+  const [historyError, setHistoryError] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [market, setMarket] = useState("nigeria");
   const [sessionId] = useState(getSessionId);
@@ -236,8 +238,39 @@ export default function TengaAgentLandingPage() {
 
   const chatEndRef = useRef(null);
 
-  // Visitor session IDs are high-entropy bearer capabilities; the server returns
-  // only the human replies for this visitor's own demo conversation.
+  // Restore the visitor's saved questions, AI answers, and human replies
+  // from the same secure browser session after a page refresh.
+  useEffect(() => {
+    if (!pilotMode) return undefined;
+    let active = true;
+    getTengaAgentPilotVisitorTranscript({ agentId: AGENT_ID, sessionId })
+      .then((result) => {
+        if (!active || !Array.isArray(result?.messages)) return;
+        setHistoryError("");
+        setMessages((current) => {
+          // A new message sent during restoration must not be replaced with
+          // a potentially stale snapshot from an earlier request.
+          if (current.some((message) => message.id.startsWith("customer-"))) {
+            return current;
+          }
+          return [
+            INITIAL_MESSAGE,
+            ...result.messages.map((entry) => ({
+              id: entry.sender === "human" ? "human-" + entry.id : "saved-" + entry.id,
+              sender: entry.sender,
+              content: entry.content,
+            })),
+          ];
+        });
+      })
+      .catch(() => {
+        if (active) setHistoryError("Previous messages could not be restored. Please try refreshing the page.");
+      });
+    return () => { active = false; };
+  }, [pilotMode, sessionId]);
+
+  // Poll only human replies; do not duplicate customer/agent messages already
+  // appended locally, and retain the existing owner handoff behavior.
   useEffect(() => {
     if (!pilotMode) return undefined;
     let active = true;
@@ -558,6 +591,7 @@ export default function TengaAgentLandingPage() {
             </div>
           </div>
 
+          {historyError ? <p role="status" className="tengaagent-demo-note">{historyError}</p> : null}
           <div
             className="tengaagent-chat"
             aria-live="polite"

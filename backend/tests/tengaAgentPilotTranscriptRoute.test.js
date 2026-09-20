@@ -2,6 +2,13 @@
 const express = require("express");
 const request = require("supertest");
 
+// Match the backend route test harness: OpenAI integration imports the strict
+// runtime env module even when no external AI call is made in this test.
+process.env.NODE_ENV = "test";
+process.env.MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/tengaagent-test";
+process.env.JWT_SECRET = process.env.JWT_SECRET || "tengaagent-local-test-secret-not-for-production";
+require("../../apps/api/config/env");
+
 jest.mock("../config/tengaAgentPilotMode", () => ({
   isTengaAgentPilotMode: jest.fn(),
 }));

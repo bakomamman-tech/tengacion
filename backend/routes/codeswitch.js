@@ -18,6 +18,11 @@ router.post(
 );
 
 router.post(
+  "/africastalking/voice/language",
+  codeswitchAfricasTalkingController.voiceLanguageSelection
+);
+
+router.post(
   "/africastalking/voice/events",
   codeswitchAfricasTalkingController.voiceEvents
 );

@@ -13,6 +13,11 @@ const {
   "../services/africasTalkingVoiceProcessingService"
 );
 
+const {
+  buildLanguageMenuXml,
+  buildLanguageSelectionXml,
+} = require("../services/africasTalkingLanguageMenuService");
+
 
 const SERVICE_NAME =
   "Tengacion VoiceBridge";
@@ -88,7 +93,7 @@ const voiceCallback = (
   try {
 
     const xml =
-      buildVoiceCallbackXml();
+      buildLanguageMenuXml();
 
 
     return res
@@ -110,6 +115,23 @@ const voiceCallback = (
       .send(
         MINIMAL_FAILURE_XML
       );
+  }
+};
+
+
+// Process the single keypad digit before creating the recording callback.
+const voiceLanguageSelection = (req, res) => {
+  setNoStore(res);
+
+  try {
+    const xml = buildLanguageSelectionXml({
+      digits: req.body?.dtmfDigits,
+      retry: req.query?.retry === "1",
+    });
+
+    return res.status(200).type("application/xml").send(xml);
+  } catch {
+    return res.status(200).type("application/xml").send(MINIMAL_FAILURE_XML);
   }
 };
 
@@ -471,6 +493,7 @@ const voiceRecording =
 
 module.exports = {
   voiceCallback,
+  voiceLanguageSelection,
   voiceEvents,
   voiceRecording,
 };

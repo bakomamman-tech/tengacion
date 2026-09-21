@@ -25,6 +25,10 @@ jobs:
   telephone-menu:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      NODE_ENV: test
+      MONGO_URI: mongodb://127.0.0.1:27017/voicebridge_menu_ci
+      JWT_SECRET: voicebridge-menu-ci-only-not-a-production-secret-32-chars
     defaults:
       run:
         working-directory: backend

@@ -1,0 +1,75 @@
+name: Upload Limits CI
+
+on:
+  pull_request:
+    paths:
+      - "backend/config/uploadLimits.js"
+      - "backend/utils/memoryUpload.js"
+      - "backend/middleware/**Upload.js"
+      - "backend/services/cloudinaryMediaService.js"
+      - "backend/services/videoStorage.js"
+      - "backend/tests/uploadLimits.test.js"
+      - "backend/tests/cloudinaryLargeUpload.test.js"
+      - "backend/tests/setupCloudinaryMock.js"
+      - "backend/tests/posts.test.js"
+      - "apps/api/services/postService.js"
+      - "frontend/src/config/uploadLimits.js"
+      - "frontend/src/api.js"
+      - "frontend/src/stories/CreateStory.jsx"
+      - "frontend/src/pages/Home.jsx"
+      - "frontend/src/pages/ReelsPage.jsx"
+      - "frontend/src/components/marketplace/ProductForm.jsx"
+      - "frontend/src/components/creator/upload/**"
+      - "frontend/src/pages/__tests__/PostComposerModal.test.jsx"
+      - ".github/workflows/upload-limits-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  backend-upload-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NODE_ENV: test
+      NODE_PATH: ${{ github.workspace }}/backend/node_modules
+      MONGO_URI: mongodb://127.0.0.1:27017/tengacion-upload-ci
+      JWT_SECRET: upload-ci-test-secret-not-production-1234567890
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Syntax check updated upload policy and transport
+        run: |
+          node --check config/uploadLimits.js
+          node --check utils/memoryUpload.js
+          node --check services/cloudinaryMediaService.js
+          node --check services/videoStorage.js
+          node --check tests/uploadLimits.test.js
+          node --check tests/cloudinaryLargeUpload.test.js
+      - name: Check upload policy, large-video transport, post metadata
+        run: npx jest tests/uploadLimits.test.js tests/cloudinaryLargeUpload.test.js tests/posts.test.js --runInBand
+
+  frontend-upload-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Check upload limits and creator/post file selection
+        run: npx vitest run src/config/__tests__/uploadLimits.test.js src/components/creator/upload/__tests__/uploadSchemas.test.js src/pages/__tests__/PostComposerModal.test.jsx

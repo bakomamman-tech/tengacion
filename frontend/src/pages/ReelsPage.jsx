@@ -206,7 +206,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
       return false;
     }
     if (nextFile.size > MAX_REEL_BYTES) {
-      setError("Reels must be 100MB or smaller.");
+      setError("Reels must be 200MB or smaller.");
       return false;
     }
     setError("");
@@ -293,7 +293,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
           ) : (
             <div className="reels-composer-empty">
               <span>9:16 videos look best here.</span>
-              <small>MP4, MOV, or WebM, up to 100MB.</small>
+              <small>MP4, MOV, or WebM, up to 200MB.</small>
             </div>
           )}
 

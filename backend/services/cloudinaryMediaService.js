@@ -198,17 +198,28 @@ const uploadFileToCloudinary = async (file, options = {}) => {
   });
 
   return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
+    // Cloudinary's single-request upload ceiling is 100MB. Use chunked streaming
+    // for larger videos; the final callback is the one with done !== false.
+    const isLargeVideo = resourceType === "video"
+      && Number(file.size || file.buffer?.length || 0) > 100 * 1024 * 1024;
+    const uploadMethod = isLargeVideo
+      ? cloudinary.uploader.upload_chunked_stream
+      : cloudinary.uploader.upload_stream;
+    const uploadStream = uploadMethod(
       {
         folder,
         resource_type: resourceType,
         use_filename: false,
         unique_filename: true,
         overwrite: false,
+        ...(isLargeVideo ? { chunk_size: 20 * 1024 * 1024 } : {}),
       },
       (error, result) => {
         if (error) {
           reject(error);
+          return;
+        }
+        if (result?.done === false) {
           return;
         }
 

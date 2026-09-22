@@ -24,20 +24,20 @@ const buildMusicValues = (releaseMediaFile) => ({
 });
 
 describe("creator upload schemas", () => {
-  it("accepts a creator video at the 100MB limit", () => {
+  it("accepts a creator video at the 200MB limit", () => {
     const result = musicUploadSchema.safeParse(
-      buildMusicValues({ name: "release.mp4", size: 100 * MEBIBYTE })
+      buildMusicValues({ name: "release.mp4", size: 200 * MEBIBYTE })
     );
 
     expect(result.success).toBe(true);
   });
 
-  it("rejects a creator video above the 100MB limit", () => {
+  it("rejects a creator video above the 200MB limit", () => {
     const result = musicUploadSchema.safeParse(
-      buildMusicValues({ name: "release.mp4", size: 100 * MEBIBYTE + 1 })
+      buildMusicValues({ name: "release.mp4", size: 200 * MEBIBYTE + 1 })
     );
 
     expect(result.success).toBe(false);
-    expect(result.error.issues.some((issue) => /100MB or smaller/i.test(issue.message))).toBe(true);
+    expect(result.error.issues.some((issue) => /200MB or smaller/i.test(issue.message))).toBe(true);
   });
 });

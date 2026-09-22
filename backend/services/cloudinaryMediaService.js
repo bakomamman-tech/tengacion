@@ -205,7 +205,7 @@ const uploadFileToCloudinary = async (file, options = {}) => {
     const uploadMethod = isLargeVideo
       ? cloudinary.uploader.upload_chunked_stream
       : cloudinary.uploader.upload_stream;
-    const uploadStream = uploadMethod(
+    const uploadStream = uploadMethod.call(cloudinary.uploader,
       {
         folder,
         resource_type: resourceType,

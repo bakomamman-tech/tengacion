@@ -47,10 +47,13 @@ const fileField = (
         message: `${label} must match ${extensions.map((entry) => entry.replace(".", "").toUpperCase()).join(", ")}`,
       });
     }
-    if ((Number(value.size) || 0) > maxBytes) {
+    const fileMaxBytes = VIDEO_EXTENSIONS.includes(getExtension(value))
+      ? UPLOAD_LIMITS.CREATOR_VIDEO_BYTES
+      : maxBytes;
+    if ((Number(value.size) || 0) > fileMaxBytes) {
       ctx.addIssue({
         code: "custom",
-        message: `${label} must be ${formatUploadLimit(maxBytes)} or smaller`,
+        message: `${label} must be ${formatUploadLimit(fileMaxBytes)} or smaller`,
       });
     }
   });

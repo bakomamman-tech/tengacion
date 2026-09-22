@@ -160,30 +160,30 @@ describe("PostComposerModal", () => {
     expect(container.querySelectorAll(".composer-preview-item")).toHaveLength(2);
   });
 
-  it("accepts a reel at the 100MB boundary", async () => {
+  it("accepts a reel at the 200MB boundary", async () => {
     const user = userEvent.setup();
     const { container } = renderComposer({ initialMode: "reel" });
 
     await user.upload(
       container.querySelector('input[type="file"]'),
-      buildSizedVideoFile("boundary-reel.mp4", 100 * 1024 * 1024)
+      buildSizedVideoFile("boundary-reel.mp4", 200 * 1024 * 1024)
     );
 
     expect(await screen.findByText("Video ready")).toBeInTheDocument();
-    expect(screen.queryByText(/Reels must be 100MB or smaller/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Reels must be 200MB or smaller/i)).not.toBeInTheDocument();
   });
 
-  it("rejects a reel above 100MB", async () => {
+  it("rejects a reel above 200MB", async () => {
     const user = userEvent.setup();
     const { container } = renderComposer({ initialMode: "reel" });
 
     await user.upload(
       container.querySelector('input[type="file"]'),
-      buildSizedVideoFile("oversized-reel.mp4", 100 * 1024 * 1024 + 1)
+      buildSizedVideoFile("oversized-reel.mp4", 200 * 1024 * 1024 + 1)
     );
 
     expect(
-      await screen.findByText(/Reels must be 100MB or smaller/i)
+      await screen.findByText(/Reels must be 200MB or smaller/i)
     ).toBeInTheDocument();
     expect(screen.queryByText("Video ready")).not.toBeInTheDocument();
   });

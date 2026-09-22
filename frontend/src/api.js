@@ -1693,8 +1693,8 @@ const validatePostUploadSizes = (files = [], postType = "") => {
       throw new Error(
         isVideo
           ? normalizedPostType === "reel"
-            ? "Reels must be 100MB or smaller."
-            : "Feed videos must be 50MB or smaller."
+            ? "Reels must be 200MB or smaller."
+            : "Feed videos must be 200MB or smaller."
           : "Post images must be 10MB or smaller."
       );
     }
@@ -2043,12 +2043,12 @@ const validateStoryFileSize = (file) => {
   const isVideo = String(file.type || "").toLowerCase().startsWith("video/");
   const maxBytes = isVideo
     ? UPLOAD_LIMITS.PROFILE_STORY_VIDEO_BYTES
-    : UPLOAD_LIMITS.IMAGE_BYTES;
+    : UPLOAD_LIMITS.STORY_IMAGE_BYTES;
   if ((Number(file.size) || 0) > maxBytes) {
     throw new Error(
       isVideo
-        ? "Story videos must be 25MB or smaller."
-        : "Story images must be 10MB or smaller."
+        ? "Story videos must be 100MB or smaller."
+        : "Story images must be 100MB or smaller."
     );
   }
 };

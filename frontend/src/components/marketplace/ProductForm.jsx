@@ -128,7 +128,7 @@ export default function ProductForm({
     }
     if ((Number(file.size) || 0) > UPLOAD_LIMITS.MARKETPLACE_PRODUCT_VIDEO_BYTES) {
       updateField("video", null);
-      setMediaError("Marketplace product videos must be 30MB or smaller.");
+      setMediaError("Marketplace product videos must be 200MB or smaller.");
       return;
     }
 
@@ -334,7 +334,7 @@ export default function ProductForm({
               event.target.value = "";
             }}
           />
-          <p className="marketplace-field-hint">MP4, MOV, or WebM. Maximum size: 30MB.</p>
+          <p className="marketplace-field-hint">MP4, MOV, or WebM. Maximum size: 200MB.</p>
           {mediaError ? <p className="marketplace-field-error">{mediaError}</p> : null}
           {videoPreviewUrl || existingVideo ? (
             <div className="marketplace-video-preview">

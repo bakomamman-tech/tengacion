@@ -7,7 +7,7 @@ const { MEBIBYTE, UPLOAD_LIMITS } = require("../config/uploadLimits");
 
 const IMAGE_MAX_BYTES = UPLOAD_LIMITS.IMAGE_BYTES;
 const MEDIA_MAX_BYTES = UPLOAD_LIMITS.CREATOR_MEDIA_BYTES;
-const MAX_UPLOAD_BYTES = MEDIA_MAX_BYTES;
+const MAX_UPLOAD_BYTES = UPLOAD_LIMITS.CREATOR_VIDEO_BYTES;
 
 const IMAGE_MIME_TYPES = new Set([
   "image/avif",
@@ -118,7 +118,7 @@ const classifyFile = (file = {}) => {
   }
 
   if (VIDEO_MIME_TYPES.has(mimeType)) {
-    return { category: "video", mimeType, maxBytes: MEDIA_MAX_BYTES };
+    return { category: "video", mimeType, maxBytes: UPLOAD_LIMITS.CREATOR_VIDEO_BYTES };
   }
 
   if (AUDIO_MIME_TYPES.has(mimeType)) {
@@ -163,9 +163,11 @@ const validateFilePayload = (file = {}, options = {}) => {
     const label =
       classification.category === "image"
         ? "Image uploads"
-        : ["video", "audio"].includes(classification.category)
-          ? "Video and audio uploads"
-          : "Document uploads";
+        : classification.category === "video"
+          ? "Video uploads"
+          : classification.category === "audio"
+            ? "Audio uploads"
+            : "Document uploads";
     throw buildUploadError(
       `${label} must be ${describeSizeLimit(maxBytes)} or smaller.`,
       413

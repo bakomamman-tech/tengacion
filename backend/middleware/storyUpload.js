@@ -10,7 +10,7 @@ module.exports = createConfiguredUpload({
   fallbackDirName: "tengacion-story-uploads",
   maxFileBytes: UPLOAD_LIMITS.PROFILE_STORY_VIDEO_BYTES,
   maxBytesByCategory: {
-    image: UPLOAD_LIMITS.IMAGE_BYTES,
+    image: UPLOAD_LIMITS.STORY_IMAGE_BYTES,
     video: UPLOAD_LIMITS.PROFILE_STORY_VIDEO_BYTES,
   },
 });

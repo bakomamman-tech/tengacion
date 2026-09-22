@@ -46,6 +46,9 @@ jest.mock("cloudinary", () => {
     });
   });
 
+  // The real SDK provides a chunked stream for payloads over 100MB.
+  const uploadChunkedStream = jest.fn((options, callback) => uploadStream(options, callback));
+
   const destroy = jest.fn(async (publicId, options = {}) => ({
     result: publicId ? "ok" : "not found",
     publicId,
@@ -57,12 +60,14 @@ jest.mock("cloudinary", () => {
     config,
     uploader: {
       upload_stream: uploadStream,
+      upload_chunked_stream: uploadChunkedStream,
       destroy,
     },
     __uploads: uploads,
     __reset() {
       uploads.splice(0, uploads.length);
       uploadStream.mockClear();
+      uploadChunkedStream.mockClear();
       destroy.mockClear();
       config.mockClear();
     },

@@ -16,34 +16,51 @@ const videoFile = (size) => ({
   mimetype: "video/mp4",
   size,
 });
+const imageFile = (size) => ({
+  originalname: "story.jpg",
+  mimetype: "image/jpeg",
+  size,
+});
 
 describe("Tengacion upload limit policy", () => {
-  test("maps upload categories to the approved limits", () => {
-    expect(storyUpload.maxFileBytes).toBe(25 * MEBIBYTE);
-    expect(postUpload.maxFileBytes).toBe(100 * MEBIBYTE);
-    expect(postUpload.maxBytesByCategory.video).toBe(100 * MEBIBYTE);
-    expect(marketplaceProductUpload.maxFileBytes).toBe(30 * MEBIBYTE);
-    expect(privateUpload.maxFileBytes).toBe(100 * MEBIBYTE);
+  test("maps all video uploads to 200MB, except 100MB story videos", () => {
+    expect(storyUpload.maxFileBytes).toBe(100 * MEBIBYTE);
+    expect(storyUpload.maxBytesByCategory.image).toBe(100 * MEBIBYTE);
+    expect(storyUpload.maxBytesByCategory.video).toBe(100 * MEBIBYTE);
+    expect(postUpload.maxFileBytes).toBe(200 * MEBIBYTE);
+    expect(postUpload.maxBytesByCategory.video).toBe(200 * MEBIBYTE);
+    expect(marketplaceProductUpload.maxFileBytes).toBe(200 * MEBIBYTE);
+    expect(privateUpload.maxFileBytes).toBe(200 * MEBIBYTE);
     expect(adminSpecialUpload.maxFileBytes).toBe(200 * MEBIBYTE);
+    expect(UPLOAD_LIMITS.CREATOR_MEDIA_BYTES).toBe(100 * MEBIBYTE);
+    expect(UPLOAD_LIMITS.IMAGE_BYTES).toBe(10 * MEBIBYTE);
   });
 
   test.each([
-    ["story", UPLOAD_LIMITS.PROFILE_STORY_VIDEO_BYTES, storyUpload],
-    ["post media transport", UPLOAD_LIMITS.REEL_VIDEO_BYTES, postUpload],
-    ["marketplace", UPLOAD_LIMITS.MARKETPLACE_PRODUCT_VIDEO_BYTES, marketplaceProductUpload],
-    ["creator", UPLOAD_LIMITS.CREATOR_MEDIA_BYTES, privateUpload],
-    ["admin special", UPLOAD_LIMITS.ADMIN_SPECIAL_BYTES, adminSpecialUpload],
-  ])("%s video policy rejects files above its limit", (_name, maxBytes, upload) => {
-    expect(() =>
-      validateFilePayload(videoFile(maxBytes + 1), {
-        maxBytesByCategory: upload.maxBytesByCategory,
-      })
-    ).toThrow(new RegExp(`${maxBytes / MEBIBYTE}MB`));
+    ["story video", UPLOAD_LIMITS.PROFILE_STORY_VIDEO_BYTES, storyUpload],
+    ["post video", UPLOAD_LIMITS.REEL_VIDEO_BYTES, postUpload],
+    ["marketplace video", UPLOAD_LIMITS.MARKETPLACE_PRODUCT_VIDEO_BYTES, marketplaceProductUpload],
+    ["creator video", UPLOAD_LIMITS.CREATOR_VIDEO_BYTES, privateUpload],
+    ["admin video", UPLOAD_LIMITS.ADMIN_SPECIAL_BYTES, adminSpecialUpload],
+  ])("%s accepts its boundary and rejects one byte over", (_name, maxBytes, upload) => {
+    const options = { maxBytesByCategory: upload.maxBytesByCategory };
+    expect(() => validateFilePayload(videoFile(maxBytes), options)).not.toThrow();
+    expect(() => validateFilePayload(videoFile(maxBytes + 1), options))
+      .toThrow(new RegExp(`${maxBytes / MEBIBYTE}MB`));
   });
 
-  test("keeps feed videos at 50MB while allowing reels up to 100MB", () => {
-    expect(getPostVideoUploadLimit("video")).toBe(50 * MEBIBYTE);
-    expect(getPostVideoUploadLimit("reel")).toBe(100 * MEBIBYTE);
+  test("story images accept 100MB exactly and reject 100MB + 1 byte", () => {
+    const options = { maxBytesByCategory: storyUpload.maxBytesByCategory };
+    expect(() => validateFilePayload(imageFile(100 * MEBIBYTE), options)).not.toThrow();
+    expect(() => validateFilePayload(imageFile(100 * MEBIBYTE + 1), options))
+      .toThrow(/100MB/);
+    expect(() => validateFilePayload(imageFile(10 * MEBIBYTE + 1)))
+      .toThrow(/10MB/);
+  });
+
+  test("sets both feed and reel video limits to 200MB", () => {
+    expect(getPostVideoUploadLimit("video")).toBe(200 * MEBIBYTE);
+    expect(getPostVideoUploadLimit("reel")).toBe(200 * MEBIBYTE);
   });
 
   test("keeps live-stream recording disabled pending manual approval", () => {

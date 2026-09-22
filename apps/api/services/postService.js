@@ -485,8 +485,8 @@ const validateVideoMeta = (video, postType = "video") => {
   if (video.sizeBytes > maxBytes) {
     throw ApiError.badRequest(
       normalizedPostType === "reel"
-        ? "Reels must be 100MB or smaller"
-        : "Feed videos must be 50MB or smaller"
+        ? "Reels must be 200MB or smaller"
+        : "Feed videos must be 200MB or smaller"
     );
   }
 };

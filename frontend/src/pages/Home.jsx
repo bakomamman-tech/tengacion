@@ -592,8 +592,8 @@ export function PostComposerModal({
           : POST_COMPOSER_MAX_VIDEO_BYTES;
         if ((Number(file.size) || 0) > maxVideoBytes) {
           return isReelMode
-            ? "Reels must be 100MB or smaller."
-            : "Feed videos must be 50MB or smaller.";
+            ? "Reels must be 200MB or smaller."
+            : "Feed videos must be 200MB or smaller.";
         }
       }
 

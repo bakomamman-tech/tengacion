@@ -5,6 +5,7 @@ const ALIGNMENTS = new Set(["left", "center", "right"]);
 const MAX_RICH_TEXT_NODES = 800;
 const MAX_RICH_TEXT_DEPTH = 8;
 const MAX_LINK_LENGTH = 500;
+const RICH_TEXT_TRANSPORT_PREFIX = "__TENGACION_RICH_TEXT_V1__";
 
 const parseRichText = (value) => {
   if (!value) return null;
@@ -195,7 +196,23 @@ const normalizeRichText = (value, maxTextChars = 5000) => {
   return richTextToPlainText(document) ? document : null;
 };
 
+const decodeRichTextTransport = (value) => {
+  const raw = typeof value === "string" ? value : "";
+  if (!raw.startsWith(RICH_TEXT_TRANSPORT_PREFIX)) return null;
+
+  const encoded = raw.slice(RICH_TEXT_TRANSPORT_PREFIX.length);
+  if (!encoded || encoded.length > 100000) return null;
+
+  try {
+    const parsed = JSON.parse(encoded);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
 module.exports = {
+  decodeRichTextTransport,
   normalizeRichText,
   richTextToPlainText,
 };

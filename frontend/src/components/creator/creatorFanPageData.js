@@ -1061,11 +1061,11 @@ export function buildCreatorFanPageDataFromPublicPayload(payload = {}) {
     ],
     supporterCopy:
       subscription?.description ||
-      "Supporters unlock endless streams, premium downloads, and direct support access from the public page.",
+      "Supporters unlock endless streams, member-only release access, and direct support access from the public page.",
     rewardsCopy:
       subscription?.isSubscribed
-        ? "Membership is active. Premium streams and downloads are unlocked for this account."
-        : "Support this creator to unlock premium streams, downloads, and member rewards.",
+        ? "Membership is active. Premium streaming and member-only release access are unlocked for this account."
+        : "Support this creator to unlock premium streaming, member-only release access, and rewards.",
     viewer: payload?.viewer || {},
     subscription,
     creator,
@@ -1453,7 +1453,7 @@ export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
     ],
     supporterCopy:
       creatorProfile?.subscriptionDescription ||
-      "Supporters unlock endless streams, premium downloads, and direct support access from the public page.",
+      "Supporters unlock endless streams, member-only release access, and direct support access from the public page.",
     rewardsCopy:
       "Weekly rewards land here for top supporters and subscribers.",
   };

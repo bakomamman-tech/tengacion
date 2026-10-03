@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import PostComments from "./PostComments";
 import ExpandablePostText from "./posts/ExpandablePostText";
 import RichPostContent from "./posts/RichPostContent";
+import RichTextEditor from "./posts/RichTextEditor";
 import ProfileNameLink from "./ui/ProfileNameLink";
 import PostShareModal from "./share/PostShareModal";
 import {
@@ -282,6 +283,7 @@ const getEditablePostMedia = (post = {}) => {
 
 function EditPostModal({ post, onClose, onSave }) {
   const [text, setText] = useState(post?.text || "");
+  const [richText, setRichText] = useState(post?.richText || null);
   const [loading, setLoading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [selectedPreviews, setSelectedPreviews] = useState([]);
@@ -291,6 +293,11 @@ function EditPostModal({ post, onClose, onSave }) {
   const currentMedia = useMemo(() => getEditablePostMedia(post), [post]);
   const hasReplacementMedia = selectedFiles.length > 0;
   const canSave = Boolean(text.trim() || hasReplacementMedia || currentMedia.length > 0);
+
+  const handleRichTextChange = useCallback(({ text: nextText = "", document = null } = {}) => {
+    setText(nextText);
+    setRichText(document);
+  }, []);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -395,6 +402,7 @@ function EditPostModal({ post, onClose, onSave }) {
         ? (() => {
             const form = new FormData();
             form.append("text", text.trim());
+            form.append("richText", richText ? JSON.stringify(richText) : "");
             selectedFiles.forEach((file) => form.append("media", file));
             return {
               method: "PUT",
@@ -407,7 +415,7 @@ function EditPostModal({ post, onClose, onSave }) {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ text }),
+            body: JSON.stringify({ text, richText }),
           };
 
       const data = await apiRequest(`/api/posts/${post._id}`, requestOptions);
@@ -437,10 +445,11 @@ function EditPostModal({ post, onClose, onSave }) {
           </button>
         </div>
 
-        <textarea
-          className="pc-textarea"
-          value={text}
-          onChange={(event) => setText(event.target.value)}
+        <RichTextEditor
+          placeholder="What's on your mind?"
+          initialText={post?.text || ""}
+          initialDocument={post?.richText || null}
+          onChange={handleRichTextChange}
           autoFocus
         />
 

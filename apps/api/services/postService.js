@@ -2187,12 +2187,27 @@ class PostService {
     return attachPostModerationOverlays(posts, viewerId);
   }
 
-  static async updatePost({ userId, postId, text, files, moderationUpload = null }) {
+  static async updatePost({
+    userId,
+    postId,
+    text,
+    richText,
+    richTextProvided = false,
+    files,
+    moderationUpload = null,
+  }) {
     if (!mongoose.Types.ObjectId.isValid(postId)) {
       throw ApiError.badRequest("Invalid post id");
     }
 
-    const normalizedText = normalizeText(text, 5000);
+    const normalizedRichText = richTextProvided ? normalizeRichText(richText, 5000) : null;
+    const richTextPlainText = normalizedRichText
+      ? richTextToPlainText(normalizedRichText)
+      : "";
+    const normalizedText = normalizeText(
+      richTextProvided ? richTextPlainText || text : text,
+      5000
+    );
     const uploadFiles = ensureValidPostUploadFiles(collectPostUploadFiles(files));
 
     const post = await postRepository.findOne({ _id: postId, author: userId });
@@ -2207,7 +2222,9 @@ class PostService {
 
     const oldAssets = collectPostCloudinaryAssets(post.toObject ? post.toObject() : post);
 
-    if (normalizedText !== String(post.text || "")) {
+    if (richTextProvided) {
+      post.richText = normalizedRichText;
+    } else if (normalizedText !== String(post.text || "")) {
       post.richText = null;
     }
     post.text = normalizedText;

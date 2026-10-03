@@ -53,10 +53,13 @@ exports.getUserPosts = catchAsync(async (req, res) => {
 });
 
 exports.updatePost = catchAsync(async (req, res) => {
+  const body = req.body || {};
   const payload = await PostService.updatePost({
     userId: req.user.id,
     postId: req.params.id,
-    text: req.body.text,
+    text: body.text,
+    richText: body.richText,
+    richTextProvided: Object.prototype.hasOwnProperty.call(body, "richText"),
     files: req.files,
     moderationUpload: req.moderationUpload,
   });

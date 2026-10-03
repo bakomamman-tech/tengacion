@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { getRichTextPlainText, serializeRichTextElement } from "../../utils/richText";
+import {
+  getRichTextPlainText,
+  isSafeRichTextHref,
+  serializeRichTextElement,
+} from "../../utils/richText";
 
 const TOOLBAR_ACTIONS = [
   { key: "bold", label: "B", title: "Bold", command: "bold" },
@@ -39,13 +43,121 @@ const normalizeLinkInput = (value = "") => {
   }
 };
 
+const appendMarkedText = (parent, node) => {
+  let current = document.createTextNode(String(node?.text || ""));
+  const marks = Array.isArray(node?.marks) ? node.marks : [];
+
+  marks.forEach((mark) => {
+    let wrapper = null;
+
+    if (mark === "bold") {
+      wrapper = document.createElement("strong");
+    } else if (mark === "italic") {
+      wrapper = document.createElement("em");
+    } else if (mark === "underline") {
+      wrapper = document.createElement("u");
+    } else if (mark?.type === "link" && isSafeRichTextHref(mark.href)) {
+      wrapper = document.createElement("a");
+      wrapper.setAttribute("href", String(mark.href));
+      wrapper.setAttribute("rel", "noopener noreferrer");
+    }
+
+    if (wrapper) {
+      wrapper.appendChild(current);
+      current = wrapper;
+    }
+  });
+
+  parent.appendChild(current);
+};
+
+const appendInlineContent = (parent, content = []) => {
+  (Array.isArray(content) ? content : []).forEach((node) => {
+    if (node?.type === "text") {
+      appendMarkedText(parent, node);
+    }
+  });
+};
+
+const appendRichTextBlock = (parent, node) => {
+  if (!node || typeof node !== "object") return;
+
+  if (node.type === "bulletList" || node.type === "orderedList") {
+    const list = document.createElement(node.type === "orderedList" ? "ol" : "ul");
+    (Array.isArray(node.content) ? node.content : []).forEach((item) => {
+      if (item?.type !== "listItem") return;
+      const li = document.createElement("li");
+      (Array.isArray(item.content) ? item.content : []).forEach((child) => {
+        if (child?.type === "bulletList" || child?.type === "orderedList") {
+          appendRichTextBlock(li, child);
+          return;
+        }
+
+        if (child?.type === "paragraph") {
+          appendInlineContent(li, child.content);
+        }
+      });
+      list.appendChild(li);
+    });
+    parent.appendChild(list);
+    return;
+  }
+
+  let tagName = "p";
+  if (node.type === "heading") {
+    const level = [1, 2, 3].includes(Number(node?.attrs?.level))
+      ? Number(node.attrs.level)
+      : 2;
+    tagName = `h${level}`;
+  } else if (node.type === "blockquote") {
+    tagName = "blockquote";
+  }
+
+  const block = document.createElement(tagName);
+  const align = String(node?.attrs?.align || "").toLowerCase();
+  if (["left", "center", "right"].includes(align)) {
+    block.style.textAlign = align;
+  }
+  appendInlineContent(block, node.content);
+  parent.appendChild(block);
+};
+
+const hydrateEditor = (editor, documentValue, fallbackText = "") => {
+  editor.replaceChildren();
+
+  if (
+    documentValue?.type === "doc"
+    && Array.isArray(documentValue.content)
+    && documentValue.content.length > 0
+  ) {
+    documentValue.content.forEach((node) => appendRichTextBlock(editor, node));
+    return;
+  }
+
+  const plainText = String(fallbackText || "");
+  if (!plainText) return;
+
+  plainText.split("\n").forEach((line) => {
+    const paragraph = document.createElement("p");
+    if (line) {
+      paragraph.textContent = line;
+    } else {
+      paragraph.appendChild(document.createElement("br"));
+    }
+    editor.appendChild(paragraph);
+  });
+};
+
 export default function RichTextEditor({
   placeholder = "What's on your mind?",
   onChange,
   autoFocus = false,
   maxLength = 5000,
+  initialText = "",
+  initialDocument = null,
 }) {
   const editorRef = useRef(null);
+  const initializedRef = useRef(false);
   const [empty, setEmpty] = useState(true);
 
   const syncValue = useCallback(() => {
@@ -65,6 +177,14 @@ export default function RichTextEditor({
       document: serializeRichTextElement(editor),
     });
   }, [maxLength, onChange]);
+
+  useEffect(() => {
+    if (initializedRef.current || !editorRef.current) return;
+
+    hydrateEditor(editorRef.current, initialDocument, initialText);
+    setEmpty(!getRichTextPlainText(editorRef.current));
+    initializedRef.current = true;
+  }, [initialDocument, initialText]);
 
   useEffect(() => {
     if (autoFocus) {

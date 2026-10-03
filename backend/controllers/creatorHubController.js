@@ -9,7 +9,10 @@ const Purchase = require("../models/Purchase");
 const CreatorProfile = require("../models/CreatorProfile");
 const PlayerProgress = require("../models/PlayerProgress");
 const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
-const { hasEntitlement } = require("../services/entitlementService");
+const {
+  hasDirectPaidPurchase,
+  hasEntitlement,
+} = require("../services/entitlementService");
 const { resolvePurchasableItem } = require("../services/catalogService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const {
@@ -555,9 +558,19 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
     itemId: item.itemId,
     creatorId,
   });
+  const directPaidPurchase =
+    item.itemType === "track"
+      ? await hasDirectPaidPurchase({
+          userId,
+          itemType: "track",
+          itemId: item.itemId,
+        })
+      : false;
   const freeDownloadAllowed = item.itemType !== "track" && freeAccess;
+  const downloadAccess =
+    item.itemType === "track" ? directPaidPurchase : paidAccess;
 
-  if (!freeDownloadAllowed && !ownerAccess && !paidAccess) {
+  if (!freeDownloadAllowed && !ownerAccess && !downloadAccess) {
     return res.status(402).json({
       error: "Purchase required before download",
       itemType: item.itemType,

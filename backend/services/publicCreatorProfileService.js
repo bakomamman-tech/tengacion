@@ -128,9 +128,21 @@ const buildViewerPurchaseState = async (viewerId) => {
     };
   }
 
-  const purchases = await getUserPaidPurchases(viewerId);
+  const [purchases, directTrackPurchases] = await Promise.all([
+    getUserPaidPurchases(viewerId),
+    Purchase.find({
+      userId: viewerId,
+      status: "paid",
+      itemType: "track",
+    })
+      .select("itemId")
+      .lean(),
+  ]);
   const entitlements = new Set();
   const subscriptionsByCreatorId = new Map();
+  const directPaidTrackIds = new Set(
+    directTrackPurchases.map((row) => String(row?.itemId || "")).filter(Boolean)
+  );
 
   purchases.forEach((row) => {
     const itemType = toCleanString(row.itemType).toLowerCase();
@@ -149,6 +161,7 @@ const buildViewerPurchaseState = async (viewerId) => {
   return {
     entitlements,
     subscriptionsByCreatorId,
+    directPaidTrackIds,
   };
 };
 
@@ -159,7 +172,7 @@ const buildSubscriptionPayload = ({
 } = {}) => {
   const benefits = normalizeSubscriptionBenefits(profile?.subscriptionBenefits);
   const description = toCleanString(profile?.subscriptionDescription)
-    || "Supporters unlock endless streams, premium downloads, and direct support access from the creator page.";
+    || "Supporters unlock endless streams, member-only release access, and direct support access from the creator page.";
 
   if (ownerAccess) {
     return {
@@ -256,7 +269,15 @@ const buildAlbumPreviewSource = (album, canAccessFull) => {
   return toCleanString(firstTrack.previewUrl) || (numberOrZero(album?.price) <= 0 ? toCleanString(firstTrack.trackUrl) : "");
 };
 
-const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements, creatorSubscriptionActive = false }) => {
+const mapTrackItem = ({
+  track,
+  req,
+  viewerId,
+  ownerAccess,
+  entitlements,
+  directPaidTrackIds,
+  creatorSubscriptionActive = false,
+}) => {
   const isPodcast = toCleanString(track.kind).toLowerCase() === "podcast";
   const entitlementKey = `track:${String(track._id)}`;
   const canAccessFull =
@@ -264,7 +285,8 @@ const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements, creator
     || creatorSubscriptionActive
     || numberOrZero(track.price) <= 0
     || entitlements.has(entitlementKey);
-  const canDownload = ownerAccess || creatorSubscriptionActive || entitlements.has(entitlementKey);
+  const canDownload =
+    ownerAccess || Boolean(directPaidTrackIds?.has(String(track._id)));
   const previewSource = buildTrackPreviewSource(track, false);
   const streamSource = buildTrackPreviewSource(track, canAccessFull);
   const itemType = isPodcast ? "podcast" : "track";
@@ -776,9 +798,14 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
 
   const ownerAccess = creatorUserId === String(viewerId || "");
   const viewerPurchaseState = ownerAccess
-    ? { entitlements: new Set(), subscriptionsByCreatorId: new Map() }
+    ? {
+        entitlements: new Set(),
+        subscriptionsByCreatorId: new Map(),
+        directPaidTrackIds: new Set(),
+      }
     : await buildViewerPurchaseState(viewerId);
   const entitlements = viewerPurchaseState.entitlements;
+  const directPaidTrackIds = viewerPurchaseState.directPaidTrackIds || new Set();
   const activeSubscription = viewerPurchaseState.subscriptionsByCreatorId.get(String(profile?._id || "")) || null;
   const latestSubscription = ownerAccess
     ? null
@@ -837,6 +864,7 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
       viewerId,
       ownerAccess,
       entitlements,
+      directPaidTrackIds,
       creatorSubscriptionActive,
     })
   );
@@ -847,6 +875,7 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
       viewerId,
       ownerAccess,
       entitlements,
+      directPaidTrackIds,
       creatorSubscriptionActive,
     })
   );

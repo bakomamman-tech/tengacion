@@ -2207,8 +2207,10 @@ class PostService {
 
     const oldAssets = collectPostCloudinaryAssets(post.toObject ? post.toObject() : post);
 
+    if (normalizedText !== String(post.text || "")) {
+      post.richText = null;
+    }
     post.text = normalizedText;
-    post.richText = null;
     post.edited = true;
 
     if (uploadFiles.length > 0) {

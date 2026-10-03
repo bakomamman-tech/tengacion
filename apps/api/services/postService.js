@@ -44,6 +44,7 @@ const {
 } = require("../../../backend/utils/publicModeration");
 const { normalizeCommentText } = require("../../../backend/utils/commentText");
 const {
+  decodeRichTextTransport,
   normalizeRichText,
   richTextToPlainText,
 } = require("../../../backend/utils/richText");
@@ -1306,9 +1307,11 @@ const toPostPayload = (post, viewerId) => {
 class PostService {
   static async createPost({ userId, body, files, moderationUpload = null, io = null, onlineUsers = null }) {
     const viewerId = userId;
-    const richText = normalizeRichText(body?.richText, 5000);
+    const transportedRichText = decodeRichTextTransport(body?.text);
+    const richText = normalizeRichText(body?.richText || transportedRichText, 5000);
     const richTextPlainText = richText ? richTextToPlainText(richText) : "";
-    const text = normalizeText(richTextPlainText || body?.text || "", 5000);
+    const fallbackText = transportedRichText ? "" : body?.text || "";
+    const text = normalizeText(richTextPlainText || fallbackText, 5000);
     const sharedPost = await buildSharedPostMeta(body?.sharedPost);
     const taggedUsers = await resolveTaggedUsers(body?.taggedUsers || body?.tags);
     const tags = taggedUsers.map((entry) => entry.username || entry.name).filter(Boolean);

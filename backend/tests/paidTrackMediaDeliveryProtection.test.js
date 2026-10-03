@@ -8,6 +8,7 @@ jest.mock("../services/catalogService", () => ({
 }));
 
 jest.mock("../services/entitlementService", () => ({
+  hasDirectPaidPurchase: jest.fn(),
   hasEntitlement: jest.fn(),
 }));
 
@@ -163,9 +164,9 @@ test("a paid non-Cloudinary preview is allowed only when its own duration is ver
   ).toBe(previewSource);
 });
 
-test("a paid non-Cloudinary preview with unknown or excessive duration fails closed", () => {
+test("a legacy paid preview with unknown duration stays playable when it is a distinct preview asset", () => {
   const fullSource = "https://media.example.com/tengacion/master/song.mp3";
-  const previewSource = "https://media.example.com/tengacion/previews/untrusted.mp3";
+  const previewSource = "https://media.example.com/tengacion/previews/legacy-preview.mp3";
 
   expect(
     resolveProtectedTrackPreviewSource(
@@ -176,7 +177,12 @@ test("a paid non-Cloudinary preview with unknown or excessive duration fails clo
       },
       { price: 2500 }
     )
-  ).toBe("");
+  ).toBe(previewSource);
+});
+
+test("a paid non-Cloudinary preview with known excessive duration still fails closed", () => {
+  const fullSource = "https://media.example.com/tengacion/master/song.mp3";
+  const previewSource = "https://media.example.com/tengacion/previews/too-long.mp3";
 
   expect(
     resolveProtectedTrackPreviewSource(
@@ -192,6 +198,43 @@ test("a paid non-Cloudinary preview with unknown or excessive duration fails clo
       { price: 2500 }
     )
   ).toBe("");
+});
+
+test("a paid track with a legacy distinct preview never authorizes the full master for preview", async () => {
+  const fullSource = "https://media.example.com/tengacion/master/song.mp3";
+  const previewSource = "https://media.example.com/tengacion/previews/legacy-preview.mp3";
+
+  resolvePurchasableItem.mockResolvedValue({
+    itemType: "track",
+    itemId: "507f1f77bcf86cd799439011",
+    creatorId: "507f191e810c19729de860ea",
+    price: 2500,
+    payload: {
+      price: 2500,
+      audioUrl: fullSource,
+      fullAudioUrl: fullSource,
+      previewUrl: previewSource,
+      previewSampleUrl: previewSource,
+      previewStartSec: 0,
+      previewLimitSec: 30,
+    },
+  });
+
+  const payload = {
+    itemType: "track",
+    itemId: "507f1f77bcf86cd799439011",
+    uid: "",
+    accessType: "preview",
+    dl: false,
+  };
+
+  const result = await authorizeTrackMediaDelivery(payload);
+
+  expect(result.previewOnly).toBe(true);
+  expect(payload.src).toBe(previewSource);
+  expect(payload.src).not.toBe(fullSource);
+  expect(payload.disposition).toBe("inline");
+  expect(payload.dl).toBe(false);
 });
 
 test("a paid track with a distinct verified preview never authorizes the full master for preview", async () => {

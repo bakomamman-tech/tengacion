@@ -17074,6 +17074,40 @@ html.dark-mode .comments-v2--panel .comment-v2-children {
   cursor: pointer;
 }
 
+/* Keep Edit Post actions reachable even when rich text or media makes the modal tall. */
+.edit-post-modal {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.edit-post-modal .pc-header {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  margin: -16px -16px 0;
+  padding: 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.pc-edit-submit-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  margin: 14px -16px -16px;
+  padding: 12px 16px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -10px 24px rgba(15, 31, 56, 0.08);
+}
+
+.pc-edit-submit-bar .pc-submit {
+  margin-top: 0;
+}
+
 .composer-modal {
   width: min(660px, 100%);
   padding: 0;

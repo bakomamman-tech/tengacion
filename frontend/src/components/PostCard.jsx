@@ -437,7 +437,7 @@ function EditPostModal({ post, onClose, onSave }) {
 
   return (
     <div className="pc-overlay">
-      <div className="pc-modal" ref={boxRef} role="dialog" aria-modal="true">
+      <div className="pc-modal edit-post-modal" ref={boxRef} role="dialog" aria-modal="true">
         <div className="pc-header">
           <h3>Edit post</h3>
           <button className="pc-close" onClick={onClose} aria-label="Close">
@@ -528,13 +528,15 @@ function EditPostModal({ post, onClose, onSave }) {
           )}
         </div>
 
-        <button
-          className={`pc-submit ${canSave ? "active" : ""}`}
-          disabled={!canSave || loading}
-          onClick={submit}
-        >
-          {loading ? "Saving..." : "Save changes"}
-        </button>
+        <div className="pc-edit-submit-bar">
+          <button
+            className={`pc-submit ${canSave ? "active" : ""}`}
+            disabled={!canSave || loading}
+            onClick={submit}
+          >
+            {loading ? "Saving..." : "Save changes"}
+          </button>
+        </div>
       </div>
     </div>
   );

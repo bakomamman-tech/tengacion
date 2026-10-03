@@ -122,7 +122,7 @@ export default function CreatorSubscriptionPage() {
   const lifecycleStatus = String(subscription?.lifecycleStatus || "").trim().toLowerCase();
   const benefitCopy =
     subscription?.description
-    || "Supporters unlock endless streams, premium downloads, and direct support access from the creator page.";
+    || "Supporters unlock endless streams, member-only release access, and direct support access from the creator page.";
   const benefitItems = useMemo(() => {
     const configured = Array.isArray(subscription?.benefits)
       ? subscription.benefits.map((entry) => String(entry || "").trim()).filter(Boolean)
@@ -132,7 +132,7 @@ export default function CreatorSubscriptionPage() {
       ? configured
       : [
         "Unlimited streaming across this creator page",
-        "Premium downloads for unlocked releases",
+        "Member-only release access and updates",
         "Direct support for the creator's next projects",
       ];
   }, [subscription?.benefits]);

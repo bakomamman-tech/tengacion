@@ -1,5 +1,8 @@
 const CreatorProfile = require("../models/CreatorProfile");
-const { hasEntitlement } = require("./entitlementService");
+const {
+  hasDirectPaidPurchase,
+  hasEntitlement,
+} = require("./entitlementService");
 const { resolvePurchasableItem } = require("./catalogService");
 
 const TRACK_MEDIA_ACCESS_TYPES = Object.freeze({
@@ -260,15 +263,30 @@ const authorizeTrackMediaDelivery = async (payload = {}) => {
         creatorId: item.creatorId || item.payload?.creatorId,
       })
     : false;
+  const directPaidPurchase = userId
+    ? await hasDirectPaidPurchase({
+        userId,
+        itemType: "track",
+        itemId: item.itemId,
+      })
+    : false;
 
   if (accessType === TRACK_MEDIA_ACCESS_TYPES.DOWNLOAD) {
-    if (!payload.dl || (!ownerAccess && !paidAccess)) {
-      deny("A verified purchase is required to download this song");
+    if (!payload.dl || (!ownerAccess && !directPaidPurchase)) {
+      deny("A verified song purchase is required to download this song");
     }
 
     payload.src = sourceUrl;
     payload.disposition = "attachment";
-    return { protected: true, accessType, item, ownerAccess, paidAccess, sourceUrl };
+    return {
+      protected: true,
+      accessType,
+      item,
+      ownerAccess,
+      paidAccess,
+      directPaidPurchase,
+      sourceUrl,
+    };
   }
 
   if (payload.dl) {

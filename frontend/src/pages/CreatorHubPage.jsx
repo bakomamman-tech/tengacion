@@ -97,7 +97,7 @@ const normalizePreviewPayload = ({
     0,
     Number(streamPayload?.previewStartSec ?? item.previewStartSec ?? 0)
   );
-  const previewLimitSec = Math.max(
+  const requestedPreviewLimitSec = Math.max(
     0,
     Number(
       streamPayload?.previewLimitSec ??
@@ -105,6 +105,10 @@ const normalizePreviewPayload = ({
         defaultPreviewLimitSec
     )
   );
+  const previewLimitSec =
+    itemType === "track" || itemType === "podcast"
+      ? Math.min(30, requestedPreviewLimitSec || 30)
+      : requestedPreviewLimitSec;
   const previewOnly =
     Boolean(streamPayload?.previewOnly) ||
     Boolean(
@@ -183,52 +187,95 @@ const resolvePreviewStatusLabel = (preview = {}) => {
 
 function CreatorPublicAudioPreview({ preview }) {
   const audioRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const previewStartSec = Math.max(0, Number(preview?.previewStartSec || 0));
+  const previewLimitSec = Math.min(
+    30,
+    Math.max(1, Number(preview?.previewLimitSec || 30))
+  );
 
   const resolvePreviewEnd = (audio) => {
-    const previewEndSec =
-      Number(preview?.previewStartSec || 0) +
-      Number(preview?.previewLimitSec || 0);
-
+    const previewEndSec = previewStartSec + previewLimitSec;
     return Math.min(
       Number(audio?.duration || previewEndSec || 0) || previewEndSec,
       previewEndSec
     );
   };
 
+  const displayedDuration = preview?.enforcePreviewWindow
+    ? Math.min(
+        previewLimitSec,
+        Math.max(0, Number(duration || 0) - previewStartSec) || previewLimitSec
+      )
+    : Math.max(0, Number(duration || 0));
+
+  const displayedCurrentTime = preview?.enforcePreviewWindow
+    ? clamp(
+        Number(currentTime || 0) - previewStartSec,
+        0,
+        Math.max(0, displayedDuration)
+      )
+    : clamp(Number(currentTime || 0), 0, Math.max(0, displayedDuration));
+
+  const formatAudioTime = (value = 0) => {
+    const seconds = Math.max(0, Math.floor(Number(value || 0)));
+    const minutes = Math.floor(seconds / 60);
+    const remainder = String(seconds % 60).padStart(2, "0");
+    return `${minutes}:${remainder}`;
+  };
+
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) {
-      return;
+    if (audio) {
+      audio.pause();
     }
-
-    audio.pause();
-  }, [preview?.id, preview?.src, preview?.mode]);
+    setIsPlaying(false);
+    setDuration(0);
+    setCurrentTime(preview?.enforcePreviewWindow ? previewStartSec : 0);
+  }, [
+    preview?.enforcePreviewWindow,
+    preview?.id,
+    preview?.mode,
+    preview?.src,
+    previewStartSec,
+  ]);
 
   const handleLoadedMetadata = (event) => {
-    if (!preview?.enforcePreviewWindow) {
+    const nextDuration = Number(event.currentTarget.duration || preview?.durationSec || 0);
+    setDuration(nextDuration);
+
+    if (preview?.enforcePreviewWindow) {
+      const boundedStart = clamp(
+        previewStartSec,
+        0,
+        nextDuration || previewStartSec
+      );
+      event.currentTarget.currentTime = boundedStart;
+      setCurrentTime(boundedStart);
       return;
     }
 
-    const boundedStart = clamp(
-      Number(preview.previewStartSec || 0),
-      0,
-      Number(event.currentTarget.duration || preview.previewStartSec || 0)
-        || Number(preview.previewStartSec || 0)
-    );
-    event.currentTarget.currentTime = boundedStart;
+    setCurrentTime(Number(event.currentTarget.currentTime || 0));
   };
 
   const handleTimeUpdate = (event) => {
-    if (!preview?.enforcePreviewWindow) {
-      return;
+    const nextTime = Number(event.currentTarget.currentTime || 0);
+
+    if (preview?.enforcePreviewWindow) {
+      const boundedEnd = resolvePreviewEnd(event.currentTarget);
+      if (nextTime >= boundedEnd) {
+        event.currentTarget.pause();
+        event.currentTarget.currentTime = boundedEnd;
+        setCurrentTime(boundedEnd);
+        setIsPlaying(false);
+        return;
+      }
     }
 
-    const boundedEnd = resolvePreviewEnd(event.currentTarget);
-
-    if (event.currentTarget.currentTime >= boundedEnd) {
-      event.currentTarget.pause();
-      event.currentTarget.currentTime = boundedEnd;
-    }
+    setCurrentTime(nextTime);
   };
 
   const handleSeeking = (event) => {
@@ -237,8 +284,6 @@ function CreatorPublicAudioPreview({ preview }) {
     }
 
     const boundedEnd = resolvePreviewEnd(event.currentTarget);
-    const previewStartSec = Number(preview.previewStartSec || 0);
-
     if (event.currentTarget.currentTime < previewStartSec) {
       event.currentTarget.currentTime = previewStartSec;
       return;
@@ -250,19 +295,62 @@ function CreatorPublicAudioPreview({ preview }) {
   };
 
   const handlePlay = (event) => {
-    if (!preview?.enforcePreviewWindow) {
+    if (preview?.enforcePreviewWindow) {
+      const boundedEnd = resolvePreviewEnd(event.currentTarget);
+      if (
+        event.currentTarget.currentTime < previewStartSec
+        || event.currentTarget.currentTime >= Math.max(boundedEnd - 0.1, previewStartSec)
+      ) {
+        event.currentTarget.currentTime = previewStartSec;
+        setCurrentTime(previewStartSec);
+      }
+    }
+
+    setIsPlaying(true);
+  };
+
+  const togglePlayback = async () => {
+    const audio = audioRef.current;
+    if (!audio || !preview?.src) {
       return;
     }
 
-    const previewStartSec = Number(preview.previewStartSec || 0);
-    const boundedEnd = resolvePreviewEnd(event.currentTarget);
-
-    if (
-      event.currentTarget.currentTime < previewStartSec
-      || event.currentTarget.currentTime >= Math.max(boundedEnd - 0.1, previewStartSec)
-    ) {
-      event.currentTarget.currentTime = previewStartSec;
+    if (!audio.paused) {
+      audio.pause();
+      return;
     }
+
+    if (preview?.enforcePreviewWindow) {
+      const boundedEnd = resolvePreviewEnd(audio);
+      if (
+        audio.currentTime < previewStartSec
+        || audio.currentTime >= Math.max(boundedEnd - 0.1, previewStartSec)
+      ) {
+        audio.currentTime = previewStartSec;
+        setCurrentTime(previewStartSec);
+      }
+    }
+
+    try {
+      await audio.play();
+    } catch {
+      setIsPlaying(false);
+    }
+  };
+
+  const handleSeek = (value) => {
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+
+    const relativeTime = Math.max(0, Number(value || 0));
+    const nextTime = preview?.enforcePreviewWindow
+      ? previewStartSec + Math.min(relativeTime, displayedDuration)
+      : Math.min(relativeTime, displayedDuration);
+
+    audio.currentTime = nextTime;
+    setCurrentTime(nextTime);
   };
 
   return (
@@ -272,21 +360,54 @@ function CreatorPublicAudioPreview({ preview }) {
         alt={preview?.title}
       />
       <div className="creator-public-preview__audio-copy">
+        <div
+          className="creator-public-preview__audio-controls"
+          aria-label={preview?.enforcePreviewWindow ? "30-second song preview" : "Song player"}
+        >
+          <button
+            type="button"
+            className="creator-public-preview__audio-play"
+            onClick={togglePlayback}
+            disabled={!preview?.src}
+          >
+            {isPlaying
+              ? "Pause"
+              : preview?.enforcePreviewWindow
+                ? "Play 30-second preview"
+                : "Play"}
+          </button>
+          <input
+            type="range"
+            min="0"
+            max={Math.max(1, displayedDuration || 0)}
+            step="0.1"
+            value={Math.min(displayedCurrentTime, Math.max(1, displayedDuration || 0))}
+            className="creator-public-preview__audio-range"
+            onChange={(event) => handleSeek(event.target.value)}
+            disabled={!preview?.src}
+            aria-label={`Seek within ${preview?.title || "song"}`}
+          />
+          <span className="creator-public-preview__audio-time">
+            {formatAudioTime(displayedCurrentTime)} / {formatAudioTime(displayedDuration)}
+          </span>
+        </div>
+
         <audio
           ref={audioRef}
-          className="creator-public-preview__player"
-          controls
-          controlsList="nodownload noplaybackrate"
-          disablePictureInPicture
+          hidden
+          preload="metadata"
           src={preview?.src}
           onLoadedMetadata={handleLoadedMetadata}
           onPlay={handlePlay}
+          onPause={() => setIsPlaying(false)}
           onSeeking={handleSeeking}
           onTimeUpdate={handleTimeUpdate}
+          onEnded={() => setIsPlaying(false)}
         />
+
         <small>
           {preview?.enforcePreviewWindow
-            ? preview?.previewStartSec > 0
+            ? previewStartSec > 0
               ? "This sample jumps to the selected chorus and stops after 30 seconds."
               : "This sample stops after 30 seconds."
             : "Full playback is available for this release."}
@@ -1374,7 +1495,7 @@ export default function CreatorHubPage() {
             </strong>
             <p className="creator-public-panel__justified">
               {subscription?.description
-                || "Supporters unlock endless streams, premium downloads, and direct support access from the creator page."}
+                || "Supporters unlock endless streams, member-only release access, and direct support access from the creator page."}
             </p>
             {subscriptionBenefits.length ? (
               <div className="creator-public-tags">

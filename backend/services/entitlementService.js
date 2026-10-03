@@ -42,6 +42,14 @@ const normalizeEntitlementItemType = (value = "") => {
   return ENTITLEMENT_ITEM_TYPES.includes(normalized) ? normalized : "";
 };
 
+const normalizeDirectPurchaseItemType = (value = "") => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["song", "podcast"].includes(normalized)) {
+    return "track";
+  }
+  return normalizeEntitlementItemType(normalized);
+};
+
 const logEntitlementReconciled = ({ purchase, reason = "manual" } = {}) =>
   logAnalyticsEvent({
     type: "purchase_entitlement_granted",
@@ -140,6 +148,30 @@ const hasCreatorSubscriptionAccess = async ({ userId, creatorId, at = new Date()
     .lean();
 
   return isSubscriptionAccessActive(purchase, { at });
+};
+
+const hasDirectPaidPurchase = async ({ userId, itemType, itemId }) => {
+  if (!userId || !itemType || !itemId) {
+    return false;
+  }
+
+  if (!isValidObjectId(userId) || !isValidObjectId(itemId)) {
+    return false;
+  }
+
+  const normalizedItemType = normalizeDirectPurchaseItemType(itemType);
+  if (!normalizedItemType) {
+    return false;
+  }
+
+  return Boolean(
+    await Purchase.exists({
+      userId,
+      itemType: normalizedItemType,
+      itemId,
+      status: "paid",
+    })
+  );
 };
 
 const hasEntitlement = async ({ userId, itemType, itemId, creatorId = "" }) => {
@@ -342,6 +374,7 @@ const startEntitlementMaintenance = async ({ logger = console } = {}) => {
 
 module.exports = {
   DEFAULT_ENTITLEMENT_RECONCILIATION_INTERVAL_MS,
+  hasDirectPaidPurchase,
   hasEntitlement,
   hasCreatorSubscriptionAccess,
   getUserPaidPurchases,

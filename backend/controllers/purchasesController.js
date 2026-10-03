@@ -3,7 +3,10 @@ const asyncHandler = require("../middleware/asyncHandler");
 const Purchase = require("../models/Purchase");
 const CreatorProfile = require("../models/CreatorProfile");
 const { resolvePurchasableItem } = require("../services/catalogService");
-const { hasEntitlement } = require("../services/entitlementService");
+const {
+  hasDirectPaidPurchase,
+  hasEntitlement,
+} = require("../services/entitlementService");
 const {
   buildCreatorWalletSnapshot,
 } = require("../services/walletService");
@@ -248,15 +251,23 @@ exports.checkEntitlement = asyncHandler(async (req, res) => {
   }
 
   const item = await resolvePurchasableItem(itemType, itemId);
-  const entitled = await hasEntitlement({
-    userId: req.user.id,
-    itemType,
-    itemId,
-    creatorId: item?.creatorId || "",
-  });
+  const [entitled, directPurchase] = await Promise.all([
+    hasEntitlement({
+      userId: req.user.id,
+      itemType,
+      itemId,
+      creatorId: item?.creatorId || "",
+    }),
+    hasDirectPaidPurchase({
+      userId: req.user.id,
+      itemType,
+      itemId,
+    }),
+  ]);
 
   return res.json({
     entitled,
+    directPurchase,
     itemType,
     itemId,
   });

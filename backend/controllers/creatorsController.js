@@ -9,7 +9,10 @@ const Purchase = require("../models/Purchase");
 const User = require("../models/User");
 const PlayerProgress = require("../models/PlayerProgress");
 const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
-const { hasEntitlement } = require("../services/entitlementService");
+const {
+  hasDirectPaidPurchase,
+  hasEntitlement,
+} = require("../services/entitlementService");
 const { recordCreatorFollow } = require("../services/fanReturnPathService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const {
@@ -396,6 +399,11 @@ exports.getCreatorTracks = asyncHandler(async (req, res) => {
         itemId: track._id,
         creatorId: track.creatorId,
       }));
+      const directPaidPurchase = Boolean(userId) && (await hasDirectPaidPurchase({
+        userId,
+        itemType: "track",
+        itemId: track._id,
+      }));
       const canPlayFull = Number(track.price || 0) <= 0 || ownerAccess || paidAccess;
       const fullSource = String(track.audioUrl || track.fullAudioUrl || "");
       const previewSource = String(
@@ -438,7 +446,7 @@ exports.getCreatorTracks = asyncHandler(async (req, res) => {
         streamUrl: signedStreamUrl,
         canPlayFull,
         previewOnly: !canPlayFull,
-        canDownload: ownerAccess || paidAccess,
+        canDownload: ownerAccess || directPaidPurchase,
         previewStartSec: Number(track.previewStartSec || 0),
         previewLimitSec: Number(track.previewLimitSec || 30),
         coverImageUrl: track.coverImageUrl || "",

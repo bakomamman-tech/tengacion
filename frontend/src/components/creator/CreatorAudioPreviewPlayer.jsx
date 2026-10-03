@@ -252,7 +252,9 @@ export default function CreatorAudioPreviewPlayer({
         });
         if (!cancelled && entitlement?.entitled) {
           setHasFullAccess(true);
-          setHasDownloadAccess(true);
+          if (entitlement?.directPurchase) {
+            setHasDownloadAccess(true);
+          }
         }
       } catch {
         // Leave the current state in place; the user can still purchase from this page.

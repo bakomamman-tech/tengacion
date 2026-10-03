@@ -1,7 +1,7 @@
 const VALID_CREATOR_TYPES = ["music", "bookPublishing", "podcast"];
 const DEFAULT_SUBSCRIPTION_BENEFITS = [
   "Unlimited streaming across this creator page",
-  "Premium downloads for unlocked releases",
+  "Member-only release access and updates",
   "Direct support for the creator's next projects",
 ];
 

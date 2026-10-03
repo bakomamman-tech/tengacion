@@ -168,10 +168,21 @@ const resolveProtectedTrackPreviewSource = (track = {}, { price = 0 } = {}) => {
       return boundedCloudinaryPreview;
     }
 
-    // Non-Cloudinary paid previews cannot be time-bounded by Tengacion's
-    // delivery proxy. Only permit them when storage metadata independently
-    // proves the preview asset itself is 30 seconds or shorter.
-    return isVerifiedShortPreview(dedicatedPreview) ? dedicatedPreviewSource : "";
+    if (isVerifiedShortPreview(dedicatedPreview)) {
+      return dedicatedPreviewSource;
+    }
+
+    // Legacy creator uploads can have a distinct preview asset without stored
+    // duration metadata. Keep those playable instead of rejecting them at
+    // delivery time. The signed token remains preview-only, never exposes the
+    // full master, and Tengacion's custom player still stops at 30 seconds.
+    if (safeNumber(dedicatedPreview.durationSec, 0) <= 0) {
+      return dedicatedPreviewSource;
+    }
+
+    // If metadata explicitly proves that the dedicated preview is longer than
+    // the preview window, fail closed rather than serving the oversized asset.
+    return "";
   }
 
   if (fullSource) {

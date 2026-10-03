@@ -198,6 +198,11 @@ export const getRichTextPlainText = (element) =>
     .replace(/\r\n/g, "\n")
     .trim();
 
+export const encodeRichTextTransport = (document, fallbackText = "") =>
+  document
+    ? `__TENGACION_RICH_TEXT_V1__${JSON.stringify(document)}`
+    : String(fallbackText || "");
+
 export const isSafeRichTextHref = (value = "") => {
   const href = String(value || "").trim();
   if (!href) return false;

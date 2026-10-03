@@ -43,6 +43,10 @@ const {
   resolvePublicSensitivity,
 } = require("../../../backend/utils/publicModeration");
 const { normalizeCommentText } = require("../../../backend/utils/commentText");
+const {
+  normalizeRichText,
+  richTextToPlainText,
+} = require("../../../backend/utils/richText");
 
 const toIdString = (value) => {
   if (!value) return "";
@@ -1247,6 +1251,7 @@ const toPostPayload = (post, viewerId) => {
   return {
     _id: post._id.toString(),
     text: post.text || "",
+    richText: normalizeRichText(post.richText, 5000),
     image: firstMedia?.url || "",
     media: normalizedMedia,
     type: postType,
@@ -1301,7 +1306,9 @@ const toPostPayload = (post, viewerId) => {
 class PostService {
   static async createPost({ userId, body, files, moderationUpload = null, io = null, onlineUsers = null }) {
     const viewerId = userId;
-    const text = normalizeText(body?.text || "", 5000);
+    const richText = normalizeRichText(body?.richText, 5000);
+    const richTextPlainText = richText ? richTextToPlainText(richText) : "";
+    const text = normalizeText(richTextPlainText || body?.text || "", 5000);
     const sharedPost = await buildSharedPostMeta(body?.sharedPost);
     const taggedUsers = await resolveTaggedUsers(body?.taggedUsers || body?.tags);
     const tags = taggedUsers.map((entry) => entry.username || entry.name).filter(Boolean);
@@ -1601,6 +1608,7 @@ class PostService {
     const created = await postRepository.create({
       author: viewerId,
       text,
+      richText,
       tags,
       taggedUsers,
       feeling,
@@ -2197,6 +2205,7 @@ class PostService {
     const oldAssets = collectPostCloudinaryAssets(post.toObject ? post.toObject() : post);
 
     post.text = normalizedText;
+    post.richText = null;
     post.edited = true;
 
     if (uploadFiles.length > 0) {

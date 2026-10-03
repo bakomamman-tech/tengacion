@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 
 import PostComments from "./PostComments";
 import ExpandablePostText from "./posts/ExpandablePostText";
+import RichPostContent from "./posts/RichPostContent";
 import ProfileNameLink from "./ui/ProfileNameLink";
 import PostShareModal from "./share/PostShareModal";
 import {
@@ -1409,7 +1410,11 @@ export default function PostCard({
 
         {/* BODY */}
         <div className="post-body">
-          {post?.text && (
+          {post?.richText?.content?.length ? (
+            <div className={postTextBlockClassName}>
+              <RichPostContent document={post.richText} />
+            </div>
+          ) : post?.text ? (
             <ExpandablePostText
               text={post.text}
               wrapperClassName={postTextBlockClassName}
@@ -1418,7 +1423,7 @@ export default function PostCard({
               collapseMode="words"
               collapsedWords={POST_TEXT_WORD_LIMIT}
             />
-          )}
+          ) : null}
 
           {hasSharedPost && (
             <div className="post-shared-preview">

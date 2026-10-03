@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import PostSkeleton from "../components/PostSkeleton";
 import PostCard from "../components/PostCard";
+import RichTextEditor from "../components/posts/RichTextEditor";
 import NewsClusterCard from "../features/news/components/NewsClusterCard";
 import NewsDetailDrawer from "../features/news/components/NewsDetailDrawer";
 import NewsStoryCard from "../features/news/components/NewsStoryCard";
@@ -43,6 +44,7 @@ import {
 
 import { UPLOAD_LIMITS } from "../config/uploadLimits";
 import { isReelCandidate, sortReels } from "../utils/reels";
+import { encodeRichTextTransport } from "../utils/richText";
 import { buildAlphabeticalCreatorRotation } from "./homeCreatorRotation";
 
 const requirePublishedPost = (payload) => {
@@ -321,6 +323,7 @@ export function PostComposerModal({
   }, [initialFile, initialFiles]);
 
   const [text, setText] = useState("");
+  const [richText, setRichText] = useState(null);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [selectedPreviews, setSelectedPreviews] = useState([]);
   const [activePanel, setActivePanel] = useState("");
@@ -345,6 +348,11 @@ export function PostComposerModal({
   const boxRef = useRef(null);
   const fileRef = useRef(null);
   const selectedPreviewsRef = useRef([]);
+
+  const handleRichTextChange = useCallback(({ text: nextText = "", document = null } = {}) => {
+    setText(nextText);
+    setRichText(document);
+  }, []);
 
   const revokePreviewItems = useCallback((items = []) => {
     (Array.isArray(items) ? items : []).forEach((item) => {
@@ -692,7 +700,9 @@ export function PostComposerModal({
     try {
       const created = requirePublishedPost(await createPostWithUploadProgress(
         {
-          text: text.trim(),
+          text: isReelMode
+            ? text.trim()
+            : encodeRichTextTransport(richText, text.trim()),
           type: isReelMode ? "reel" : hasSelectedVideo ? "video" : "",
           files: selectedFiles,
           tags: taggedPeople,
@@ -739,6 +749,7 @@ export function PostComposerModal({
       } else {
         createdPost = requirePublishedPost(await createPost({
           text: text.trim(),
+          richText,
           tags: taggedPeople,
           feeling,
           location: checkInLocation.trim(),
@@ -979,19 +990,23 @@ export function PostComposerModal({
           </div>
         </div>
 
-        <textarea
-          className="pc-textarea composer-textarea"
-          rows={12}
-          aria-label={isReelMode ? "Reel caption" : "Post text"}
-          placeholder={
-            isReelMode
-              ? `Write a caption for your reel, ${user?.username || ""}...`
-              : `What's on your mind, ${user?.username || ""}?`
-          }
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          autoFocus
-        />
+        {isReelMode ? (
+          <textarea
+            className="pc-textarea composer-textarea"
+            rows={12}
+            aria-label="Reel caption"
+            placeholder={`Write a caption for your reel, ${user?.username || ""}...`}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            autoFocus
+          />
+        ) : (
+          <RichTextEditor
+            placeholder={`What's on your mind, ${user?.username || ""}?`}
+            onChange={handleRichTextChange}
+            autoFocus
+          />
+        )}
 
         {activeBadges.length > 0 && (
           <div className="composer-chip-row">

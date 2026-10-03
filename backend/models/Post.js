@@ -230,6 +230,11 @@ const PostSchema = new mongoose.Schema(
       maxlength: 5000,
     },
 
+    richText: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+
     tags: {
       type: [String],
       default: [],

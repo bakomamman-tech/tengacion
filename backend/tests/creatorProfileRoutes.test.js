@@ -1167,7 +1167,8 @@ describe("creator profile routes", () => {
     expect(profileResponse.body.subscription.price).toBe(2000);
     expect(profileResponse.body.subscription.isSubscribed).toBe(true);
     expect(profileResponse.body.music.tracks[0].canAccessFull).toBe(true);
-    expect(profileResponse.body.music.tracks[0].canDownload).toBe(true);
+    expect(profileResponse.body.music.tracks[0].canDownload).toBe(false);
+    expect(profileResponse.body.music.tracks[0].downloadUrl).toBe("");
 
     const entitlementResponse = await request(app)
       .get(`/api/entitlements/check?itemType=track&itemId=${paidTrack._id}`)
@@ -1175,6 +1176,12 @@ describe("creator profile routes", () => {
       .expect(200);
 
     expect(entitlementResponse.body.entitled).toBe(true);
+    expect(entitlementResponse.body.directPurchase).toBe(false);
+
+    await request(app)
+      .get(`/api/download/track/${paidTrack._id}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(402);
 
     const streamResponse = await request(app)
       .get(`/api/stream/track/${paidTrack._id}`)
@@ -1420,6 +1427,14 @@ describe("creator profile routes", () => {
       providerRef: "paid_track_download_001",
       paidAt: new Date(),
     });
+
+    const entitlementResponse = await request(app)
+      .get(`/api/entitlements/check?itemType=track&itemId=${track._id}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    expect(entitlementResponse.body.entitled).toBe(true);
+    expect(entitlementResponse.body.directPurchase).toBe(true);
 
     const downloadResponse = await request(app)
       .get(`/api/download/track/${track._id}`)

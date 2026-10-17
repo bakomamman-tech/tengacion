@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0B160D" />
+  <meta name="description" content="Global South Index public discovery frontend prototype. Illustrative data only, not live indexed records." />
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="canonical" href="https://tengacion.com/GSI" />
+  <title>Discover Research — Global South Index (UX Prototype)</title>
+  <link rel="stylesheet" href="/GSI/styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#search-section">Skip to discovery</a>
+  <header class="site-header">
+    <div class="container topbar">
+      <a class="brand" href="/GSI" aria-label="Global South Index, home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="brand-name">Global South <strong>Index<span class="brand-dot">.</span></strong></span>
+      </a>
+      <nav class="topnav" aria-label="Main navigation">
+        <a href="#search-section" class="active">Discover</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#about">About</a>
+      </nav>
+      <span class="header-status"><span class="status-pulse"></span> UX prototype</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero-grid">
+        <div class="hero-main">
+          <div class="eyebrow"><span class="eyebrow-line"></span> A more inclusive knowledge infrastructure</div>
+          <h1 id="hero-title">Research deserves<br /><em>to be discovered.</em></h1>
+          <p class="hero-copy">A new home for the scholarship, journals and researchers shaping the Global South. Open discovery, transparent attribution, and a more complete picture of knowledge.</p>
+          <a href="#search-section" class="hero-link">Explore the index <span aria-hidden="true">↗</span></a>
+        </div>
+        <aside class="hero-art" aria-label="Index illustration">
+          <div class="orb orb-one"></div><div class="orb orb-two"></div>
+          <div class="network" aria-hidden="true">
+            <span class="node n1"></span><span class="node n2"></span><span class="node n3"></span>
+            <span class="node n4"></span><span class="node n5"></span><span class="node n6"></span>
+            <svg viewBox="0 0 280 190" preserveAspectRatio="none"><path d="M45 55 L140 25 L230 64 L195 142 L102 154 L45 55 M140 25 L195 142 M230 64 L102 154 M45 55 L230 64"/></svg>
+          </div>
+          <div class="hero-quote">
+            <div class="quote-stars">✳ &nbsp;✳ &nbsp;✳</div>
+            <p>Knowledge has<br />no borders<span>.</span></p>
+            <small>Visibility for every contribution</small>
+          </div>
+          <div class="corner-coord">06° 31′ N &nbsp;/&nbsp; 03° 22′ E</div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="discovery" id="search-section" aria-labelledby="discover-heading">
+      <div class="container">
+        <div class="section-topline">
+          <div>
+            <div class="section-kicker">THE DISCOVERY EXPERIENCE</div>
+            <h2 id="discover-heading">Explore the research landscape</h2>
+          </div>
+          <div class="demo-indicator"><span class="tiny-sun">✳</span> Illustrative records · Not live GSI data</div>
+        </div>
+        <div class="search-shell">
+          <form id="search-form" role="search" autocomplete="off">
+            <label class="visually-hidden" for="search-input">Search research, journals or researchers</label>
+            <span class="search-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.6 4.6"/></svg></span>
+            <input id="search-input" name="q" type="search" placeholder="Search articles, journals, researchers, topics..." />
+            <button class="search-button" type="submit">Search <span aria-hidden="true">↗</span></button>
+          </form>
+          <div class="search-meta"><span>Try a topic:</span> <button class="query-example" data-query="agriculture">Agriculture</button> <button class="query-example" data-query="health">Public health</button> <button class="query-example" data-query="climate">Climate</button></div>
+        </div>
+
+        <div class="discovery-layout">
+          <aside class="filter-panel" aria-label="Search filters">
+            <div class="filter-head"><span>Refine discovery</span><button id="clear-all" type="button">Reset all</button></div>
+            <fieldset class="filter-group" id="type-filter">
+              <legend>Record type</legend>
+              <label class="choice"><input type="radio" name="type" value="all" checked /><span>All records</span><small id="count-all">0</small></label>
+              <label class="choice"><input type="radio" name="type" value="article" /><span>Articles</span><small id="count-article">0</small></label>
+              <label class="choice"><input type="radio" name="type" value="journal" /><span>Journals</span><small id="count-journal">0</small></label>
+              <label class="choice"><input type="radio" name="type" value="researcher" /><span>Researchers</span><small id="count-researcher">0</small></label>
+            </fieldset>
+            <fieldset class="filter-group source-group">
+              <legend>Record origin</legend>
+              <label class="check-choice"><input type="checkbox" name="source" value="openalex" checked /><span>External source</span></label>
+              <label class="check-choice"><input type="checkbox" name="source" value="native" checked /><span>Native onboarding</span></label>
+            </fieldset>
+            <div class="filter-note"><span class="note-icon">ⓘ</span><p>GSI's planned public search is free to browse. This preview uses fictional sample data and makes no network requests.</p></div>
+          </aside>
+
+          <div class="results-panel">
+            <div class="results-toolbar">
+              <div><span class="results-amount" id="results-count" aria-live="polite">0 results</span><p id="results-context">Browse the sample catalog</p></div>
+              <label class="sort-label" for="sort-select">Sort by <select id="sort-select"><option value="relevance">Relevance</option><option value="newest">Newest year</option><option value="az">Title A–Z</option></select></label>
+            </div>
+            <div id="result-list" class="result-list" aria-live="polite" aria-relevant="additions removals"></div>
+            <div id="empty-state" class="empty-state" hidden><div class="empty-illustration" aria-hidden="true">◎</div><h3>No records found</h3><p>Try another keyword or broaden your filters. The demo catalog is intentionally small.</p><button id="empty-reset" class="outline-button" type="button">Clear filters</button></div>
+            <div class="result-footnote"><span>✳</span> Preview only. No real papers, researchers or scores are indexed by this demonstration.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="principles" id="how-it-works">
+      <div class="container">
+        <div class="principles-head"><div class="section-kicker">DESIGNED FOR TRUST</div><h2>Open by design.<br /><em>Grounded in evidence.</em></h2></div>
+        <div class="principle-grid">
+          <article><div class="principle-symbol">01 /</div><h3>Find without barriers</h3><p>Browse public research metadata without subscriptions, logins or paywalls.</p></article>
+          <article><div class="principle-symbol">02 /</div><h3>Trace the source</h3><p>Distinguish external imports from native submissions, with clear provenance signals.</p></article>
+          <article><div class="principle-symbol">03 /</div><h3>Understand the record</h3><p>Keep attribution, verification, score inputs and archival pointers understandable.</p></article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="about" class="site-footer"><div class="container footer-grid"><span class="footer-logo">GSI<span>.</span></span><p>Made to advance visibility for research from Africa and the Global South.</p><span class="footer-tag">Frontend UX concept · October 2026</span></div></footer>
+
+  <div id="detail-overlay" class="detail-overlay" hidden>
+    <div class="detail-backdrop" data-close="true"></div>
+    <section class="detail-drawer" role="dialog" aria-modal="true" aria-labelledby="detail-title" tabindex="-1">
+      <div class="drawer-head"><span class="drawer-label">RECORD DETAILS · SAMPLE</span><button type="button" class="drawer-close" id="detail-close" aria-label="Close record details">✕</button></div>
+      <div id="detail-content"></div>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script src="/GSI/app.js" defer></script>
+</body>
+</html>

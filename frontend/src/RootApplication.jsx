@@ -15,6 +15,17 @@ export default function RootApplication() {
   const { user, loading } = useAuth();
   const normalizedPath = pathname.replace(/\/+$/, "").toLowerCase();
 
+  // Isolated preview of GSI discovery UX; no Tengacion auth or production data.
+  if (normalizedPath === "/gsi") {
+    return (
+      <iframe
+        title="Global South Index discovery UX prototype"
+        src="/GSI/index.html"
+        style={{ display: "block", width: "100%", height: "100dvh", minHeight: "100vh", border: 0, background: "#fff" }}
+      />
+    );
+  }
+
   if (normalizedPath === "/lorietta-billys-portfolio") {
     return <Suspense fallback={<div role="status" style={{ padding: "3rem", background: "#faf9f6", color: "#172d40" }}>Loading portfolio...</div>}><LoriettaPortfolio /></Suspense>;
   }

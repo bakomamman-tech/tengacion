@@ -157,6 +157,8 @@ if (frontendBuilt) {
       })
     );
   }
+  // Serve the standalone GSI demonstration directly, bypassing SPA/auth and cached app shells.
+  app.get(/^\/gsi\/?$/i, (_req, res) => res.redirect(302, "/GSI/index.html"));
   app.use(
     express.static(frontendPath, {
       index: false,

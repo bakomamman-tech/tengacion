@@ -10,6 +10,7 @@ module.exports = createConfiguredUpload({
   fallbackDirName: "tengacion-story-uploads",
   storageMode: "disk",
   maxFiles: 1,
+  maxFilesErrorMessage: "Stories support one image or video at a time",
   maxFileBytes: UPLOAD_LIMITS.PROFILE_STORY_VIDEO_BYTES,
   maxBytesByCategory: {
     image: UPLOAD_LIMITS.STORY_IMAGE_BYTES,

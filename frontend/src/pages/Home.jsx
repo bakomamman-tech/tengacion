@@ -714,7 +714,7 @@ export function PostComposerModal({
         },
         {
           onProgress: setMediaUploadProgress,
-          retries: 2,
+          retries: 0,
           timeoutMs: 10 * 60 * 1000,
         }
       ));

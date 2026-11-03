@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const fs = require("fs");
 const multer = require("multer");
 const os = require("os");
@@ -203,6 +204,11 @@ const wrapMulterMiddleware = (middleware, options = {}) => [
           )
         );
       }
+      if (error?.name === "MulterError" && error.code === "LIMIT_FILE_COUNT") {
+        return next(buildUploadError(
+          options.maxFilesErrorMessage || `You can upload up to ${options.maxFiles} files.`
+        ));
+      }
       return next(error);
     });
   },
@@ -214,17 +220,36 @@ const createConfiguredUpload = ({
   fallbackDirName = "tengacion-uploads",
   maxFileBytes = MAX_UPLOAD_BYTES,
   maxBytesByCategory = {},
+  storageMode = "memory",
+  maxFiles = 60,
+  maxFilesErrorMessage = "",
 } = {}) => {
   const uploadDir = buildUploadDir(candidates, fallbackDirName);
   const validationOptions = {
     maxFileBytes,
     maxBytesByCategory,
+    maxFiles,
+    maxFilesErrorMessage,
   };
+  if (!["memory", "disk"].includes(storageMode)) {
+    throw new Error("Invalid upload storage mode");
+  }
+  const useDiskStorage = storageMode === "disk";
+  const storage = useDiskStorage
+    ? multer.diskStorage({
+        destination: (_req, _file, callback) => callback(null, uploadDir),
+        filename: (_req, file, callback) => {
+          const extension = getExtension(file);
+          const safeExtension = /^\.[a-z0-9]{1,8}$/.test(extension) ? extension : "";
+          callback(null, `${crypto.randomBytes(16).toString("hex")}${safeExtension}`);
+        },
+      })
+    : multer.memoryStorage();
   const instance = multer({
-    storage: multer.memoryStorage(),
+    storage,
     limits: {
       fileSize: maxFileBytes,
-      files: 60,
+      files: maxFiles,
     },
     fileFilter: (_req, file, cb) => {
       try {
@@ -240,24 +265,50 @@ const createConfiguredUpload = ({
     },
   });
 
+  // Retain disk-backed uploads through moderation and cloud storage; clean them after response.
+  const wrap = (middleware) => {
+    const handlers = wrapMulterMiddleware(middleware, validationOptions);
+    if (!useDiskStorage) return handlers;
+    return [
+      (req, res, next) => {
+        let cleaned = false;
+        const cleanup = () => {
+          if (cleaned) return;
+          cleaned = true;
+          flattenFiles(req.files || req.file).forEach((file) => {
+            if (file?.destination === uploadDir && file?.path && path.dirname(file.path) === uploadDir) {
+              fs.promises.unlink(file.path).catch(() => null);
+            }
+          });
+        };
+        res.once("finish", cleanup);
+        res.once("close", cleanup);
+        next();
+      },
+      ...handlers,
+    ];
+  };
+
   const upload = {
     single(fieldName) {
-      return wrapMulterMiddleware(instance.single(fieldName), validationOptions);
+      return wrap(instance.single(fieldName));
     },
     array(fieldName, maxCount) {
-      return wrapMulterMiddleware(instance.array(fieldName, maxCount), validationOptions);
+      return wrap(instance.array(fieldName, maxCount));
     },
     fields(fieldList) {
-      return wrapMulterMiddleware(instance.fields(fieldList), validationOptions);
+      return wrap(instance.fields(fieldList));
     },
     any() {
-      return wrapMulterMiddleware(instance.any(), validationOptions);
+      return wrap(instance.any());
     },
     none() {
-      return wrapMulterMiddleware(instance.none(), validationOptions);
+      return wrap(instance.none());
     },
     maxBytesByCategory: { ...maxBytesByCategory },
     maxFileBytes,
+    maxFiles,
+    storageMode,
     memoryStorage: instance.storage,
     uploadDir,
   };

@@ -265,6 +265,17 @@ const shouldRetryXhrUpload = ({ status, message }) => {
   );
 };
 
+// Proxy 502 responses can contain large HTML pages; do not expose that HTML as an error.
+const parseUploadJsonResponse = (xhr) => {
+  const contentType = String(xhr.getResponseHeader("content-type") || "").toLowerCase();
+  if (!contentType.includes("application/json")) return {};
+  try {
+    return xhr.responseText ? JSON.parse(xhr.responseText) : {};
+  } catch {
+    return {};
+  }
+};
+
 const uploadPostFormWithProgress = ({
   formData,
   onProgress,
@@ -289,15 +300,7 @@ const uploadPostFormWithProgress = ({
     };
 
     xhr.onload = () => {
-      const raw = xhr.responseText || "";
-      let data = {};
-      if (raw) {
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          data = { error: raw };
-        }
-      }
+      const data = parseUploadJsonResponse(xhr);
 
       if (xhr.status === 401) {
         handleAuthFailure(data?.error || data?.message || "Unauthorized");
@@ -311,7 +314,9 @@ const uploadPostFormWithProgress = ({
       const err = new Error(
         data?.error ||
         data?.message ||
-        `Upload failed (${xhr.status || 0})`
+        (xhr.status >= 500 || !xhr.status
+          ? "The post upload could not be confirmed. Check your feed before trying again to avoid duplicates."
+          : `Upload failed (${xhr.status || 0})`)
       );
       err.status = xhr.status || 0;
       reject(err);
@@ -350,15 +355,7 @@ const uploadFormWithProgress = ({
     };
 
     xhr.onload = () => {
-      const raw = xhr.responseText || "";
-      let data = {};
-      if (raw) {
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          data = { error: raw };
-        }
-      }
+      const data = parseUploadJsonResponse(xhr);
 
       if (xhr.status === 401 && !suppressAuthFailure) {
         handleAuthFailure(data?.error || data?.message || "Unauthorized");
@@ -1852,9 +1849,10 @@ export const updateTrackWithUploadProgress = (trackId, formData, { onProgress } 
     timeoutMs: 20 * 60 * 1000,
   });
 
+// Creating a post is not idempotent; avoid auto-retrying gateway failures.
 export const createPostWithUploadProgress = async (
   payload,
-  { onProgress, retries = 2, timeoutMs = 10 * 60 * 1000 } = {}
+  { onProgress, retries = 0, timeoutMs = 10 * 60 * 1000 } = {}
 ) => {
   const {
     text = "",
@@ -2070,7 +2068,7 @@ export const createStoryWithUploadProgress = ({
   visibility = "friends",
   musicAttachment = null,
   onProgress,
-  timeoutMs = 180000,
+  timeoutMs = 10 * 60 * 1000,
 }) =>
   new Promise((resolve, reject) => {
     if (!file) {
@@ -2102,15 +2100,7 @@ export const createStoryWithUploadProgress = ({
     };
 
     xhr.onload = () => {
-      const raw = xhr.responseText || "";
-      let data = {};
-      if (raw) {
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          data = { error: raw };
-        }
-      }
+      const data = parseUploadJsonResponse(xhr);
 
       if (xhr.status === 401) {
         handleAuthFailure(data?.error || data?.message || "Unauthorized");
@@ -2126,7 +2116,9 @@ export const createStoryWithUploadProgress = ({
           || data?.message
           || (xhr.status >= 200 && xhr.status < 300
             ? "The story was not published. Please try again."
-            : `Story upload failed (${xhr.status || 0})`)
+            : (xhr.status >= 500 || !xhr.status
+              ? "The story upload could not be confirmed. Check your stories before trying again."
+              : `Story upload failed (${xhr.status || 0})`))
       );
       err.status = xhr.status || 0;
       err.moderationStatus = data?.moderationStatus || "";

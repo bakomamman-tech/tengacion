@@ -12,6 +12,8 @@ on:
       - "backend/tests/cloudinaryLargeUpload.test.js"
       - "backend/tests/setupCloudinaryMock.js"
       - "backend/tests/posts.test.js"
+      - "backend/tests/videoUploadDisk.test.js"
+      - "backend/tests/storyMusicAttachment.test.js"
       - "apps/api/services/postService.js"
       - "frontend/src/config/uploadLimits.js"
       - "frontend/src/api.js"
@@ -54,8 +56,9 @@ jobs:
           node --check services/videoStorage.js
           node --check tests/uploadLimits.test.js
           node --check tests/cloudinaryLargeUpload.test.js
+          node --check tests/videoUploadDisk.test.js
       - name: Check upload policy, large-video transport, post metadata
-        run: npx jest tests/uploadLimits.test.js tests/cloudinaryLargeUpload.test.js tests/posts.test.js --runInBand
+        run: npx jest tests/uploadLimits.test.js tests/cloudinaryLargeUpload.test.js tests/posts.test.js tests/videoUploadDisk.test.js tests/storyMusicAttachment.test.js --runInBand
 
   frontend-upload-policy:
     runs-on: ubuntu-latest

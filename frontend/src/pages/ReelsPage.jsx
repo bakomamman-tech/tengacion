@@ -236,7 +236,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
         },
         {
           onProgress: setProgress,
-          retries: 2,
+          retries: 0,
           timeoutMs: 10 * 60 * 1000,
         }
       );

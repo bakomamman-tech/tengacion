@@ -204,6 +204,11 @@ const wrapMulterMiddleware = (middleware, options = {}) => [
           )
         );
       }
+      if (error?.name === "MulterError" && error.code === "LIMIT_FILE_COUNT") {
+        return next(buildUploadError(
+          options.maxFilesErrorMessage || `You can upload up to ${options.maxFiles} files.`
+        ));
+      }
       return next(error);
     });
   },
@@ -217,11 +222,14 @@ const createConfiguredUpload = ({
   maxBytesByCategory = {},
   storageMode = "memory",
   maxFiles = 60,
+  maxFilesErrorMessage = "",
 } = {}) => {
   const uploadDir = buildUploadDir(candidates, fallbackDirName);
   const validationOptions = {
     maxFileBytes,
     maxBytesByCategory,
+    maxFiles,
+    maxFilesErrorMessage,
   };
   if (!["memory", "disk"].includes(storageMode)) {
     throw new Error("Invalid upload storage mode");

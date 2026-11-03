@@ -33,8 +33,7 @@ const requestTimeoutMs =
     : 10 * 60 * 1000;
 server.requestTimeout = requestTimeoutMs;
 server.headersTimeout = requestTimeoutMs + 5000;
-// Match Render's longer proxy connection lifetime to reduce intermittent 502s.
-server.keepAliveTimeout = 120000;
+server.keepAliveTimeout = 65000;
 console.log(`Node ${process.version} starting in ${process.cwd()}`);
 console.log("Backend runtime config", {
   nodeEnv: config.nodeEnv || config.NODE_ENV || "unknown",

@@ -148,6 +148,7 @@ const uploadFileToS3 = async (file, options = {}) => {
       Bucket: config.awsS3Bucket,
       Key: key,
       Body: createBody(file),
+      ...(Number(file.size || 0) > 0 ? { ContentLength: Number(file.size) } : {}),
       ContentType: contentType,
       CacheControl: "public, max-age=31536000, immutable",
     })

@@ -1,0 +1,50 @@
+name: Stories UI CI
+
+on:
+  pull_request:
+    paths:
+      - "frontend/src/stories/StoryCard.jsx"
+      - "frontend/src/stories/StoryCard.test.jsx"
+      - "frontend/src/stories/storyMedia.js"
+      - "frontend/src/stories/stories.css"
+      - ".github/workflows/stories-ui-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/src/stories/StoryCard.jsx"
+      - "frontend/src/stories/StoryCard.test.jsx"
+      - "frontend/src/stories/storyMedia.js"
+      - "frontend/src/stories/stories.css"
+      - ".github/workflows/stories-ui-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  stories-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run story card and carousel regression tests
+        run: npx vitest run src/stories/StoryCard.test.jsx src/stories/StoriesBar.test.jsx --reporter=dot
+
+      - name: Lint story card implementation
+        run: npx eslint src/stories/StoryCard.jsx

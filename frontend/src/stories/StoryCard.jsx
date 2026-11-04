@@ -17,8 +17,10 @@ export default function StoryCard({
 }) {
   const [open, setOpen] = useState(false);
   const [viewerNavigation, setViewerNavigation] = useState(null);
+  const [failedCoverSrc, setFailedCoverSrc] = useState("");
   const { mediaType, mediaUrl, thumbnailUrl } = getStoryMedia(story);
   const cover = thumbnailUrl || mediaUrl;
+  const coverHasFailed = Boolean(cover) && failedCoverSrc === cover;
   const soundtrack = story?.musicAttachment || null;
   const soundtrackTitle = String(
     soundtrack?.title || soundtrack?.creatorName || soundtrack?.summaryLabel || "Music"
@@ -61,22 +63,29 @@ export default function StoryCard({
           }
         }}
       >
-        {cover ? (
+        {cover && !coverHasFailed ? (
           mediaType === "video" && !thumbnailUrl ? (
             <video
               src={mediaUrl}
               muted
               playsInline
               preload={videoPreload === "none" ? "none" : "metadata"}
+              onError={() => setFailedCoverSrc(cover)}
             />
           ) : (
-            <img src={cover} alt="" loading="lazy" draggable="false" />
+            <img
+              src={cover}
+              alt=""
+              loading="lazy"
+              draggable="false"
+              onError={() => setFailedCoverSrc(cover)}
+            />
           )
-        ) : (
+        ) : !cover ? (
           <div className="story-card-text-fallback">
             {story?.text || "New story"}
           </div>
-        )}
+        ) : null}
 
         <div className="story-avatar">
           <img src={avatarSrc} alt={story?.username || "User"} />

@@ -23,11 +23,11 @@
     "repro:chat-friend": "node scripts/repro-chat-friend.js"
   },
   "dependencies": {
-    "@capacitor/android": "7.6.7",
-    "@capacitor/core": "7.6.7",
-    "@capacitor/ios": "7.6.7",
+    "@capacitor/android": "7.6.10",
+    "@capacitor/core": "7.6.10",
+    "@capacitor/ios": "7.6.10",
     "@hookform/resolvers": "^5.2.2",
-    "axios": "^1.18.1",
+    "axios": "1.20.0",
     "country-list": "^2.4.1",
     "country-region-data": "^4.1.0",
     "framer-motion": "^12.29.2",
@@ -41,11 +41,10 @@
     "react-router-dom": "^7.18.2",
     "recharts": "^3.7.0",
     "socket.io-client": "^4.8.3",
-    "tengacion": "file:..",
-    "zod": "^4.3.6"
+    "zod": "4.6.6"
   },
   "devDependencies": {
-    "@capacitor/cli": "7.6.7",
+    "@capacitor/cli": "7.6.10",
     "@eslint/js": "^9.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -103,6 +102,7 @@
     "jsdom": {
       "undici": "7.29.0"
     },
-    "esbuild": "0.28.1"
+    "esbuild": "0.28.1",
+    "follow-redirects": "1.16.3"
   }
 }

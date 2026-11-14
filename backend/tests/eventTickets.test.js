@@ -11,6 +11,8 @@ process.env.PAYSTACK_SECRET_KEY = 'sk_test_no_bad_vibes_mock_key';
 process.env.STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_tengacion';
 process.env.STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_tengacion';
 process.env.EVENT_NBV_ENABLED = 'true';
+// This suite must never send messages via the application's real SMTP provider.
+process.env.EVENT_NBV_SEND_TEST_EMAILS = 'false';
 
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
@@ -387,4 +389,89 @@ describe('No Bad Vibes event ticket API', () => {
     expect(await EventInventorySlot.countDocuments({ reference: pending.reference, status: 'sold' })).toBe(1);
     expect(await EventTicket.countDocuments({ reference: pending.reference, status: 'paid' })).toBe(1);
   });
+
+  test('gate admission: synthetic live table is verified, admitted once per guest, and tracks used status', async () => {
+    // Isolated in-memory MongoDB fixture; never create a ticket in live billing or production storage.
+    const codes = Array.from({ length: 6 }, () => crypto.randomBytes(24).toString('hex'));
+    const ticket = await EventTicket.create({
+      buyer: buyer._id, buyerEmail: buyer.email, attendeeName: buyer.name,
+      tier: 'table6', amountKobo: 10000000,
+      reference: 'NVB26-' + crypto.randomBytes(12).toString('hex'),
+      testMode: false, status: 'paid', ticketCode: codes[0],
+      admissions: codes.map((code, index) => ({ number: index + 1, code })),
+      paidAt: new Date(),
+    });
+    global.fetch = jest.fn(() => { throw new Error('Gate verification must not contact Paystack'); });
+    const statusUrl = (code) => '/api/event-tickets/status/' + code;
+    const redeemUrl = (code) => '/api/event-tickets/redeem/' + code;
+
+    // 1. An unredeemed LIVE-mode guest credential can be inspected before admission.
+    const firstBefore = await request(app).get(statusUrl(codes[0])).expect(200);
+    expect(firstBefore.body).toEqual({ valid: true, used: false, tier: 'Table for 6' });
+
+    // Unauthenticated and ordinary customer sessions must never admit guests.
+    await request(app).post(redeemUrl(codes[0])).expect(401);
+    await request(app).post(redeemUrl(codes[0])).set(bearer(otherToken)).expect(403);
+    const afterDenied = await request(app).get(statusUrl(codes[0])).expect(200);
+    expect(afterDenied.body).toMatchObject({ valid: true, used: false });
+
+    // 2. Authorized staff admit the first guest exactly once.
+    const firstAdmission = await request(app).post(redeemUrl(codes[0]))
+      .set(bearer(adminToken)).expect(200);
+    expect(firstAdmission.body).toMatchObject({
+      admitted: true, tier: 'Table for 6', admittedCount: 1, capacity: 6,
+    });
+    const firstAfter = await request(app).get(statusUrl(codes[0])).expect(200);
+    expect(firstAfter.body).toEqual({ valid: false, used: true, tier: 'Table for 6' });
+
+    // 3. Repeated scanning/redemption of that code is rejected by the API.
+    const duplicate = await request(app).post(redeemUrl(codes[0]))
+      .set(bearer(adminToken)).expect(409);
+    expect(duplicate.body).toMatchObject({ admitted: false, reason: 'Already used.' });
+
+    // 4. Another guest on the same table is independently valid and redeemable.
+    const secondBefore = await request(app).get(statusUrl(codes[1])).expect(200);
+    expect(secondBefore.body).toEqual({ valid: true, used: false, tier: 'Table for 6' });
+    const secondAdmission = await request(app).post(redeemUrl(codes[1]))
+      .set(bearer(adminToken)).expect(200);
+    expect(secondAdmission.body).toMatchObject({
+      admitted: true, tier: 'Table for 6', admittedCount: 2, capacity: 6,
+    });
+    const secondAfter = await request(app).get(statusUrl(codes[1])).expect(200);
+    expect(secondAfter.body).toEqual({ valid: false, used: true, tier: 'Table for 6' });
+    const thirdGuest = await request(app).get(statusUrl(codes[2])).expect(200);
+    expect(thirdGuest.body).toMatchObject({ valid: true, used: false });
+    const stored = await EventTicket.findById(ticket._id);
+    expect(stored.admissions.filter((a) => a.redeemedAt)).toHaveLength(2);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('gate admission: Paystack TEST-mode table QR codes never permit entry', async () => {
+    // Mocked Paystack success creates a paid TEST ticket only; no real transaction occurs.
+    const checkout = await startPurchase('table6');
+    const pending = await EventTicket.findOne({ reference: checkout.body.reference });
+    mockVerification(pending);
+    const verified = await request(app)
+      .get('/api/event-tickets/verify/' + pending.reference)
+      .set(bearer(buyerToken)).expect(200);
+    expect(verified.body).toMatchObject({ verified: true });
+    expect(verified.body.ticket.testMode).toBe(true);
+    expect(verified.body.ticket.admissions).toHaveLength(6);
+
+    // 5. Every generated TEST-mode guest credential must fail public validation
+    // and must be rejected even when an organizer tries to redeem it.
+    for (const guest of verified.body.ticket.admissions) {
+      const status = await request(app)
+        .get('/api/event-tickets/status/' + guest.code).expect(200);
+      expect(status.body).toMatchObject({ valid: false, used: false });
+      const redemption = await request(app)
+        .post('/api/event-tickets/redeem/' + guest.code)
+        .set(bearer(adminToken)).expect(409);
+      expect(redemption.body).toMatchObject({ admitted: false, reason: 'Invalid ticket.' });
+    }
+    const stored = await EventTicket.findById(pending._id);
+    expect(stored.testMode).toBe(true);
+    expect(stored.admissions.filter((a) => a.redeemedAt)).toHaveLength(0);
+  });
+
 });

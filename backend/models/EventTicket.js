@@ -23,6 +23,9 @@ const eventTicketSchema = new mongoose.Schema({
   admissions: { type: [admissionSchema], default: [] },
   attendeePhoto: { type: String, default: '' },
   paidAt: { type: Date },
+  confirmationEmailSentAt: { type: Date, default: null },
+  confirmationEmailClaimedAt: { type: Date, default: null },
+  confirmationEmailAttempts: { type: Number, default: 0 },
 }, { timestamps: true });
 // Admission codes are assigned once in a single conditional document update.
 // A single atomic positional update redeems exactly one guest code.

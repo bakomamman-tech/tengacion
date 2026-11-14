@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
-import { register as registerApi } from "../api";
+import { register as registerApi, uploadAvatar } from "../api";
+import { setSessionAccessToken } from "../authSession";
 import AuthPasswordField from "../components/AuthPasswordField";
 import { COUNTRY_OPTIONS, getRegionsForCountry } from "../constants/countries";
 import { useAuth } from "../context/AuthContext";
@@ -44,6 +45,10 @@ const calculateAge = (dateValue) => {
 
 export default function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const rawReturn = new URLSearchParams(location.search).get("returnTo") || "";
+  const returnTo = rawReturn.startsWith("/") && !rawReturn.startsWith("//") ? rawReturn : "/home";
+  const isEventSignup = returnTo === "/events/no-bad-vibes";
   const { user, login } = useAuth();
 
   const [form, setForm] = useState({
@@ -61,6 +66,9 @@ export default function Register() {
     password: "",
   });
   const [loading, setLoading] = useState(false);
+  const [eventPhoto, setEventPhoto] = useState(null);
+  const [eventAccountConsent, setEventAccountConsent] = useState(false);
+  const [registeredEventAccount, setRegisteredEventAccount] = useState(null);
 
   const years = useMemo(() => {
     const current = new Date().getFullYear();
@@ -88,7 +96,7 @@ export default function Register() {
   }, [form.country, matchedRegionOptions]);
 
   if (user) {
-    return <Navigate to="/home" replace />;
+    return <Navigate to={isEventSignup ? returnTo : "/home"} replace />;
   }
 
   const setValue = (key, value) => {
@@ -184,10 +192,19 @@ export default function Register() {
       return;
     }
 
+    if (isEventSignup && (!eventPhoto || !["image/png", "image/jpeg"].includes(eventPhoto.type) || eventPhoto.size > 3 * 1024 * 1024)) {
+      toast.error("Upload a JPG or PNG profile photo under 3 MB.");
+      return;
+    }
+    if (isEventSignup && !eventAccountConsent) {
+      toast.error("Please confirm that a Tengacion account and public profile photo will be created.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const payload = await registerApi({
+      const payload = registeredEventAccount || await registerApi({
         name: `${firstName} ${lastName}`.trim(),
         username,
         email,
@@ -200,9 +217,26 @@ export default function Register() {
       });
 
       if (payload?.token && payload?.user) {
+        if (isEventSignup) {
+          // Do not log in to React until the profile upload is finished. Otherwise
+          // the existing authenticated-user redirect interrupts the photo upload.
+          setRegisteredEventAccount(payload);
+          setSessionAccessToken(payload.token);
+          let updatedUser;
+          try {
+            updatedUser = await uploadAvatar(eventPhoto, { eventSignup: "no-bad-vibes-2026" });
+          } catch (uploadError) {
+            toast.error(`Your Tengacion account was created, but the profile photo was not saved. Please retry the photo upload here. ${uploadError?.message || ""}`);
+            return;
+          }
+          login(payload.token, updatedUser || payload.user, payload.sessionId);
+          toast.success("Account and profile photo saved. Continue with your No Bad Vibes ticket.");
+          navigate(returnTo, { replace: true });
+          return;
+        }
         login(payload.token, payload.user, payload.sessionId);
         toast.success("Account created. You are now signed in.");
-        navigate("/home", { replace: true });
+        navigate(returnTo, { replace: true });
         return;
       }
 
@@ -218,10 +252,11 @@ export default function Register() {
   return (
     <div className="register-fb-page">
       <main className="register-fb-shell">
-        <h1 className="register-fb-title">Get started on Tengacion</h1>
+        <h1 className="register-fb-title">{isEventSignup ? "Register for No Bad Vibes" : "Get started on Tengacion"}</h1>
         <p className="register-fb-subtitle">
-          Create an account to connect with friends, family and communities of
-          people who share your interests.
+          {isEventSignup
+            ? "Create your Tengacion account, upload your profile photo, then return directly to your event ticket checkout."
+            : "Create an account to connect with friends, family and communities of people who share your interests."}
         </p>
 
         <form className="register-fb-form" onSubmit={handleSubmit}>
@@ -407,6 +442,18 @@ export default function Register() {
             />
           </div>
 
+          {isEventSignup && <div className="register-fb-section">
+            <label className="register-fb-label" htmlFor="nbv-registration-photo">Profile photo for ticket registration *</label>
+            <input id="nbv-registration-photo" className="register-fb-input" type="file" accept="image/jpeg,image/png" required
+              onChange={(event) => setEventPhoto(event.target.files?.[0] || null)} />
+            <p className="register-fb-helper-note">JPG or PNG, maximum 3 MB. This photo is uploaded to your Tengacion profile, not only to your event ticket.</p>
+            <label className="register-fb-helper-note" style={{ display: "flex", alignItems: "start", gap: 8 }}>
+              <input type="checkbox" checked={eventAccountConsent} required
+                onChange={(event) => setEventAccountConsent(event.target.checked)} />
+              <span>I understand that this registration creates a full Tengacion account and that my photo will appear on my public Tengacion profile. I agree to the account creation and photo upload.</span>
+            </label>
+          </div>}
+
           <div className="register-fb-security-note">
             <p>
               For the security of your account, you are advised to choose a strong
@@ -416,7 +463,7 @@ export default function Register() {
 
           <div className="register-fb-legal">
             <p>
-              By tapping Submit, you agree to create an account and to
+              By tapping {isEventSignup ? "Create account and continue" : "Submit"}, you agree to create a Tengacion account and to
               Tengacion&apos;s <Link to="/terms">Terms</Link>,{" "}
               <Link to="/privacy">Privacy Policy</Link> and{" "}
               <Link to="/community-guidelines">Community Guidelines</Link>.
@@ -428,13 +475,13 @@ export default function Register() {
             className="register-fb-submit"
             disabled={loading}
           >
-            {loading ? "Creating account..." : "Submit"}
+            {loading ? (isEventSignup ? "Saving your event profile..." : "Creating account...") : (isEventSignup ? "Create account and continue to tickets" : "Submit")}
           </button>
 
           <button
             type="button"
             className="register-fb-secondary"
-            onClick={() => navigate("/")}
+            onClick={() => navigate(isEventSignup ? `/login?returnTo=${encodeURIComponent(returnTo)}` : "/login")}
           >
             I already have an account
           </button>

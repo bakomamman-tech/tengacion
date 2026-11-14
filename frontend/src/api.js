@@ -705,9 +705,12 @@ export const hideStoriesFromUser = (userId) =>
 export const unhideStoriesFromUser = (userId) =>
   updatePrivacyList(`/users/me/unhide-stories-from/${encodeURIComponent(userId || "")}`);
 
-export const uploadAvatar = (file) => {
+export const uploadAvatar = (file, options = {}) => {
   const form = new FormData();
   form.append("image", file);
+  if (options.eventSignup === "no-bad-vibes-2026") {
+    form.append("eventSignup", "no-bad-vibes-2026");
+  }
 
   return request(`${API_BASE}/users/me/avatar`, {
     method: "POST",

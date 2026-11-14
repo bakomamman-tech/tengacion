@@ -113,7 +113,7 @@ export default function NoBadVibesPage() {
     <div className="nbv-banner">✦ JAGA HOUSE OF MUSIC PRESENTS <span>✦ FRIDAY 18 DECEMBER 2026</span></div>
     <header className="nbv-header"><Link to={RETURN_TO} className="nbv-logo">✦ <span>JAGA<small>HOUSE OF MUSIC</small></span></Link>
       <nav><a href="#nbv-tickets">Get tickets</a><a href="#nbv-about">Event details</a>
-        <button onClick={() => { setView('mine'); document.getElementById('nbv-tickets')?.scrollIntoView({ behavior: 'smooth' }); }}>My tickets ↗</button></nav></header>
+        <button onClick={() => { setView('mine'); document.getElementById('nbv-tickets')?.scrollIntoView({ behavior: 'smooth' }); }}>My tickets ↗</button>{['admin', 'super_admin'].includes(user?.role) && <Link to="/events/no-bad-vibes/check-in">Organizer check-in</Link>}</nav></header>
     <section className="nbv-hero"><div className="nbv-hero-copy"><p className="nbv-kicker">THE DECEMBER EXPERIENCE · KADUNA, NIGERIA</p>
       <h1>NO BAD<br /><em>VIBES.</em><small>ONLY GOOD MEMORIES.</small></h1>
       <p>One city. One stage. Nothing but unforgettable energy. Join MCJagz and friends for a night you won't forget.</p>

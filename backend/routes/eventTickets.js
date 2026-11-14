@@ -9,6 +9,7 @@ const auth = require('../middleware/auth');
 const EventTicket = require('../models/EventTicket');
 const EventInventorySlot = require('../models/EventInventorySlot');
 const User = require('../models/User');
+const { deliverTicketEmail } = require('../services/eventTicketEmailService');
 const { EVENT_SLUG: SLUG, HOLD_MINUTES: RESERVATION_MINUTES, CATEGORIES: tiers, hasConfirmedInventory } =
   require('../services/noBadVibesPolicy');
 const router = express.Router();
@@ -117,7 +118,10 @@ async function flagUnfulfilled(ticket) {
 async function completePayment(reference) {
   const ticket = await EventTicket.findOne({ reference }).select('+ticketCode');
   if (!ticket) return null;
-  if (ticket.status === 'paid') return ticket;
+  if (ticket.status === 'paid') {
+    await deliverTicketEmail(ticket);
+    return ticket;
+  }
   if (ticket.status === 'paid_unfulfilled' || ticket.status === 'refunded') return null;
 
   const payment = await checkPaystack(reference);
@@ -140,9 +144,13 @@ async function completePayment(reference) {
   const result = await EventTicket.findOneAndUpdate({ _id: ticket._id, status: 'pending' },
     { $set: { status: 'paid', paidAt: new Date(), slotNumber: slot.slotNumber,
       ticketCode: admissions[0].code, admissions } }, { returnDocument: 'after' }).select('+ticketCode');
-  if (result) return result;
+  if (result) {
+    await deliverTicketEmail(result);
+    return result;
+  }
   // Duplicate webhook and callback may race: only one inserts the admissions.
   const settled = await EventTicket.findById(ticket._id).select('+ticketCode');
+  if (settled?.status === 'paid') await deliverTicketEmail(settled);
   return settled?.status === 'paid' ? settled : null;
 }
 
@@ -214,6 +222,10 @@ router.post('/checkout', auth, async (req, res) => {
 router.get('/mine', auth, async (req, res) => {
   const tickets = await EventTicket.find({ buyer: req.user.id, status: 'paid' })
     .sort({ createdAt: -1 }).select('+ticketCode').lean();
+  // Retry undelivered confirmations without slowing down the My Tickets response.
+  // Atomic delivery claims stop duplicate emails across concurrent requests.
+  const pendingEmails = tickets.filter(t => !t.confirmationEmailSentAt).slice(0, 3);
+  void Promise.allSettled(pendingEmails.map(deliverTicketEmail));
   return res.json({ tickets: tickets.map(safeTicket) });
 });
 

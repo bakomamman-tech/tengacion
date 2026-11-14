@@ -9,6 +9,7 @@ const auth = require('../middleware/auth');
 const EventTicket = require('../models/EventTicket');
 const EventInventorySlot = require('../models/EventInventorySlot');
 const User = require('../models/User');
+const { mediaToUrl } = require('../utils/userMedia');
 const { deliverTicketEmail } = require('../services/eventTicketEmailService');
 const { EVENT_SLUG: SLUG, HOLD_MINUTES: RESERVATION_MINUTES, CATEGORIES: tiers, hasConfirmedInventory } =
   require('../services/noBadVibesPolicy');
@@ -29,7 +30,7 @@ const photoPreviewUrl = (publicId) => {
       type: 'authenticated', expires_at: Math.floor(Date.now() / 1000) + 900 });
   } catch { return ''; }
 };
-const safeTicket = (ticket) => ({
+const safeTicket = (ticket, profilePhotoUrl = '') => ({
   id: String(ticket._id), eventSlug: ticket.eventSlug, buyerEmail: ticket.buyerEmail,
   attendeeName: ticket.attendeeName, tier: ticket.tier, label: tiers[ticket.tier]?.label,
   amountNGN: ticket.amountKobo / 100, status: ticket.status,
@@ -38,7 +39,9 @@ const safeTicket = (ticket) => ({
   admissions: ticket.status === 'paid' ? (ticket.admissions || []).map(a => ({
     number: a.number, code: a.code, redeemedAt: a.redeemedAt || null,
   })) : [],
-  attendeePhoto: ticket.attendeePhoto ? photoPreviewUrl(ticket.attendeePhoto) : '',
+  // Display the purchaser's already-uploaded Tengacion profile photo when no
+  // legacy ticket-specific photo was provided. No second upload is required.
+  attendeePhoto: ticket.attendeePhoto ? photoPreviewUrl(ticket.attendeePhoto) : profilePhotoUrl,
   paidAt: ticket.paidAt || null, createdAt: ticket.createdAt,
 });
 
@@ -220,13 +223,17 @@ router.post('/checkout', auth, async (req, res) => {
 });
 
 router.get('/mine', auth, async (req, res) => {
-  const tickets = await EventTicket.find({ buyer: req.user.id, status: 'paid' })
-    .sort({ createdAt: -1 }).select('+ticketCode').lean();
+  const [tickets, buyer] = await Promise.all([
+    EventTicket.find({ buyer: req.user.id, status: 'paid' })
+      .sort({ createdAt: -1 }).select('+ticketCode').lean(),
+    User.findById(req.user.id).select('avatar').lean(),
+  ]);
+  const profilePhotoUrl = mediaToUrl(buyer?.avatar);
   // Retry undelivered confirmations without slowing down the My Tickets response.
   // Atomic delivery claims stop duplicate emails across concurrent requests.
   const pendingEmails = tickets.filter(t => !t.confirmationEmailSentAt).slice(0, 3);
   void Promise.allSettled(pendingEmails.map(deliverTicketEmail));
-  return res.json({ tickets: tickets.map(safeTicket) });
+  return res.json({ tickets: tickets.map(t => safeTicket(t, profilePhotoUrl)) });
 });
 
 router.get('/verify/:reference', auth, async (req, res) => {
@@ -244,7 +251,8 @@ router.get('/verify/:reference', auth, async (req, res) => {
           ? 'Payment received after reservation expired. No ticket was issued; please contact support for refund review.'
           : 'Payment not confirmed yet.' });
     }
-    return res.json({ verified: true, ticket: safeTicket(result) });
+    const buyer = await User.findById(req.user.id).select('avatar').lean();
+    return res.json({ verified: true, ticket: safeTicket(result, mediaToUrl(buyer?.avatar)) });
   } catch { return res.status(503).json({ error: 'Payment verification is temporarily unavailable.' }); }
 });
 

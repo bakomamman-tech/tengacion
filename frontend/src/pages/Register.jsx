@@ -444,7 +444,7 @@ export default function Register() {
 
           {isEventSignup && <div className="register-fb-section">
             <label className="register-fb-label" htmlFor="nbv-registration-photo">Profile photo for ticket registration *</label>
-            <input id="nbv-registration-photo" type="file" accept="image/jpeg,image/png" required
+            <input id="nbv-registration-photo" className="register-fb-input" type="file" accept="image/jpeg,image/png" required
               onChange={(event) => setEventPhoto(event.target.files?.[0] || null)} />
             <p className="register-fb-helper-note">JPG or PNG, maximum 3 MB. This photo is uploaded to your Tengacion profile, not only to your event ticket.</p>
             <label className="register-fb-helper-note" style={{ display: "flex", alignItems: "start", gap: 8 }}>

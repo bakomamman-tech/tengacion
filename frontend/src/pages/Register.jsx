@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { register as registerApi } from "../api";
 import AuthPasswordField from "../components/AuthPasswordField";
@@ -44,6 +44,9 @@ const calculateAge = (dateValue) => {
 
 export default function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const rawReturn = new URLSearchParams(location.search).get("returnTo") || "";
+  const returnTo = rawReturn.startsWith("/") && !rawReturn.startsWith("//") ? rawReturn : "/home";
   const { user, login } = useAuth();
 
   const [form, setForm] = useState({
@@ -202,7 +205,7 @@ export default function Register() {
       if (payload?.token && payload?.user) {
         login(payload.token, payload.user, payload.sessionId);
         toast.success("Account created. You are now signed in.");
-        navigate("/home", { replace: true });
+        navigate(returnTo, { replace: true });
         return;
       }
 

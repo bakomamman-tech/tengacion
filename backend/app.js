@@ -149,6 +149,7 @@ app.use(
       if (
         normalizedUrl.startsWith("/api/payments/webhook/") ||
         normalizedUrl === "/api/payments/paystack/webhook" ||
+        normalizedUrl === "/api/event-tickets/webhook" ||
         normalizedUrl === "/api/payments/paystack/transfers/webhook" ||
         normalizedUrl === "/api/payments/stripe/webhook" ||
         normalizedUrl === "/api/marketplace/orders/webhook/paystack"
@@ -242,6 +243,7 @@ app.use("/api/tracks", require("./routes/tracks"));
 app.use("/api/books", require("./routes/books"));
 app.use("/api/albums", require("./routes/albums"));
 app.use("/api/payments", require("./routes/payments"));
+app.use("/api/event-tickets", require("./routes/eventTickets"));
 app.use("/api/purchases", require("./routes/purchases"));
 app.use("/api/entitlements", require("./routes/entitlements"));
 app.use("/api", require("./routes/creatorHub"));

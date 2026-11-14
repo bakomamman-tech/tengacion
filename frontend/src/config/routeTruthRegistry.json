@@ -521,6 +521,24 @@
       "testEvidence": ["backend/tests/roomsRoutes.test.js", "frontend/src/pages/Rooms.test.jsx"]
     },
     {
+      "id": "no_bad_vibes_ticketing",
+      "title": "No Bad Vibes with MCJagz ticketing",
+      "status": "preview",
+      "surface": "campaigns",
+      "access": "mixed",
+      "canonicalPath": "/events/no-bad-vibes",
+      "appPaths": [
+        "/events/no-bad-vibes"
+      ],
+      "dataAuthority": "EventTicket records and server-verified Paystack transactions.",
+      "ownerRole": "Commerce Product Owner",
+      "kpi": "Verified paid admissions (not yet measured)",
+      "featureFlag": "EVENT_NBV_ENABLED",
+      "testEvidence": [
+        "frontend/src/config/__tests__/routeTruthRegistry.test.js"
+      ]
+    },
+    {
       "id": "events",
       "title": "Events",
       "status": "preview",

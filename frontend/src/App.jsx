@@ -34,6 +34,7 @@ const CodeSwitchPage = lazy(() => import("./pages/CodeSwitchPage"));
 const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
 const TeacherTrainingPage = lazy(() => import("./pages/TeacherTrainingPage"));
 const Register = lazy(() => import("./pages/Register"));
+const NoBadVibesPage = lazy(() => import("./pages/NoBadVibesPage"));
 const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRegisterPage"));
 const SummerBootcampRegisterPage = lazy(() => import("./pages/SummerBootcampRegisterPage"));
 const MillionaireRegisterPage = lazy(() => import("./pages/MillionaireRegisterPage"));
@@ -251,6 +252,7 @@ export default function App() {
           <Route path="/marketplace-seller-terms" element={<PublicInfoPage pageKey="marketplace-seller-terms" />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/events/no-bad-vibes" element={<NoBadVibesPage />} />
           <Route path="/kaduna-got-talent/register" element={<KadunaGotTalentRegisterPage user={user} />} />
           <Route path="/summer-bootcamp/register" element={<SummerBootcampRegisterPage />} />
           <Route path="/millionaire/register" element={<MillionaireRegisterPage />} />

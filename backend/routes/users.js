@@ -6,7 +6,7 @@ const upload = require("../middleware/privateUpload");
 const Post = require("../models/Post");
 const auth = require("../middleware/auth");
 const moderateUpload = require("../middleware/moderateUpload");
-const { deleteUploadedMedia, saveUploadedMedia } = require("../services/mediaStore");
+const { deleteUploadedMedia, saveUploadedMedia, saveUploadedMediaToGridFs } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
 const {
   isCloudinaryMediaValue,
@@ -1432,11 +1432,18 @@ router.post(
       if (!selectedFile.mimetype?.startsWith("image/")) {
         return res.status(400).json({ error: "Only image files are allowed" });
       }
+      const isEventRegistration = req.body?.eventSignup === "no-bad-vibes-2026";
+      if (isEventRegistration &&
+          (!["image/jpeg", "image/png"].includes(selectedFile.mimetype) || selectedFile.size > 3 * 1024 * 1024)) {
+        return res.status(400).json({ error: "Event registration requires a JPG or PNG photo under 3 MB." });
+      }
 
-      const uploaded = await saveUploadedMedia(selectedFile, {
-        source: "profile_avatar",
-        resourceType: "image",
-      });
+      const avatarOptions = { source: "profile_avatar", resourceType: "image" };
+      // A temporary local test environment has no production Cloudinary/S3 credentials.
+      // In test mode only, keep event photos in the same disposable MongoDB instance.
+      const uploaded = isEventRegistration && process.env.NODE_ENV === "test"
+        ? await saveUploadedMediaToGridFs(selectedFile, avatarOptions)
+        : await saveUploadedMedia(selectedFile, avatarOptions);
       const avatar = normalizeMediaValue(uploaded);
       const safeUser = await User.findByIdAndUpdate(
         req.user.id,

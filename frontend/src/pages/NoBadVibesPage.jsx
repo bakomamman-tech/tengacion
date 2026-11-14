@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { apiRequest, API_BASE } from '../api';
 import { getSessionAccessToken } from '../authSession';
+import { clearEventPaymentReference, getEventPaymentReference } from '../utils/eventPaymentCallback';
 import { useAuth } from '../context/AuthContext';
 import '../styles/noBadVibes.css';
 
@@ -48,19 +49,24 @@ export default function NoBadVibesPage() {
   useEffect(() => { if (!authLoading && user) loadTickets(); }, [authLoading, user, loadTickets]);
 
   useEffect(() => {
-    const reference = searchParams.get('reference');
-    if (!user || !reference || !/^NVB26-[a-f0-9]{24}$/.test(reference)) return;
+    const reference = getEventPaymentReference(searchParams);
+    if (!user || !reference) return;
     let active = true;
     setView('mine');
+    document.getElementById('nbv-tickets')?.scrollIntoView({ behavior: 'smooth' });
     setMessage('Confirming your payment with Paystack…');
     apiRequest(`${API_BASE}/event-tickets/verify/${encodeURIComponent(reference)}`)
       .then(async (data) => {
         if (!active) return;
         setMessage(data.verified ? 'Payment verified. Each guest has their own QR admission code.' : (data.message || 'Payment is not confirmed. You can return to this page to check again.'));
-        if (data.verified) await loadTickets();
+        if (data.verified) {
+          await loadTickets();
+          // Clear only confirmed references; retain unconfirmed/failed callbacks
+          // so a reload can retry verification without another payment.
+          setSearchParams(clearEventPaymentReference(searchParams), { replace: true });
+        }
       })
-      .catch(err => { if (active) setMessage(messageFor(err)); })
-      .finally(() => { if (active) { const next = new URLSearchParams(searchParams); next.delete('reference'); setSearchParams(next, { replace: true }); } });
+      .catch(err => { if (active) setMessage(messageFor(err)); });
     return () => { active = false; };
   }, [user, searchParams, setSearchParams, loadTickets]);
 

@@ -23,7 +23,7 @@ export default function NoBadVibesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [eventConfig, setEventConfig] = useState(null);
   const [selected, setSelected] = useState('vip');
-  const [view, setView] = useState('explore');
+  const [view, setView] = useState(() => searchParams.get('view') === 'mine' ? 'mine' : 'explore');
   const [tickets, setTickets] = useState([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -145,7 +145,7 @@ export default function NoBadVibesPage() {
         <div className="nbv-checkout"><div><p className="nbv-kicker">YOUR SELECTION</p><h3>{selectedCategory.label} — {fmt(selectedCategory.price)}</h3>
           <p>Each order reserves one purchase slot for 30 minutes. When Paystack verifies payment, one unique QR admission is issued per guest (1, 6, 8, or 10). Tickets are available in your Tengacion account for viewing and printing.</p>
           <label className="nbv-consent"><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} /><span>I understand that buying tickets requires a Tengacion account and that my account details are used to issue and retrieve my ticket. Attendee photos are optional and require separate consent.</span></label></div>
-          <div className="nbv-checkout-action">{user?<span>Signed in as {user.email}</span>:<><span>Already have an account? <Link to={`/login?returnTo=${encodeURIComponent(RETURN_TO)}`}>Sign in</Link></span><Link to={`/register?returnTo=${encodeURIComponent(RETURN_TO)}`}>Create a Tengacion account</Link></>}
+          <div className="nbv-checkout-action">{user?<span>Signed in as {user.email}</span>:<><span>Already have an account? <Link to={`/login?returnTo=${encodeURIComponent(RETURN_TO)}`}>Sign in</Link></span><Link to={`/register?returnTo=${encodeURIComponent(RETURN_TO)}`}>Register & upload a profile photo</Link></>}
             <button className="nbv-primary" type="button" disabled={busy||authLoading||!eventConfig?.enabled||!eventConfig?.tiers?.find(t => t.id === selected)?.inventoryConfirmed||!Number.isInteger(selectedAvailability)||selectedAvailability<1} onClick={checkout}>{busy?'Connecting…':eventConfig?.enabled?'Continue to secure payment ↗':'Sales opening soon'}</button>
             <small>Paystack secure checkout · NGN · Ticket only issued after verification</small></div>
         </div></> : <div className="nbv-my-tickets">{!user?<div className="nbv-empty"><h3>Welcome back to the vibe.</h3><p>Sign in with your Tengacion email and password to access purchased tickets.</p><Link className="nbv-primary" to={`/login?returnTo=${encodeURIComponent(RETURN_TO)}`}>Sign in to view tickets ↗</Link></div>:

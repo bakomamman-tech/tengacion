@@ -224,7 +224,7 @@ export default function Register() {
           setSessionAccessToken(payload.token);
           let updatedUser;
           try {
-            updatedUser = await uploadAvatar(eventPhoto);
+            updatedUser = await uploadAvatar(eventPhoto, { eventSignup: "no-bad-vibes-2026" });
           } catch (uploadError) {
             toast.error(`Your Tengacion account was created, but the profile photo was not saved. Please retry the photo upload here. ${uploadError?.message || ""}`);
             return;

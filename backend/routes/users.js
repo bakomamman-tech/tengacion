@@ -1457,6 +1457,8 @@ router.post(
         });
       }
 
+      // Event registration photos belong on the profile, not in a surprise public feed post.
+      if (req.body?.eventSignup !== "no-bad-vibes-2026") {
       try {
         await Post.create({
           author: safeUser._id,
@@ -1473,6 +1475,7 @@ router.post(
         });
       } catch (postErr) {
         console.error("Avatar update post creation failed:", postErr);
+      }
       }
 
       return res.json({

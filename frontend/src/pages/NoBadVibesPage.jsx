@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { apiRequest, API_BASE } from '../api';
-import { getSessionAccessToken } from '../authSession';
 import { clearEventPaymentReference, getEventPaymentReference } from '../utils/eventPaymentCallback';
 import { useAuth } from '../context/AuthContext';
 import '../styles/noBadVibes.css';
@@ -29,8 +28,6 @@ export default function NoBadVibesPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [qrCodes, setQrCodes] = useState({});
-  const [photos, setPhotos] = useState({});
-  const [photoConsent, setPhotoConsent] = useState({});
   const [acknowledged, setAcknowledged] = useState(false);
 
   useEffect(() => {
@@ -109,24 +106,6 @@ export default function NoBadVibesPage() {
     } catch (err) { setMessage(messageFor(err)); setBusy(false); }
   };
 
-  const uploadPhoto = async (ticketId) => {
-    if (!photoConsent[ticketId]) { setMessage('Please consent to storing the attendee photo first.'); return; }
-    const photo = photos[ticketId];
-    if (!photo || !['image/png', 'image/jpeg'].includes(photo.type) || photo.size > 3 * 1024 * 1024) {
-      setMessage('Select a JPG/PNG photo under 3 MB.'); return;
-    }
-    setBusy(true); setMessage('');
-    try {
-      const form = new FormData(); form.set('photo', photo); form.set('photoConsent', 'true');
-      const response = await fetch(`${API_BASE}/event-tickets/${ticketId}/photo`, {
-        method: 'POST', headers: { Authorization: `Bearer ${getSessionAccessToken()}` }, body: form,
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Upload failed.');
-      setMessage('Your photo has been attached to your ticket.');
-      await loadTickets();
-    } catch (err) { setMessage(messageFor(err)); } finally { setBusy(false); }
-  };
 
   const selectedCategory = CATEGORIES.find(c => c.id === selected) || CATEGORIES[1];
   const selectedAvailability = eventConfig?.tiers?.find(t => t.id === selected)?.available;
@@ -150,7 +129,7 @@ export default function NoBadVibesPage() {
           <div className="nbv-card-head"><span>✦</span><small>0{i+1}</small></div><div className="nbv-card-kicker">{t.kicker}</div><h3>{t.label}</h3><div className="nbv-card-price">{t.price?fmt(t.price):'Price pending'}</div><p>{t.detail}</p><div className="nbv-capacity">{t.seats || 'Capacity unconfirmed'}{eventConfig?.tiers?.find(tier => tier.id === t.id)?.inventoryConfirmed === false ? ' · Stock not confirmed — sales unavailable' : ''}{t.price && eventConfig?.tiers?.find(tier => tier.id === t.id) ? ` · ${eventConfig.tiers.find(tier => tier.id === t.id).available} purchases remaining` : ''}</div><button disabled={!t.price || !eventConfig?.tiers?.find(tier => tier.id === t.id)?.inventoryConfirmed || !Number.isInteger(eventConfig?.tiers?.find(tier => tier.id === t.id)?.available) || eventConfig.tiers.find(tier => tier.id === t.id).available < 1} className="nbv-card-button" onClick={()=>setSelected(t.id)}>{!eventConfig?.tiers?.find(tier => tier.id === t.id)?.inventoryConfirmed ? 'Awaiting stock confirmation' : selected===t.id?'Selected ✓':'Select ticket ↗'}</button></article>)}</div>
         <div className="nbv-checkout"><div><p className="nbv-kicker">YOUR SELECTION</p><h3>{selectedCategory.label} — {fmt(selectedCategory.price)}</h3>
           <p>Each order reserves one purchase slot for 30 minutes. When Paystack verifies payment, one unique QR admission is issued per guest (1, 6, 8, or 10). Tickets are available in your Tengacion account for viewing and printing.</p>
-          <label className="nbv-consent"><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} /><span>I understand that buying tickets requires a Tengacion account and that my account details are used to issue and retrieve my ticket. Attendee photos are optional and require separate consent.</span></label></div>
+          <label className="nbv-consent"><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} /><span>I understand that buying tickets requires a Tengacion account and that my account details are used to issue and retrieve my ticket. The profile photo uploaded during registration is also displayed on your ticket.</span></label></div>
           <div className="nbv-checkout-action">{user?<span>Signed in as {user.email}</span>:<><span>Already have an account? <Link to={`/login?returnTo=${encodeURIComponent(RETURN_TO)}`}>Sign in</Link></span><Link to={`/register?returnTo=${encodeURIComponent(RETURN_TO)}`}>Register & upload a profile photo</Link></>}
             <button className="nbv-primary" type="button" disabled={busy||authLoading||!eventConfig?.enabled||!eventConfig?.tiers?.find(t => t.id === selected)?.inventoryConfirmed||!Number.isInteger(selectedAvailability)||selectedAvailability<1} onClick={checkout}>{busy?'Connecting…':eventConfig?.enabled?'Continue to secure payment ↗':'Sales opening soon'}</button>
             <small>Paystack secure checkout · NGN · Ticket only issued after verification</small></div>
@@ -166,7 +145,7 @@ export default function NoBadVibesPage() {
             </div>)}</div>
             <small className="nbv-ticket-id">TICKET ID: {t.id}</small>{t.admissions?.every(a=>a.redeemedAt)&&<p>All guests have checked in.</p>}
             <div className="nbv-print"><button onClick={()=>window.print()}>Print / save as PDF ↗</button></div>
-            {!t.attendeePhoto&&<div className="nbv-photo-input"><label>Optional ticket photo (JPG/PNG · max 3 MB)<input type="file" accept="image/jpeg,image/png" onChange={e=>setPhotos(curr=>({...curr,[t.id]:e.target.files?.[0]}))} /></label><label><input type="checkbox" checked={Boolean(photoConsent[t.id])} onChange={e=>setPhotoConsent(curr=>({...curr,[t.id]:e.target.checked}))} /> I consent to my photo being stored for this ticket.</label><button disabled={busy} onClick={()=>uploadPhoto(t.id)}>Attach photo</button></div>}
+            {!t.attendeePhoto&&<p className="nbv-photo-note">No profile photo is available for this ticket yet. <Link to={`/profile/${encodeURIComponent(user?.username || '')}`}>Update your Tengacion profile picture</Link> to display it here.</p>}
           </article>)}</div>}</div>}
     </section>
     <section id="nbv-about" className="nbv-details"><div><p className="nbv-kicker">03 / THE DETAILS</p><h2>DECEMBER<br /><em>IS CALLING.</em></h2></div><dl><div><dt>EVENT</dt><dd>No Bad Vibes with MCJagz</dd></div><div><dt>WHEN</dt><dd>Friday, 18 December 2026</dd></div><div><dt>WHERE</dt><dd>7eleven, Sabo, Unguwan Boro, Kaduna, Nigeria</dd></div><div><dt>CONTACT</dt><dd>08107838864 · 09115130069</dd></div></dl></section>

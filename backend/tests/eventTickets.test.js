@@ -204,6 +204,25 @@ describe('No Bad Vibes event ticket API', () => {
     expect(mine.body.tickets[0].ticketCode).toBe(first.body.ticket.ticketCode);
   });
 
+  test('uses the buyer Tengacion profile photo on issued ticket without a second upload', async () => {
+    const localAvatar = `/api/media/${new mongoose.Types.ObjectId().toString()}`;
+    await User.updateOne({ _id: buyer._id }, {
+      $set: { avatar: { url: localAvatar, secureUrl: localAvatar } },
+    });
+    const checkout = await startPurchase('vip');
+    const pending = await EventTicket.findOne({ reference: checkout.body.reference });
+    mockVerification(pending);
+    const verified = await request(app)
+      .get(`/api/event-tickets/verify/${pending.reference}`)
+      .set(bearer(buyerToken)).expect(200);
+    expect(verified.body.ticket.attendeePhoto).toBe(localAvatar);
+
+    const mine = await request(app).get('/api/event-tickets/mine')
+      .set(bearer(buyerToken)).expect(200);
+    expect(mine.body.tickets[0].attendeePhoto).toBe(localAvatar);
+    expect(mine.body.tickets[0].admissions).toHaveLength(1);
+  });
+
   test('rejects webhook calls without a valid Paystack signature', async () => {
     const payload = { event: 'charge.success', data: { reference: 'NVB26-0123456789abcdef01234567' } };
     await request(app).post('/api/event-tickets/webhook').send(payload).expect(401);
